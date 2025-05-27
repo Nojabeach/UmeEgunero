@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.repository.CalendarioRepository
 import com.tfg.umeegunero.data.repository.EventoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
@@ -33,7 +34,19 @@ data class DetalleDiaEventoUiState(
     val mensaje: String? = null,
     val mostrarDialogoCrearEvento: Boolean = false,
     val eventoParaEditar: Evento? = null,
-    val eventoParaEliminar: Evento? = null
+    val eventoParaEliminar: Evento? = null,
+    val eventosConCreador: Map<String, UsuarioCreador> = emptyMap()
+)
+
+/**
+ * Datos del usuario creador del evento
+ */
+data class UsuarioCreador(
+    val id: String,
+    val nombre: String,
+    val apellidos: String,
+    val email: String,
+    val tipo: TipoUsuario
 )
 
 /**
@@ -83,11 +96,24 @@ class DetalleDiaEventoViewModel @Inject constructor(
                     fechaEvento == fecha
                 }
                 
+                // Obtener información de los creadores
+                val eventosConCreador = mutableMapOf<String, UsuarioCreador>()
+                
+                // Procesar cada evento para obtener los datos de su creador
+                eventosFecha.forEach { evento ->
+                    if (evento.creadorId.isNotEmpty()) {
+                        obtenerInfoCreador(evento.creadorId)?.let { creador ->
+                            eventosConCreador[evento.id] = creador
+                        }
+                    }
+                }
+                
                 _uiState.update { 
                     it.copy(
                         eventos = eventosFecha,
                         cargando = false,
-                        error = null
+                        error = null,
+                        eventosConCreador = eventosConCreador
                     ) 
                 }
             } catch (e: Exception) {
@@ -99,6 +125,37 @@ class DetalleDiaEventoViewModel @Inject constructor(
                     ) 
                 }
             }
+        }
+    }
+    
+    /**
+     * Obtiene la información del usuario creador
+     */
+    private suspend fun obtenerInfoCreador(creadorId: String): UsuarioCreador? {
+        return try {
+            when (val result = usuarioRepository.getUsuarioByDni(creadorId)) {
+                is Result.Success -> {
+                    val usuario = result.data
+                    if (usuario != null) {
+                        val tipoUsuario = usuario.perfiles.firstOrNull()?.tipo ?: TipoUsuario.OTRO
+                        UsuarioCreador(
+                            id = usuario.dni,
+                            nombre = usuario.nombre,
+                            apellidos = usuario.apellidos,
+                            email = usuario.email ?: "",
+                            tipo = tipoUsuario
+                        )
+                    } else null
+                }
+                is Result.Error -> {
+                    Timber.e(result.exception, "Error al obtener usuario creador: ${result.exception?.message ?: "Error desconocido"}")
+                    null
+                }
+                else -> null
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener usuario creador: ${e.message ?: "Error desconocido"}")
+            null
         }
     }
     

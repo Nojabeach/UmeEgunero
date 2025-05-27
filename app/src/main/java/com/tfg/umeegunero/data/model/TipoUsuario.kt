@@ -28,6 +28,25 @@ package com.tfg.umeegunero.data.model
  * 
  * @see Perfil Modelo que utiliza esta enumeración para definir roles de usuario
  */
-enum class TipoUsuario {
-    ADMIN_APP, ADMIN_CENTRO, PROFESOR, FAMILIAR, ALUMNO, DESCONOCIDO
+enum class TipoUsuario(val nombre: String) {
+    ADMIN_APP("Administrador del Sistema"),
+    ADMIN_CENTRO("Administrador del Centro"),
+    PROFESOR("Profesor"),
+    FAMILIAR("Familiar"),
+    ALUMNO("Alumno"),
+    DESCONOCIDO("Desconocido"),
+    OTRO("Otro");
+    
+    companion object {
+        /**
+         * Obtiene un TipoUsuario a partir de su nombre en string
+         */
+        fun fromString(value: String): TipoUsuario {
+            return try {
+                valueOf(value)
+            } catch (e: Exception) {
+                DESCONOCIDO
+            }
+        }
+    }
 } 

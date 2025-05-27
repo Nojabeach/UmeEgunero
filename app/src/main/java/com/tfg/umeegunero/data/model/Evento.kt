@@ -23,7 +23,7 @@ data class Evento(
     val titulo: String = "",
     val descripcion: String = "",
     val fecha: Timestamp = Timestamp.now(),
-    val tipo: TipoEvento = TipoEvento.OTRO,
+    val tipo: Any = TipoEvento.OTRO, // Puede ser TipoEvento o String
     val creadorId: String = "",
     val centroId: String = "",
     val recordatorio: Boolean = false,
@@ -37,9 +37,15 @@ data class Evento(
      * Convierte el objeto a un Map para guardarlo en Firestore
      */
     fun toMap(): Map<String, Any> {
+        val tipoString = when (tipo) {
+            is TipoEvento -> tipo.name
+            is String -> tipo
+            else -> TipoEvento.OTRO.name
+        }
+        
         val map = mutableMapOf<String, Any>(
             "titulo" to titulo,
-            "tipo" to tipo.name,
+            "tipo" to tipoString,
             "descripcion" to descripcion,
             "fecha" to fecha,
             "creadorId" to creadorId,
@@ -59,6 +65,23 @@ data class Evento(
         
         return map
     }
+    
+    /**
+     * Obtiene el tipo de evento como TipoEvento
+     */
+    fun getTipoEvento(): TipoEvento {
+        return when (tipo) {
+            is TipoEvento -> tipo
+            is String -> {
+                try {
+                    TipoEvento.valueOf(tipo)
+                } catch (e: Exception) {
+                    TipoEvento.OTRO
+                }
+            }
+            else -> TipoEvento.OTRO
+        }
+    }
 
     companion object {
         /**
@@ -77,16 +100,20 @@ data class Evento(
                     else -> emptyList()
                 }
                 
+                // Tratar de obtener el tipo de evento
+                val tipoString = map["tipo"] as? String ?: TipoEvento.OTRO.name
+                val tipo = try {
+                    TipoEvento.valueOf(tipoString)
+                } catch (e: Exception) {
+                    tipoString // Si no se puede convertir, guardamos la cadena
+                }
+                
                 Evento(
                     id = id,
                     titulo = map["titulo"] as? String ?: "",
                     descripcion = map["descripcion"] as? String ?: "",
                     fecha = map["fecha"] as? Timestamp ?: Timestamp.now(),
-                    tipo = try {
-                        TipoEvento.valueOf(map["tipo"] as? String ?: TipoEvento.OTRO.name)
-                    } catch (e: Exception) {
-                        TipoEvento.OTRO
-                    },
+                    tipo = tipo,
                     creadorId = map["creadorId"] as? String ?: "",
                     centroId = map["centroId"] as? String ?: "",
                     recordatorio = map["recordatorio"] as? Boolean ?: false,

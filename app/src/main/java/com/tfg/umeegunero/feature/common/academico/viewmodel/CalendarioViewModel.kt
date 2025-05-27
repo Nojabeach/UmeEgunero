@@ -222,6 +222,10 @@ class CalendarioViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             
             try {
+                // Obtener el usuario actual y su centro de manera adecuada
+                val usuarioId = calendarioRepository.obtenerUsuarioId()
+                val centroId = calendarioRepository.obtenerCentroId()
+                
                 // Construir título y descripción completos
                 val title = currentState.eventTitle?.takeIf { it.isNotBlank() } 
                     ?: currentState.eventDescription.lines().firstOrNull()?.takeIf { it.isNotBlank() }
@@ -244,8 +248,8 @@ class CalendarioViewModel @Inject constructor(
                     descripcion = descripcionCompleta,
                     fecha = currentState.selectedDate.atStartOfDay().toTimestamp(),
                     tipo = currentState.selectedEventType,
-                    creadorId = calendarioRepository.obtenerUsuarioId(),
-                    centroId = calendarioRepository.obtenerCentroId()
+                    creadorId = usuarioId,
+                    centroId = centroId
                 )
 
                 val result = calendarioRepository.saveEvento(newEvent)

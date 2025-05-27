@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -18,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -25,8 +27,11 @@ import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
 import com.tfg.umeegunero.feature.common.academico.screen.detallediaevento.viewmodel.DetalleDiaEventoViewModel
 import com.tfg.umeegunero.feature.common.academico.screen.detallediaevento.viewmodel.DetalleDiaEventoUiState
+import com.tfg.umeegunero.feature.common.academico.screen.detallediaevento.viewmodel.UsuarioCreador
 import com.tfg.umeegunero.ui.components.ErrorScreen
 import com.tfg.umeegunero.ui.components.LoadingIndicator
+import com.tfg.umeegunero.util.toLocalDate
+import com.tfg.umeegunero.util.toLocalTime
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -160,10 +165,11 @@ fun DetalleDiaEventoScreen(
                     }
                     
                     items(uiState.eventos.sortedBy { it.fecha }) { evento ->
-                        TarjetaEvento(
+                        EventoItem(
                             evento = evento,
                             onEditar = { viewModel.mostrarDialogoEditarEvento(evento) },
-                            onEliminar = { viewModel.mostrarDialogoConfirmarEliminar(evento) }
+                            onEliminar = { viewModel.mostrarDialogoConfirmarEliminar(evento) },
+                            creador = uiState.eventosConCreador[evento.id]
                         )
                         
                         Spacer(modifier = Modifier.height(8.dp))
@@ -237,19 +243,23 @@ fun DetalleDiaEventoScreen(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TarjetaEvento(
+fun EventoItem(
     evento: Evento,
     onEditar: () -> Unit,
-    onEliminar: () -> Unit
+    onEliminar: () -> Unit,
+    creador: UsuarioCreador? = null
 ) {
-    val hora = evento.fecha.toDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalTime()
-    val horaFormateada = hora.format(DateTimeFormatter.ofPattern("HH:mm"))
+    // Obtener el tipo de evento
+    val tipoEvento = evento.getTipoEvento()
+    
+    // Formatear la hora del evento
+    val horaFormateada = evento.fecha.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm"))
     
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -262,7 +272,7 @@ fun TarjetaEvento(
                 modifier = Modifier
                     .size(12.dp)
                     .background(
-                        color = evento.tipo.color,
+                        color = tipoEvento.color,
                         shape = MaterialTheme.shapes.small
                     )
             )
@@ -305,6 +315,38 @@ fun TarjetaEvento(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                
+                // Información del creador
+                if (creador != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        Text(
+                            text = "Creado por: ${creador.nombre} ${creador.apellidos}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )
+                        
+                        if (creador.email.isNotEmpty()) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "(${creador.email})",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            )
+                        }
+                    }
+                    
+                    Text(
+                        text = "Rol: ${creador.tipo.nombre}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp)
                     )
                 }
                 

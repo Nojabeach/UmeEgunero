@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -278,8 +279,9 @@ fun CalendarioProfesorScreen(
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     items(uiState.eventosDiaSeleccionado) { evento ->
-                                        EventoItem(
+                                        EventoCard(
                                             evento = evento,
+                                            onClick = { /* Implementa la lógica para abrir el evento */ },
                                             onDelete = { viewModel.eliminarEvento(evento) }
                                         )
                                         
@@ -362,87 +364,101 @@ fun DiaCalendario(
 }
 
 @Composable
-fun EventoItem(
+fun EventoCard(
     evento: Evento,
+    onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+    // Obtener tipo de evento
+    val tipoEvento = evento.getTipoEvento()
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        // Icono según tipo de evento
-        val (color, icon) = when (evento.tipo) {
-            TipoEvento.CLASE -> evento.tipo.color to Icons.Default.School
-            TipoEvento.REUNION -> evento.tipo.color to Icons.Default.Group
-            TipoEvento.EXAMEN -> evento.tipo.color to Icons.AutoMirrored.Filled.Assignment
-            TipoEvento.EXCURSION -> evento.tipo.color to Icons.Default.DirectionsBus
-            TipoEvento.FESTIVO -> evento.tipo.color to Icons.Default.Event
-            TipoEvento.ESCOLAR -> evento.tipo.color to Icons.AutoMirrored.Filled.MenuBook
-            TipoEvento.OTRO -> evento.tipo.color to Icons.Default.Event
-        }
-        
-        Box(
+        Row(
             modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.2f)),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            // Extraer Hora si existe en la descripción
-            val descripcionParts = evento.descripcion.split("\nHora:")
-            val tituloMostrar = evento.titulo
-            val descripcionMostrar = descripcionParts.first().trim().ifEmpty { "Sin descripción" }
-            val horaMostrar = if (descripcionParts.size > 1) "Hora: ${descripcionParts[1].trim()}" else null
+            // Icono según tipo de evento
+            val (color, icon) = when (tipoEvento) {
+                TipoEvento.CLASE -> tipoEvento.color to Icons.Default.School
+                TipoEvento.REUNION -> tipoEvento.color to Icons.Default.Group
+                TipoEvento.EXAMEN -> tipoEvento.color to Icons.AutoMirrored.Filled.Assignment
+                TipoEvento.EXCURSION -> tipoEvento.color to Icons.Default.DirectionsBus
+                TipoEvento.FESTIVO -> tipoEvento.color to Icons.Default.Event
+                TipoEvento.ESCOLAR -> tipoEvento.color to Icons.AutoMirrored.Filled.MenuBook
+                TipoEvento.OTRO -> tipoEvento.color to Icons.Default.Event
+            }
             
-            Text(
-                text = tituloMostrar,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2, // Permitir hasta 2 líneas para el título
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            Spacer(modifier = Modifier.height(2.dp))
-            
-            Text(
-                text = descripcionMostrar,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3, // Permitir hasta 3 líneas para la descripción
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            // Mostrar la hora si existe
-            if (horaMostrar != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = horaMostrar,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(24.dp)
                 )
             }
-        }
-        
-        IconButton(onClick = onDelete) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Eliminar evento",
-                tint = Color.Red
-            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                // Extraer Hora si existe en la descripción
+                val descripcionParts = evento.descripcion.split("\nHora:")
+                val tituloMostrar = evento.titulo
+                val descripcionMostrar = descripcionParts.first().trim().ifEmpty { "Sin descripción" }
+                val horaMostrar = if (descripcionParts.size > 1) "Hora: ${descripcionParts[1].trim()}" else null
+                
+                Text(
+                    text = tituloMostrar,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2, // Permitir hasta 2 líneas para el título
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.height(2.dp))
+                
+                Text(
+                    text = descripcionMostrar,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3, // Permitir hasta 3 líneas para la descripción
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                // Mostrar la hora si existe
+                if (horaMostrar != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = horaMostrar,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Eliminar evento",
+                    tint = Color.Red
+                )
+            }
         }
     }
 }
@@ -600,7 +616,12 @@ fun CrearEventoDialog(
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(vertical = 12.dp)
                     ) {
-                        Text("Cancelar")
+                        Text(
+                            "Cancelar",
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                     
                     Button(
@@ -628,10 +649,15 @@ fun CrearEventoDialog(
                             Icon(
                                 imageVector = Icons.Default.Save,
                                 contentDescription = null,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(16.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Guardar")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "Guardar",
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
@@ -776,21 +802,41 @@ fun TimePickerDialog(
                 ) {
                     OutlinedButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFFE57373)
+                        ),
+                        border = BorderStroke(1.dp, Color(0xFFE57373))
                     ) {
-                        Text("Cancelar")
+                        Text(
+                            "Cancelar",
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                     
                     Spacer(modifier = Modifier.width(16.dp))
                     
                     Button(
                         onClick = { onConfirm(initialHour, initialMinute) },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = ProfesorColor
+                            containerColor = Color(0xFF81C784)
                         )
                     ) {
-                        Text("Confirmar")
+                        Text(
+                            "Confirmar",
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }

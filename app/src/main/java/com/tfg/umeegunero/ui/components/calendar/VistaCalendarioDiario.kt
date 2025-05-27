@@ -239,10 +239,13 @@ private fun TarjetaEvento(
     evento: Evento,
     onClick: () -> Unit
 ) {
+    // Obtener el tipo de evento
+    val tipoEvento = evento.getTipoEvento()
+    
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = evento.tipo.color.copy(alpha = 0.1f)
+            containerColor = tipoEvento.color.copy(alpha = 0.1f)
         )
     ) {
         Column(
@@ -269,7 +272,7 @@ private fun TarjetaEvento(
                     modifier = Modifier
                         .size(10.dp)
                         .background(
-                            color = evento.tipo.color,
+                            color = tipoEvento.color,
                             shape = MaterialTheme.shapes.small
                         )
                 )

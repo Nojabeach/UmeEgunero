@@ -208,12 +208,15 @@ private fun TarjetaEvento(
     evento: Evento,
     onClick: () -> Unit
 ) {
+    // Obtener el tipo de evento
+    val tipoEvento = evento.getTipoEvento()
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = evento.tipo.color.copy(alpha = 0.1f)
+            containerColor = tipoEvento.color.copy(alpha = 0.1f)
         )
     ) {
         Row(
@@ -226,7 +229,7 @@ private fun TarjetaEvento(
                 modifier = Modifier
                     .size(12.dp)
                     .background(
-                        color = evento.tipo.color,
+                        color = tipoEvento.color,
                         shape = MaterialTheme.shapes.small
                     )
             )

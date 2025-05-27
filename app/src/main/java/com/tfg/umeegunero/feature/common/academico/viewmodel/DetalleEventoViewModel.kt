@@ -57,33 +57,31 @@ class DetalleEventoViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(cargando = true) }
             
-            // Simulamos la carga desde el repositorio
             try {
-                // En una implementación real, esto consultaría al repositorio con el ID
-                val eventos = calendarioRepository.getEventosByMonth(
-                    java.time.LocalDate.now().year,
-                    java.time.LocalDate.now().monthValue
-                )
+                // Obtenemos el evento directamente de Firestore por su ID
+                val resultado = calendarioRepository.getEventoById(eventoId)
                 
-                val eventoEncontrado = eventos.find { it.id == eventoId }
-                
-                if (eventoEncontrado != null) {
-                    _uiState.update { 
-                        it.copy(
-                            evento = eventoEncontrado,
-                            cargando = false,
-                            error = null
-                        ) 
+                when (resultado) {
+                    is Result.Success -> {
+                        _uiState.update { 
+                            it.copy(
+                                evento = resultado.data,
+                                cargando = false,
+                                error = null
+                            ) 
+                        }
+                        Timber.d("Evento cargado: ${resultado.data.id}")
                     }
-                    Timber.d("Evento cargado: ${eventoEncontrado.id}")
-                } else {
-                    _uiState.update { 
-                        it.copy(
-                            cargando = false,
-                            error = "Evento no encontrado" 
-                        ) 
+                    is Result.Error -> {
+                        _uiState.update { 
+                            it.copy(
+                                cargando = false,
+                                error = resultado.exception?.message ?: "Evento no encontrado" 
+                            ) 
+                        }
+                        Timber.e(resultado.exception, "Error al cargar el evento con ID $eventoId")
                     }
-                    Timber.e("Evento con ID $eventoId no encontrado")
+                    is Result.Loading -> { /* Estado ya actualizado */ }
                 }
             } catch (e: Exception) {
                 _uiState.update { 

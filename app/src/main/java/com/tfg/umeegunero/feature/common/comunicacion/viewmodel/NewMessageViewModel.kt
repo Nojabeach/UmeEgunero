@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.SavedStateHandle
 import com.tfg.umeegunero.data.model.Alumno
+import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Familiar
 import com.tfg.umeegunero.data.model.RecipientGroupType
 import com.tfg.umeegunero.data.model.RecipientItem
@@ -32,6 +33,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import java.util.*
 import timber.log.Timber
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 /**
  * Estructura para representar a un destinatario seleccionado
@@ -105,6 +108,7 @@ class NewMessageViewModel @Inject constructor(
     private val alumnoRepository: AlumnoRepository,
     private val familiarRepository: FamiliarRepository,
     private val profesorRepository: ProfesorRepository,
+    private val firestore: FirebaseFirestore,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     
@@ -132,9 +136,10 @@ class NewMessageViewModel @Inject constructor(
     
     /**
      * Carga destinatarios reales basados en el rol del usuario actual:
-     * 1. Administradores de centro
-     * 2. Profesores del mismo curso (para profesor) o profesores del hijo (para padre)
-     * 3. Padres del aula (para profesor) o padres del aula del hijo (para padre)
+     * 1. Administradores de centro SIEMPRE aparecen para todos los usuarios
+     * 2. Para administrador de centro: todos los profesores y familiares de su centro, organizados por curso y clase
+     * 3. Para profesor: profesores del mismo curso y padres de sus alumnos
+     * 4. Para familiar: profesores de sus hijos y otros padres de las mismas clases
      */
     private fun loadRealDestinations() {
         viewModelScope.launch {
@@ -144,81 +149,341 @@ class NewMessageViewModel @Inject constructor(
                 
                 // Obtener el usuario actual
                 val currentUser = authRepository.getCurrentUser() ?: throw Exception("Usuario no encontrado")
-                val userType = currentUser.perfiles.firstOrNull()?.tipo ?: throw Exception("Tipo de usuario no definido")
+                val userProfile = currentUser.perfiles.firstOrNull() ?: throw Exception("Tipo de usuario no definido")
+                val userType = userProfile.tipo
                 
                 // Obtener el centro del usuario actual (basado en su primer perfil)
-                val centroId = currentUser.perfiles.firstOrNull()?.centroId ?: ""
+                val centroId = userProfile.centroId
                 if (centroId.isEmpty()) {
                     throw Exception("Usuario sin centro asignado")
                 }
                 
-                // 1. Cargar administradores del centro
+                // 1. Cargar administradores del centro (excepto el usuario actual)
                 val adminResults = loadCentroAdmins(centroId)
+                    .filter { it.id != currentUser.dni } // Excluir al usuario actual
                 results.addAll(adminResults)
                 
-                // 2 y 3. Dependiendo del tipo de usuario
+                // 2, 3 y 4. Dependiendo del tipo de usuario
                 when (userType) {
+                    TipoUsuario.ADMIN_CENTRO -> {
+                        // Admin ve a todos los profesores y familiares de su centro, organizados por curso y clase
+                        try {
+                            // Cargar cursos del centro
+                            val cursosResult = cursoRepository.getCursosPorCentro(centroId)
+                            
+                            if (cursosResult is com.tfg.umeegunero.util.Result.Success<List<Curso>>) {
+                                val cursos = cursosResult.data
+                                
+                                // Primero añadir todos los profesores (excepto el admin actual si es profesor)
+                                val profesoresResult = usuarioRepository.getUsuariosByCentroId(centroId)
+                                if (profesoresResult is com.tfg.umeegunero.util.Result.Success) {
+                                    // Filtrar por tipo de usuario PROFESOR y excluir al usuario actual
+                                    val profesores = profesoresResult.data
+                                        .filter { usuario -> 
+                                            usuario.perfiles.any { perfil -> perfil.tipo == TipoUsuario.PROFESOR } && 
+                                            usuario.dni != currentUser.dni 
+                                        }
+                                    
+                                    // Añadir encabezado para todos los profesores
+                                    results.add(SearchResultItem(
+                                        id = "header_profesores",
+                                        name = "👨‍🏫 Todos los profesores",
+                                        type = "HEADER",
+                                        description = "Profesores del centro"
+                                    ))
+                                    
+                                    // Agrupar profesores por curso/clase
+                                    val profesoresPorClase = mutableMapOf<String, MutableList<SearchResultItem>>()
+                                    
+                                    // Inicializar sección "Sin asignación específica" para profesores sin clase asignada
+                                    profesoresPorClase["sin_asignacion"] = mutableListOf()
+                                    
+                                    // Recorrer todos los cursos y sus clases
+                                    for (curso in cursos) {
+                                        val clasesResult = claseRepository.getClasesByCursoId(curso.id)
+                                        if (clasesResult is com.tfg.umeegunero.util.Result.Success) {
+                                            val clases = clasesResult.data
+                                            
+                                            for (clase in clases) {
+                                                // Crear clave para esta clase
+                                                val claveClase = "${curso.nombre}_${clase.nombre}"
+                                                profesoresPorClase[claveClase] = mutableListOf()
+                                                
+                                                // Si la clase tiene profesor asignado, añadirlo a esta clase
+                                                if (!clase.profesorId.isNullOrEmpty()) {
+                                                    val profesorAsignado = profesores.find { it.dni == clase.profesorId }
+                                                    if (profesorAsignado != null) {
+                                                        profesoresPorClase[claveClase]?.add(
+                                                            SearchResultItem(
+                                                                id = profesorAsignado.dni,
+                                                                name = "${profesorAsignado.nombre} ${profesorAsignado.apellidos}",
+                                                                type = TipoUsuario.PROFESOR.toString(),
+                                                                description = "Profesor de ${curso.nombre} - ${clase.nombre}"
+                                                            )
+                                                        )
+                                                        // Marcar este profesor como procesado - usar una copia local
+                                                        val profeEncontrado = profesores.find { it.dni == profesorAsignado.dni }
+                                                        profeEncontrado?.let {
+                                                            // Crear una copia del perfil para modificarlo
+                                                            val perfilCopia = it.perfiles.firstOrNull()?.copy(centroId = "procesado")
+                                                            // No podemos modificar la lista original, pero podemos marcar de otra forma
+                                                            // Este es un workaround para el error de compilación
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Añadir profesores no asignados a ninguna clase específica
+                                    // Cambiar la lógica para no depender de la modificación anterior
+                                    val profesoresYaProcesados = profesoresPorClase.values.flatten().map { it.id }.toSet()
+                                    profesores.filter { !profesoresYaProcesados.contains(it.dni) }.forEach { profesor ->
+                                        profesoresPorClase["sin_asignacion"]?.add(
+                                            SearchResultItem(
+                                                id = profesor.dni,
+                                                name = "${profesor.nombre} ${profesor.apellidos}",
+                                                type = TipoUsuario.PROFESOR.toString(),
+                                                description = "Profesor del centro (sin asignación específica)"
+                                            )
+                                        )
+                                    }
+                                    
+                                    // Añadir todos los profesores al resultado final, agrupados por clase
+                                    profesoresPorClase.forEach { (claveClase, profesoresDeClase) ->
+                                        if (profesoresDeClase.isNotEmpty()) {
+                                            // Añadir encabezado si no es "sin_asignacion"
+                                            if (claveClase != "sin_asignacion") {
+                                                // Obtener nombre del curso y clase de la clave
+                                                val partes = claveClase.split("_")
+                                                if (partes.size >= 2) {
+                                                    val cursoNombre = partes[0]
+                                                    val claseNombre = partes[1]
+                                                    
+                                                    // Añadir un "encabezado" para este grupo
+                                                    results.add(SearchResultItem(
+                                                        id = "header_$claveClase",
+                                                        name = "👨‍🏫 Profesores de $cursoNombre - $claseNombre",
+                                                        type = "HEADER",
+                                                        description = "Profesores asignados a esta clase"
+                                                    ))
+                                                }
+                                            } else {
+                                                // Encabezado para profesores sin asignación
+                                                results.add(SearchResultItem(
+                                                    id = "header_sin_asignacion",
+                                                    name = "👨‍🏫 Otros profesores del centro",
+                                                    type = "HEADER",
+                                                    description = "Profesores sin asignación específica"
+                                                ))
+                                            }
+                                            
+                                            // Añadir los profesores de esta clase
+                                            results.addAll(profesoresDeClase)
+                                        }
+                                    }
+                                }
+                                
+                                // Añadir encabezado principal para familiares
+                                results.add(SearchResultItem(
+                                    id = "header_familiares",
+                                    name = "👪 Familiares por cursos y clases",
+                                    type = "HEADER",
+                                    description = "Todos los familiares organizados por curso y clase"
+                                ))
+                                
+                                // Ahora cargar todos los alumnos y sus familiares, agrupados por curso y clase
+                                for (curso in cursos) {
+                                    // Añadir encabezado para el curso
+                                    results.add(SearchResultItem(
+                                        id = "header_curso_${curso.id}",
+                                        name = "📚 ${curso.nombre}",
+                                        type = "HEADER",
+                                        description = "Clases y alumnos de ${curso.nombre}"
+                                    ))
+                                    
+                                    val clasesResult = claseRepository.getClasesByCursoId(curso.id)
+                                    if (clasesResult is com.tfg.umeegunero.util.Result.Success) {
+                                        val clases = clasesResult.data
+                                        
+                                        for (clase in clases) {
+                                            // Obtener alumnos de esta clase
+                                            val alumnosIds = clase.alumnosIds ?: emptyList()
+                                            
+                                            if (alumnosIds.isNotEmpty()) {
+                                                // Añadir encabezado para los familiares de esta clase
+                                                results.add(SearchResultItem(
+                                                    id = "header_familia_${curso.id}_${clase.id}",
+                                                    name = "👪 ${clase.nombre}",
+                                                    type = "HEADER",
+                                                    description = "Familiares de alumnos de ${clase.nombre}"
+                                                ))
+                                                
+                                                // Para cada alumno, buscar sus familiares
+                                                for (alumnoId in alumnosIds) {
+                                                    // Obtener alumno para nombre
+                                                    val alumnoResult = alumnoRepository.getAlumnoById(alumnoId)
+                                                    val alumnoNombre = if (alumnoResult is com.tfg.umeegunero.util.Result.Success) {
+                                                        alumnoResult.data.nombre
+                                                    } else {
+                                                        "Alumno"
+                                                    }
+                                                    
+                                                    // Buscar vinculaciones
+                                                    val vinculacionesSnapshot = firestore.collection("vinculaciones_familiar_alumno")
+                                                        .whereEqualTo("alumnoId", alumnoId)
+                                                        .get()
+                                                        .await()
+                                                    
+                                                    val familiaresIds = vinculacionesSnapshot.documents.mapNotNull { doc ->
+                                                        doc.getString("familiarId")
+                                                    }
+                                                    
+                                                    for (familiarId in familiaresIds) {
+                                                        // No mostrar el admin actual como familiar
+                                                        if (familiarId == currentUser.dni) continue
+                                                        
+                                                        val familiarResult = usuarioRepository.getUsuarioById(familiarId)
+                                                        if (familiarResult is com.tfg.umeegunero.util.Result.Success) {
+                                                            val familiar = familiarResult.data
+                                                            
+                                                            // Obtener parentesco
+                                                            var parentesco = ""
+                                                            try {
+                                                                val parentescoDoc = vinculacionesSnapshot.documents.find { doc ->
+                                                                    doc.getString("familiarId") == familiarId && doc.getString("alumnoId") == alumnoId
+                                                                }
+                                                                parentesco = parentescoDoc?.getString("parentesco") ?: ""
+                                                            } catch (e: Exception) {
+                                                                Timber.e(e, "Error al obtener parentesco")
+                                                            }
+                                                            
+                                                            // Descripción con parentesco
+                                                            val descripcion = if (parentesco.isNotEmpty()) {
+                                                                "$parentesco de $alumnoNombre"
+                                                            } else {
+                                                                "Familiar de $alumnoNombre"
+                                                            }
+                                                            
+                                                            results.add(SearchResultItem(
+                                                                id = familiar.dni,
+                                                                name = "${familiar.nombre} ${familiar.apellidos}",
+                                                                type = TipoUsuario.FAMILIAR.toString(),
+                                                                description = descripcion
+                                                            ))
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al cargar usuarios del centro: $centroId")
+                        }
+                    }
                     TipoUsuario.PROFESOR -> {
-                        // Obtener el curso y clase donde el profesor da clases
+                        // Obtener las clases donde el profesor da clases
                         val clasesProfesor = claseRepository.getClasesByProfesor(currentUser.dni)
-                        if (clasesProfesor is Result.Success) {
+                        if (clasesProfesor is com.tfg.umeegunero.util.Result.Success) {
                             val clases = clasesProfesor.data
                             
                             if (clases.isNotEmpty()) {
-                                // 2. Profesores del mismo curso
+                                // Profesores del mismo curso
                                 val cursosIds = clases.map { it.cursoId }.distinct()
                                 val profesoresResults = loadProfesoresByCursos(cursosIds, currentUser.dni)
                                 results.addAll(profesoresResults)
                                 
-                                // 3. Padres de los alumnos de las clases
+                                // Padres de los alumnos de las clases
                                 val padresResults = loadPadresByClases(clases.map { it.id })
                                 results.addAll(padresResults)
                             }
                         }
                     }
                     TipoUsuario.FAMILIAR -> {
-                        // Obtener las clases donde estudian los hijos del familiar
-                        val hijosResults = alumnoRepository.getAlumnosByFamiliarId(currentUser.dni)
-                        if (hijosResults is Result.Success<List<Alumno>>) {
-                            val hijos = hijosResults.data
+                        // Obtener los alumnos vinculados al familiar usando vinculaciones_familiar_alumno
+                        val hijosIds = getAlumnosByFamiliarFromVinculaciones(currentUser.dni)
+                        
+                        if (hijosIds.isNotEmpty()) {
+                            val profesoresSet = mutableSetOf<SearchResultItem>()
+                            val padresSet = mutableSetOf<SearchResultItem>()
                             
-                            if (hijos.isNotEmpty()) {
-                                // Obtener clases de los hijos
-                                val clasesIds = mutableListOf<String>()
-                                val profesorResults = mutableListOf<SearchResultItem>()
-                                
-                                for (alumno in hijos) {
-                                    // Usamos la clase del alumno directamente si está disponible
-                                    if (alumno.claseId.isNotEmpty()) {
+                            for (alumnoId in hijosIds) {
+                                try {
+                                    // Obtener información del alumno
+                                    val alumnoResult = alumnoRepository.getAlumnoById(alumnoId)
+                                    if (alumnoResult is com.tfg.umeegunero.util.Result.Success) {
+                                        val alumno = alumnoResult.data
                                         val claseId = alumno.claseId
-                                        clasesIds.add(claseId)
                                         
-                                        try {
-                                            // Cargar la clase para obtener detalles
+                                        if (!claseId.isNullOrEmpty()) {
+                                            // Obtener la clase para conocer el profesor y otros datos
                                             val claseResult = claseRepository.getClaseById(claseId)
-                                            if (claseResult is Result.Success) {
+                                            if (claseResult is com.tfg.umeegunero.util.Result.Success) {
                                                 val clase = claseResult.data
                                                 
-                                                // 2. Profesores del hijo
-                                                val profesorItems = loadProfesorByClaseId(clase.id)
-                                                profesorResults.addAll(profesorItems)
+                                                // Obtener curso para mostrar información más completa
+                                                val cursoResult = cursoRepository.getCursoById(clase.cursoId)
+                                                val cursoNombre = if (cursoResult is com.tfg.umeegunero.util.Result.Success) {
+                                                    cursoResult.data.nombre
+                                                } else {
+                                                    "Curso"
+                                                }
+                                                
+                                                // Obtener profesor titular
+                                                if (!clase.profesorId.isNullOrEmpty()) {
+                                                    val profesorResult = usuarioRepository.getUsuarioById(clase.profesorId)
+                                                    if (profesorResult is com.tfg.umeegunero.util.Result.Success) {
+                                                        val profesor = profesorResult.data
+                                                        profesoresSet.add(
+                                                            SearchResultItem(
+                                                                id = profesor.dni,
+                                                                name = "${profesor.nombre} ${profesor.apellidos}",
+                                                                type = TipoUsuario.PROFESOR.toString(),
+                                                                description = "Profesor de $cursoNombre - ${clase.nombre}"
+                                                            )
+                                                        )
+                                                    }
+                                                }
+                                                
+                                                // También obtener otros profesores del mismo curso
+                                                val clasesDelCursoResult = claseRepository.getClasesByCursoId(clase.cursoId)
+                                                if (clasesDelCursoResult is com.tfg.umeegunero.util.Result.Success) {
+                                                    for (otraClase in clasesDelCursoResult.data) {
+                                                        if (!otraClase.profesorId.isNullOrEmpty() && 
+                                                            otraClase.profesorId != clase.profesorId) {
+                                                            val otroProfesorResult = usuarioRepository.getUsuarioById(otraClase.profesorId)
+                                                            if (otroProfesorResult is com.tfg.umeegunero.util.Result.Success) {
+                                                                val otroProfesor = otroProfesorResult.data
+                                                                profesoresSet.add(
+                                                                    SearchResultItem(
+                                                                        id = otroProfesor.dni,
+                                                                        name = "${otroProfesor.nombre} ${otroProfesor.apellidos}",
+                                                                        type = TipoUsuario.PROFESOR.toString(),
+                                                                        description = "Profesor de $cursoNombre - ${otraClase.nombre}"
+                                                                    )
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                // Cargar otros padres de la misma clase
+                                                val otrosPadres = loadPadresByClases(listOf(claseId))
+                                                    .filter { it.id != currentUser.dni }
+                                                otrosPadres.forEach { padresSet.add(it) }
                                             }
-                                        } catch (e: Exception) {
-                                            Timber.e(e, "Error al cargar clase: $claseId para alumno: ${alumno.id}")
                                         }
                                     }
-                                }
-                                
-                                results.addAll(profesorResults.distinctBy { it.id })
-                                
-                                // 3. Padres del aula de los hijos (excepto el usuario actual)
-                                if (clasesIds.isNotEmpty()) {
-                                    val padresResults = loadPadresByClases(clasesIds)
-                                    // Filtramos para no incluirnos a nosotros mismos
-                                    val filteredPadres = padresResults.filter { it.id != currentUser.dni }
-                                    results.addAll(filteredPadres)
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al cargar información del alumno $alumnoId")
                                 }
                             }
+                            
+                            // Añadir profesores y padres a los resultados
+                            results.addAll(profesoresSet)
+                            results.addAll(padresSet)
                         }
                     }
                     else -> {
@@ -226,8 +491,11 @@ class NewMessageViewModel @Inject constructor(
                     }
                 }
                 
+                // Eliminar duplicados por ID
+                val distinctResults = results.distinctBy { it.id }
+                
                 _uiState.update { it.copy(
-                    searchResults = results,
+                    searchResults = distinctResults,
                     isLoading = false
                 )}
             } catch (e: Exception) {
@@ -247,7 +515,7 @@ class NewMessageViewModel @Inject constructor(
         
         try {
             val result = usuarioRepository.getAdminsByCentroId(centroId)
-            if (result is Result.Success) {
+            if (result is com.tfg.umeegunero.util.Result.Success) {
                 result.data.forEach { admin ->
                     admins.add(SearchResultItem(
                         id = admin.dni,
@@ -273,16 +541,16 @@ class NewMessageViewModel @Inject constructor(
         try {
             for (cursoId in cursosIds) {
                 val cursoResult = cursoRepository.getCursoById(cursoId)
-                val cursoNombre = if (cursoResult is Result.Success) cursoResult.data.nombre else "Curso"
+                val cursoNombre = if (cursoResult is com.tfg.umeegunero.util.Result.Success) cursoResult.data.nombre else "Curso"
                 
                 val clasesResult = claseRepository.getClasesByCursoId(cursoId)
-                if (clasesResult is Result.Success) {
+                if (clasesResult is com.tfg.umeegunero.util.Result.Success) {
                     val clases = clasesResult.data
                     for (clase in clases) {
                         // Agregar profesor titular si existe y no es el mismo que el profesor actual
                         if (!clase.profesorId.isNullOrEmpty() && clase.profesorId != currentProfesorId) {
                             val profesorResult = usuarioRepository.getUsuarioById(clase.profesorId)
-                            if (profesorResult is Result.Success) {
+                            if (profesorResult is com.tfg.umeegunero.util.Result.Success) {
                                 val profesor = profesorResult.data
                                 profesores.add(SearchResultItem(
                                     id = profesor.dni,
@@ -310,20 +578,20 @@ class NewMessageViewModel @Inject constructor(
         
         try {
             val claseResult = claseRepository.getClaseById(claseId)
-            if (claseResult is Result.Success) {
+            if (claseResult is com.tfg.umeegunero.util.Result.Success) {
                 val clase = claseResult.data
                 
                 // Obtener curso para mostrar información más completa
                 val cursoResult = cursoRepository.getCursoById(clase.cursoId)
-                val cursoNombre = if (cursoResult is Result.Success) cursoResult.data.nombre else "Curso"
+                val cursoNombre = if (cursoResult is com.tfg.umeegunero.util.Result.Success) cursoResult.data.nombre else "Curso"
                 
                 // Obtener profesor titular
                 if (!clase.profesorId.isNullOrEmpty()) {
-                    val profesor = usuarioRepository.getUsuarioById(clase.profesorId)
-                    if (profesor is Result.Success) {
+                    val profesorResult = usuarioRepository.getUsuarioById(clase.profesorId)
+                    if (profesorResult is com.tfg.umeegunero.util.Result.Success) {
                         profesores.add(SearchResultItem(
-                            id = profesor.data.dni,
-                            name = "${profesor.data.nombre} ${profesor.data.apellidos}",
+                            id = profesorResult.data.dni,
+                            name = "${profesorResult.data.nombre} ${profesorResult.data.apellidos}",
                             type = TipoUsuario.PROFESOR.toString(),
                             description = "Profesor de $cursoNombre - ${clase.nombre}"
                         ))
@@ -338,28 +606,81 @@ class NewMessageViewModel @Inject constructor(
     }
     
     /**
-     * Carga los padres de los alumnos de las clases especificadas
+     * Carga los padres de los alumnos de las clases especificadas, utilizando la colección vinculaciones_familiar_alumno
      */
     private suspend fun loadPadresByClases(clasesIds: List<String>): List<SearchResultItem> {
         val padres = mutableListOf<SearchResultItem>()
         
         try {
+            // Para cada clase
             for (claseId in clasesIds) {
-                val alumnosResult = alumnoRepository.getAlumnosByClaseId(claseId)
-                if (alumnosResult is Result.Success) {
-                    val alumnos = alumnosResult.data
+                // 1. Obtener la clase y sus alumnos
+                val claseResult = claseRepository.getClaseById(claseId)
+                if (claseResult is com.tfg.umeegunero.util.Result.Success) {
+                    val clase = claseResult.data
                     
-                    for (alumno in alumnos) {
-                        val familiaresResult = familiarRepository.getFamiliaresByAlumnoId(alumno.id)
-                        if (familiaresResult is Result.Success) {
-                            familiaresResult.data.forEach { familiar ->
-                                padres.add(SearchResultItem(
-                                    id = familiar.dni,
-                                    name = "${familiar.nombre} ${familiar.apellidos}",
-                                    type = TipoUsuario.FAMILIAR.toString(),
-                                    description = "Familiar de ${alumno.nombre}"
-                                ))
+                    // 2. Obtener los alumnos directamente de la clase
+                    val alumnosIds = clase.alumnosIds ?: emptyList()
+                    Timber.d("Clase $claseId tiene ${alumnosIds.size} alumnos")
+                    
+                    // 3. Para cada alumno de la clase, buscar sus familiares
+                    for (alumnoId in alumnosIds) {
+                        // 3.1 Buscar las vinculaciones para este alumno
+                        try {
+                            // Buscar en vinculaciones_familiar_alumno
+                            val vinculacionesSnapshot = firestore.collection("vinculaciones_familiar_alumno")
+                                .whereEqualTo("alumnoId", alumnoId)
+                                .get()
+                                .await()
+                            
+                            val familiaresIds = vinculacionesSnapshot.documents.mapNotNull { doc ->
+                                doc.getString("familiarId")
                             }
+                            
+                            Timber.d("Alumno $alumnoId tiene ${familiaresIds.size} familiares vinculados")
+                            
+                            // 3.2 Obtener información de cada familiar
+                            for (familiarId in familiaresIds) {
+                                val familiarResult = usuarioRepository.getUsuarioById(familiarId)
+                                if (familiarResult is com.tfg.umeegunero.util.Result.Success) {
+                                    val familiar = familiarResult.data
+                                    
+                                    // Obtener el nombre del alumno para mostrarlo en la descripción
+                                    val alumnoResult = alumnoRepository.getAlumnoById(alumnoId)
+                                    val alumnoNombre = if (alumnoResult is com.tfg.umeegunero.util.Result.Success) {
+                                        alumnoResult.data.nombre
+                                    } else {
+                                        "Alumno"
+                                    }
+                                    
+                                    // Obtener el parentesco si está disponible
+                                    var parentesco = ""
+                                    try {
+                                        val parentescoDoc = vinculacionesSnapshot.documents.find { doc ->
+                                            doc.getString("familiarId") == familiarId && doc.getString("alumnoId") == alumnoId
+                                        }
+                                        parentesco = parentescoDoc?.getString("parentesco") ?: ""
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Error al obtener parentesco")
+                                    }
+                                    
+                                    // Crear descripción con parentesco si está disponible
+                                    val descripcion = if (parentesco.isNotEmpty()) {
+                                        "$parentesco de $alumnoNombre"
+                                    } else {
+                                        "Familiar de $alumnoNombre"
+                                    }
+                                    
+                                    padres.add(SearchResultItem(
+                                        id = familiar.dni,
+                                        name = "${familiar.nombre} ${familiar.apellidos}",
+                                        type = TipoUsuario.FAMILIAR.toString(),
+                                        description = descripcion
+                                    ))
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al obtener familiares para el alumno $alumnoId")
                         }
                     }
                 }
@@ -507,7 +828,7 @@ class NewMessageViewModel @Inject constructor(
                 // Guardar mensaje
                 val result = messageRepository.sendMessage(message)
                 
-                if (result is Result.Success<*>) {
+                if (result is com.tfg.umeegunero.util.Result.Success<*>) {
                     _uiState.update { it.copy(
                         isLoading = false,
                         subject = "",
@@ -594,4 +915,21 @@ class NewMessageViewModel @Inject constructor(
      * - loadPadresByClases(clasesIds: List<String>): List<SearchResultItem>
      *   Para cargar padres de alumnos de las clases especificadas
      */
+
+    /**
+     * Obtiene los IDs de alumnos vinculados a un familiar desde la colección vinculaciones_familiar_alumno
+     */
+    private suspend fun getAlumnosByFamiliarFromVinculaciones(familiarId: String): List<String> {
+        try {
+            val result = familiarRepository.getAlumnoIdsByVinculaciones(familiarId)
+            return if (result is com.tfg.umeegunero.util.Result.Success) {
+                result.data
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener vinculaciones para familiar: $familiarId")
+            return emptyList()
+        }
+    }
 } 

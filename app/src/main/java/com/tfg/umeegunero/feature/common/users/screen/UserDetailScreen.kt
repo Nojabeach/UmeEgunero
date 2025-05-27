@@ -426,5 +426,6 @@ private fun getTipoUsuarioLabel(tipo: TipoUsuario): String {
         TipoUsuario.FAMILIAR -> "Familiar"
         TipoUsuario.ALUMNO -> "Alumno"
         TipoUsuario.DESCONOCIDO -> "Desconocido"
+        TipoUsuario.OTRO -> "Otro"
     }
 } 

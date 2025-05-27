@@ -154,6 +154,7 @@ fun LoginScreen(
         TipoUsuario.FAMILIAR -> "Familiar"
         TipoUsuario.ALUMNO -> "Alumno"
         TipoUsuario.DESCONOCIDO -> "Usuario"
+        TipoUsuario.OTRO -> "Usuario"
     }
 
     // Verificar si hay credenciales guardadas

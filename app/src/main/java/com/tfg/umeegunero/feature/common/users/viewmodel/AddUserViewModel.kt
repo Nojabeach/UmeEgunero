@@ -1389,6 +1389,10 @@ class AddUserViewModel @Inject constructor(
                 // No crear ningún perfil para tipo desconocido
                 Timber.w("Tipo de usuario DESCONOCIDO, no se crea perfil")
             }
+            TipoUsuario.OTRO -> {
+                // No crear ningún perfil para tipo otro
+                Timber.w("Tipo de usuario OTRO, no se crea perfil")
+            }
         }
         
         // Mostrar perfiles creados para depuración

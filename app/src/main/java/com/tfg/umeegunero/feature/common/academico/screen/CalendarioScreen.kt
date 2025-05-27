@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -406,18 +407,35 @@ fun CalendarioScreen(
                                 ) {
                                     OutlinedButton(
                                         onClick = { viewModel.hideTimePickerDialog() },
-                                        modifier = Modifier.padding(end = 8.dp)
+                                        modifier = Modifier
+                                            .padding(end = 8.dp)
+                                            .height(36.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            contentColor = Color(0xFFE57373)
+                                        ),
+                                        border = BorderStroke(1.dp, Color(0xFFE57373))
                                     ) {
-                                        Text("Cancelar")
+                                        Text(
+                                            "Cancelar",
+                                            fontSize = 11.sp,
+                                            maxLines = 1
+                                        )
                                     }
                                     
                                     Button(
                                         onClick = { viewModel.confirmTimeSelection() },
+                                        modifier = Modifier.height(36.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary
+                                            containerColor = Color(0xFF81C784)
                                         )
                                     ) {
-                                        Text("Confirmar")
+                                        Text(
+                                            "Confirmar",
+                                            fontSize = 11.sp,
+                                            maxLines = 1
+                                        )
                                     }
                                 }
                             }
@@ -447,7 +465,12 @@ fun CalendarioScreen(
                                     .weight(1f)
                                     .height(48.dp)
                             ) {
-                                Text("Cancelar")
+                                Text(
+                                    "Cancelar",
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Visible
+                                )
                             }
                             
                             val isEnabled = uiState.selectedEventType != null && 
@@ -473,14 +496,14 @@ fun CalendarioScreen(
                                     Icon(
                                         imageVector = Icons.Default.Save,
                                         contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = "Guardar",
                                         maxLines = 1,
                                         overflow = TextOverflow.Visible,
-                                        style = MaterialTheme.typography.labelLarge
+                                        fontSize = 12.sp
                                     )
                                 }
                             }
@@ -699,6 +722,9 @@ fun EventoItem(
     evento: Evento,
     onClick: () -> Unit
 ) {
+    // Obtener el tipo de evento
+    val tipoEvento = evento.getTipoEvento()
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -717,13 +743,7 @@ fun EventoItem(
                 modifier = Modifier
                     .size(16.dp)
                     .background(
-                        color = when (evento.tipo) {
-                            TipoEvento.EXAMEN -> Color(0xFFE57373) // Rojo claro
-                            TipoEvento.ESCOLAR -> Color(0xFF81C784) // Verde claro
-                            TipoEvento.REUNION -> Color(0xFF64B5F6) // Azul claro
-                            TipoEvento.FESTIVO -> Color(0xFFFFD54F) // Amarillo
-                            else -> Color.Gray
-                        },
+                        color = tipoEvento.color,
                         shape = MaterialTheme.shapes.small
                     )
             )
@@ -732,14 +752,14 @@ fun EventoItem(
             
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = evento.descripcion,
+                    text = evento.titulo,
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 
                 Text(
-                    text = evento.tipo.name.replaceFirstChar { it.uppercase() },
+                    text = tipoEvento.nombre,
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )

@@ -210,8 +210,37 @@ class CalendarioViewModel @Inject constructor(
         val profesorId = this.profesorId
         val centroId = this.centroId
         
-        if (diaSeleccionado == null || profesorId == null || centroId == null) {
-            _uiState.update { it.copy(error = "No se puede crear el evento: datos insuficientes") }
+        if (diaSeleccionado == null) {
+            _uiState.update { it.copy(error = "No se puede crear el evento: no hay día seleccionado") }
+            return
+        }
+        
+        // Validar que tenemos el ID del usuario y del centro
+        if (profesorId.isNullOrEmpty() || centroId.isNullOrEmpty()) {
+            viewModelScope.launch {
+                try {
+                    // Intentar obtener los datos del usuario actual
+                    val currentUser = authRepository.getCurrentUser()
+                    if (currentUser != null) {
+                        this@CalendarioViewModel.profesorId = currentUser.dni
+                        
+                        // Buscar perfil de profesor para obtener centroId
+                        val perfilProfesor = currentUser.perfiles.find { it.tipo == TipoUsuario.PROFESOR }
+                        if (perfilProfesor != null && perfilProfesor.centroId.isNotEmpty()) {
+                            this@CalendarioViewModel.centroId = perfilProfesor.centroId
+                            // Intentar crear el evento de nuevo con los datos obtenidos
+                            crearEvento(titulo, descripcion, tipoEvento)
+                            return@launch
+                        }
+                    }
+                    
+                    // Si llegamos aquí, no se pudieron obtener los datos necesarios
+                    _uiState.update { it.copy(error = "No se puede crear el evento: no se pudo identificar al usuario o su centro") }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener datos de usuario para crear evento")
+                    _uiState.update { it.copy(error = "Error al crear evento: ${e.message}") }
+                }
+            }
             return
         }
         

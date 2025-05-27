@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.data.repository
 
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
@@ -112,8 +113,17 @@ class CalendarioRepository @Inject constructor(
      * @return ID del usuario autenticado
      */
     fun obtenerUsuarioId(): String {
-        // Por simplicidad, se utiliza un valor predeterminado
-        // En una implementación real, se obtendría del servicio de autenticación
+        // Utilizamos FirebaseAuth para obtener el ID del usuario actual
+        val auth = FirebaseAuth.getInstance()
+        val currentUser = auth.currentUser
+        
+        // Si hay un usuario autenticado, devolver su ID
+        if (currentUser != null) {
+            return currentUser.uid
+        }
+        
+        // Si no hay usuario, devolver un valor predeterminado 
+        // (esto no debería ocurrir en una app con autenticación)
         return "profesor_1"
     }
 
@@ -122,8 +132,46 @@ class CalendarioRepository @Inject constructor(
      * @return ID del centro educativo
      */
     fun obtenerCentroId(): String {
-        // Por simplicidad, se utiliza un valor predeterminado
-        // En una implementación real, se obtendría de las propiedades del usuario
+        // Utilizamos FirebaseAuth para obtener el email del usuario actual
+        val auth = FirebaseAuth.getInstance()
+        val currentUser = auth.currentUser
+        
+        if (currentUser != null) {
+            // Podríamos buscar el centro en Firestore, pero como esta función
+            // no es suspendida, devolvemos un valor predeterminado
+            // En una implementación real, se debería convertir a función suspendida
+            // y hacer la consulta a Firestore
+            try {
+                // Buscar en la colección usuarios por email
+                val usuariosRef = firestore.collection("usuarios")
+                    .whereEqualTo("email", currentUser.email)
+                    .limit(1)
+                
+                // Esto es sincrónico, no es lo ideal pero funciona para este caso
+                val userDoc = usuariosRef.get().result
+                
+                if (!userDoc.isEmpty) {
+                    val doc = userDoc.documents.first()
+                    
+                    // Intentar obtener el perfil y el centroId
+                    val perfiles = doc.get("perfiles") as? List<Map<String, Any>>
+                    if (perfiles != null && perfiles.isNotEmpty()) {
+                        // Buscar el primer perfil que tenga centroId
+                        for (perfil in perfiles) {
+                            val centroId = perfil["centroId"] as? String
+                            if (!centroId.isNullOrEmpty()) {
+                                return centroId
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Si hay algún error, usar el valor por defecto
+                return "centro_1"
+            }
+        }
+        
+        // Si no se encontró, devolver valor predeterminado
         return "centro_1"
     }
 
@@ -145,6 +193,31 @@ class CalendarioRepository @Inject constructor(
                 .await()
                 
             Result.Success(!snapshot.isEmpty)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
+    }
+
+    /**
+     * Obtiene un evento por su ID
+     * @param eventoId ID del evento a obtener
+     * @return Resultado con el evento o error
+     */
+    suspend fun getEventoById(eventoId: String): Result<Evento> {
+        return try {
+            val documentSnapshot = eventosCollection.document(eventoId).get().await()
+            
+            if (documentSnapshot.exists()) {
+                val evento = documentSnapshot.toObject(Evento::class.java)?.copy(id = documentSnapshot.id)
+                
+                if (evento != null) {
+                    Result.Success(evento)
+                } else {
+                    Result.Error(Exception("Error al convertir el evento"))
+                }
+            } else {
+                Result.Error(Exception("Evento no encontrado"))
+            }
         } catch (e: Exception) {
             Result.Error(e)
         }

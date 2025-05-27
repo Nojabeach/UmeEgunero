@@ -123,6 +123,8 @@ fun DetalleEventoScreen(
             }
         } else if (uiState.evento != null) {
             val evento = uiState.evento!!
+            // Obtener el tipo de evento usando el método auxiliar
+            val tipoEvento = evento.getTipoEvento()
             
             Column(
                 modifier = Modifier
@@ -136,7 +138,7 @@ fun DetalleEventoScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp),
-                    color = evento.tipo.color.copy(alpha = 0.1f),
+                    color = tipoEvento.color.copy(alpha = 0.1f),
                     shape = MaterialTheme.shapes.medium
                 ) {
                     Column(
@@ -148,14 +150,14 @@ fun DetalleEventoScreen(
                             modifier = Modifier
                                 .size(64.dp)
                                 .clip(CircleShape)
-                                .background(evento.tipo.color.copy(alpha = 0.2f)),
+                                .background(tipoEvento.color.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Box(
                                 modifier = Modifier
                                     .size(32.dp)
                                     .clip(CircleShape)
-                                    .background(evento.tipo.color)
+                                    .background(tipoEvento.color)
                             )
                         }
                         
@@ -171,7 +173,7 @@ fun DetalleEventoScreen(
                         
                         // Tipo de evento
                         Text(
-                            text = evento.tipo.nombre,
+                            text = tipoEvento.nombre,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
