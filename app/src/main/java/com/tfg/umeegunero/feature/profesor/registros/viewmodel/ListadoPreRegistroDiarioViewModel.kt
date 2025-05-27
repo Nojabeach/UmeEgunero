@@ -50,6 +50,19 @@ enum class EstadoAsistencia {
 }
 
 /**
+ * Datos del informe de asistencia para mostrar en el diálogo
+ */
+data class InformeAsistencia(
+    val totalAlumnos: Int = 0,
+    val alumnosPresentes: Int = 0,
+    val alumnosAusentes: Int = 0,
+    val porcentajeAsistencia: Float = 0f,
+    val alumnosConRegistro: Int = 0,
+    val alumnosSinRegistro: Int = 0,
+    val fecha: LocalDate = LocalDate.now()
+)
+
+/**
  * Estado de la UI para la pantalla de listado pre-registro diario
  *
  * @property alumnos Lista completa de alumnos de la clase
@@ -67,6 +80,8 @@ enum class EstadoAsistencia {
  * @property isLoading Indica si está cargando datos
  * @property navegarARegistroDiario Indica si debe navegar a la pantalla de registro
  * @property profesorId ID del profesor (cuando se recibe desde otra pantalla)
+ * @property mostrarDialogoInforme Indica si debe mostrarse el diálogo de informe
+ * @property datosInforme Datos del informe de asistencia
  */
 data class ListadoPreRegistroDiarioUiState(
     val alumnos: List<Alumno> = emptyList(),
@@ -83,7 +98,9 @@ data class ListadoPreRegistroDiarioUiState(
     val mensajeExito: String? = null,
     val isLoading: Boolean = true,
     val navegarARegistroDiario: Boolean = false,
-    val profesorId: String = ""
+    val profesorId: String = "",
+    val mostrarDialogoInforme: Boolean = false,
+    val datosInforme: InformeAsistencia = InformeAsistencia()
 )
 
 /**
@@ -927,5 +944,87 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 ) }
             }
         }
+    }
+
+    /**
+     * Genera un informe de asistencia para la fecha seleccionada
+     */
+    fun generarInforme() {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                
+                val alumnosPresentes = _uiState.value.alumnos.count { it.presente }
+                val alumnosAusentes = _uiState.value.alumnos.size - alumnosPresentes
+                val porcentajeAsistencia = if (_uiState.value.alumnos.isNotEmpty()) {
+                    (alumnosPresentes.toFloat() / _uiState.value.alumnos.size) * 100
+                } else {
+                    0f
+                }
+                
+                val informe = InformeAsistencia(
+                    totalAlumnos = _uiState.value.alumnos.size,
+                    alumnosPresentes = alumnosPresentes,
+                    alumnosAusentes = alumnosAusentes,
+                    porcentajeAsistencia = porcentajeAsistencia,
+                    alumnosConRegistro = _uiState.value.alumnosConRegistro.size,
+                    alumnosSinRegistro = _uiState.value.alumnos.size - _uiState.value.alumnosConRegistro.size,
+                    fecha = _uiState.value.fechaSeleccionada
+                )
+                
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        mostrarDialogoInforme = true,
+                        datosInforme = informe
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al generar informe de asistencia")
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = "Error al generar informe: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Genera el texto del informe para compartir
+     * @return Texto formateado del informe
+     */
+    fun generarTextoInforme(): String {
+        val informe = _uiState.value.datosInforme
+        val formatter = DateTimeFormatter.ofPattern("d 'de' MMMM, yyyy", Locale("es", "ES"))
+        val fechaFormateada = informe.fecha.format(formatter)
+        val nombreClase = _uiState.value.nombreClase
+        
+        return """
+            INFORME DE ASISTENCIA
+            
+            Clase: $nombreClase
+            Fecha: $fechaFormateada
+            
+            RESUMEN:
+            • Total alumnos: ${informe.totalAlumnos}
+            • Alumnos presentes: ${informe.alumnosPresentes}
+            • Alumnos ausentes: ${informe.alumnosAusentes}
+            • Porcentaje de asistencia: ${String.format("%.1f", informe.porcentajeAsistencia)}%
+            
+            REGISTROS:
+            • Alumnos con registro completado: ${informe.alumnosConRegistro}
+            • Alumnos sin registro: ${informe.alumnosSinRegistro}
+            
+            Informe generado desde la aplicación UmeEgunero.
+        """.trimIndent()
+    }
+
+    /**
+     * Cierra el diálogo de informe
+     */
+    fun cerrarDialogoInforme() {
+        _uiState.update { it.copy(mostrarDialogoInforme = false) }
     }
 } 

@@ -38,6 +38,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.data.model.Alumno
 import com.tfg.umeegunero.feature.profesor.registros.viewmodel.ListadoPreRegistroDiarioViewModel
+import com.tfg.umeegunero.feature.profesor.registros.viewmodel.InformeAsistencia
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.ui.components.calendar.DateSelector
 import com.tfg.umeegunero.ui.theme.ProfesorColor
@@ -62,6 +63,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import android.content.Intent
 
 /**
  * Extensión para convertir LocalDate a Date
@@ -169,6 +171,14 @@ fun ListadoPreRegistroDiarioScreen(
         }
     }
     
+    // Mostrar diálogo de informe si es necesario
+    if (uiState.mostrarDialogoInforme) {
+        InformeAsistenciaDialog(
+            informe = uiState.datosInforme,
+            onDismiss = { viewModel.cerrarDialogoInforme() }
+        )
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -228,7 +238,8 @@ fun ListadoPreRegistroDiarioScreen(
                 nombreDia = uiState.fechaSeleccionada.dayOfWeek.getDisplayName(
                     TextStyle.FULL,
                     Locale("es", "ES")
-                )
+                ),
+                onGenerarInforme = { viewModel.generarInforme() }
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -342,7 +353,8 @@ fun SelectorFecha(
     fechaSeleccionada: LocalDate,
     onFechaSeleccionada: (LocalDate) -> Unit,
     esFestivo: Boolean,
-    nombreDia: String
+    nombreDia: String,
+    onGenerarInforme: () -> Unit = {}
 ) {
     val formatter = DateTimeFormatter.ofPattern("d 'de' MMMM, yyyy", Locale("es", "ES"))
     
@@ -382,6 +394,29 @@ fun SelectorFecha(
                     else 
                         Color.White
                 )
+                Spacer(modifier = Modifier.weight(1f))
+                // Botón de informe de asistencia
+                IconButton(
+                    onClick = onGenerarInforme,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(
+                            color = if (esFestivo)
+                                MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.2f)
+                            else
+                                Color.White.copy(alpha = 0.2f)
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Assessment,
+                        contentDescription = "Generar informe de asistencia",
+                        tint = if (esFestivo)
+                            MaterialTheme.colorScheme.onErrorContainer
+                        else
+                            Color.White
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -801,6 +836,233 @@ fun AccionesRapidas(
     }
 }
 
+/**
+ * Diálogo para mostrar el informe de asistencia
+ */
+@Composable
+fun InformeAsistenciaDialog(
+    informe: InformeAsistencia,
+    onDismiss: () -> Unit
+) {
+    val formatter = DateTimeFormatter.ofPattern("d 'de' MMMM, yyyy", Locale("es", "ES"))
+    val context = LocalContext.current
+    val viewModel: ListadoPreRegistroDiarioViewModel = hiltViewModel()
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(
+                    text = "Informe de Asistencia",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Text(
+                    text = informe.fecha.format(formatter),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Assessment,
+                contentDescription = null,
+                tint = ProfesorColor
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Estadísticas de asistencia
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Asistencia",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        // Indicador de porcentaje
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(24.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(informe.porcentajeAsistencia / 100f)
+                                    .height(24.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(
+                                        if (informe.porcentajeAsistencia > 70f) 
+                                            MaterialTheme.colorScheme.primary 
+                                        else if (informe.porcentajeAsistencia > 40f) 
+                                            MaterialTheme.colorScheme.tertiary 
+                                        else 
+                                            MaterialTheme.colorScheme.error
+                                    )
+                            )
+                            
+                            Text(
+                                text = "${String.format("%.1f", informe.porcentajeAsistencia)}%",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Datos de asistencia
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Total alumnos",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "${informe.totalAlumnos}",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Presentes",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "${informe.alumnosPresentes}",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "Ausentes",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "${informe.alumnosAusentes}",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // Estadísticas de registro
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Registro diario",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Con registro",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "${informe.alumnosConRegistro}",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                            
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "Sin registro",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "${informe.alumnosSinRegistro}",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (informe.alumnosSinRegistro > 0) 
+                                        MaterialTheme.colorScheme.error 
+                                    else 
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    val textoInforme = viewModel.generarTextoInforme()
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, "Informe de asistencia")
+                        putExtra(Intent.EXTRA_TEXT, textoInforme)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Compartir informe"))
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Compartir",
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Compartir")
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss
+            ) {
+                Text("Cerrar")
+            }
+        }
+    )
+}
+
 @Preview(showBackground = true)
 @Composable
 fun ListadoPreRegistroDiarioScreenPreview() {
@@ -863,6 +1125,7 @@ fun ListadoPreRegistroDiarioScreenPreview() {
             fun limpiarMensajeExito() {}
             fun mostrarError(@Suppress("UNUSED_PARAMETER") mensaje: String) {}
             fun eliminarRegistro(@Suppress("UNUSED_PARAMETER") id: String) {}
+            fun generarInforme() {}
         }
         
         ListadoPreRegistroDiarioScreen(
