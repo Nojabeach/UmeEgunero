@@ -922,26 +922,6 @@ fun ProfesorDashboardContent(
             }
         }
 
-        // --- Alumnos Pendientes ---
-        if (uiState.alumnosPendientes.isNotEmpty() && !hoyEsFestivo) {
-             item { SeccionTitulo("Alumnos con Registro Pendiente Hoy") }
-             uiState.alumnosPendientes.forEach { alumno ->
-                 item {
-                     AlumnoPendienteCard(
-                         alumno = alumno,
-                         onClick = {
-                             try {
-                                 navController.navigate(AppScreens.DetalleAlumnoProfesor.createRoute(alumno.dni))
-                                 Timber.d("Navegando a Detalle de Alumno: ${alumno.nombre}")
-                             } catch (e: Exception) {
-                                 Timber.e(e, "Error al navegar a Detalle de Alumno: ${alumno.nombre}")
-                             }
-                         }
-                     )
-                     Spacer(modifier = Modifier.height(8.dp))
-                 }
-             }
-         }
     }
 }
 

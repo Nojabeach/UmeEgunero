@@ -300,13 +300,6 @@ private fun DetalleAlumnoContent(
          item { InformacionCard(title = "Número de Seguridad Social", icon = Icons.Default.HealthAndSafety, content = alumno.numeroSS.takeIf { it.isNotEmpty() } ?: "No especificado") }
          item { InformacionCard(title = "Condiciones Médicas", icon = Icons.Default.MonitorHeart, content = alumno.condicionesMedicas.takeIf { it.isNotEmpty() } ?: "Ninguna especificada") }
 
-        item {
-            Column {
-                 Text("Historial Reciente", style = MaterialTheme.typography.titleMedium)
-                 Spacer(Modifier.height(8.dp))
-                 Text("Aquí se mostraría un resumen de los últimos registros, observaciones o evaluaciones.", style = MaterialTheme.typography.bodyMedium)
-            }
-        }
     }
 }
 

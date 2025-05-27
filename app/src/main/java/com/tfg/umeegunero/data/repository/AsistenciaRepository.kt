@@ -29,7 +29,6 @@ class AsistenciaRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
     private val asistenciaCollection = firestore.collection("asistencia")
-    private val registrosAsistenciaCollection = firestore.collection("registrosAsistencia")
     
     /**
      * Registra la asistencia de un alumno
@@ -199,7 +198,7 @@ class AsistenciaRepository @Inject constructor(
                 )
             )
             
-            val snapshot = registrosAsistenciaCollection
+            val snapshot = asistenciaCollection
                 .whereGreaterThanOrEqualTo("fecha", startTimestamp)
                 .whereLessThanOrEqualTo("fecha", endTimestamp)
                 .get()
@@ -252,7 +251,7 @@ class AsistenciaRepository @Inject constructor(
             val startTimestamp = Timestamp(Date.from(startOfDay))
             val endTimestamp = Timestamp(Date.from(endOfDay))
             
-            val snapshot = registrosAsistenciaCollection
+            val snapshot = asistenciaCollection
                 .whereEqualTo("claseId", claseId)
                 .whereGreaterThanOrEqualTo("fecha", startTimestamp)
                 .whereLessThanOrEqualTo("fecha", endTimestamp)
@@ -298,7 +297,7 @@ class AsistenciaRepository @Inject constructor(
                 registroAsistencia.copy(id = registroId)
             }
             
-            registrosAsistenciaCollection.document(registroFinal.id)
+            asistenciaCollection.document(registroFinal.id)
                 .set(registroFinal)
                 .await()
             
@@ -316,7 +315,7 @@ class AsistenciaRepository @Inject constructor(
      */
     suspend fun obtenerRegistrosAsistenciaPorClase(claseId: String): List<RegistroAsistencia> {
         return try {
-            val snapshot = registrosAsistenciaCollection
+            val snapshot = asistenciaCollection
                 .whereEqualTo("claseId", claseId)
                 .orderBy("fecha", com.google.firebase.firestore.Query.Direction.DESCENDING)
                 .get()
@@ -337,7 +336,7 @@ class AsistenciaRepository @Inject constructor(
      */
     suspend fun eliminarRegistroAsistencia(registroId: String): Boolean {
         return try {
-            registrosAsistenciaCollection.document(registroId)
+            asistenciaCollection.document(registroId)
                 .delete()
                 .await()
             true
