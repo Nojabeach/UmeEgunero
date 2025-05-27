@@ -256,9 +256,9 @@ private fun DetalleAlumnoContent(
                         if (alumno.familiarIds.isNotEmpty()) {
                             val familiarId = alumno.familiarIds.first()
                             try {
-                                // Obtener una conversación o crear una nueva
-                                // y navegar a ella usando los parámetros correctos
-                                navController.navigate("${AppScreens.ChatContacts.route}")
+                                // Extraer solo la parte base de la ruta, sin los parámetros
+                                val chatRouteName = AppScreens.ChatProfesor.route.split("/")[0] // Extraer solo la parte "chat_profesor"
+                                navController.navigate(AppScreens.ChatContacts.createRoute(chatRouteName = chatRouteName))
                                 Timber.d("Navegando a ContactChat para inicio de chat con familiares de ${alumno.nombre}")
                             } catch (e: Exception) {
                                 Timber.e(e, "Error al navegar a Chat: ${e.message}")

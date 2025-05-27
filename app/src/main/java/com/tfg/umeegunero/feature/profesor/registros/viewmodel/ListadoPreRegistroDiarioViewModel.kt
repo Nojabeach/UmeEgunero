@@ -673,18 +673,17 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
     }
 
     /**
-     * Obtiene los registros diarios por fecha y clase
-     * Método provisional mientras se completa la implementación en el repositorio
+     * Obtiene registros diarios por clase y fecha, buscando en ambas colecciones:
+     * registrosActividad y registros_diarios
      */
     private suspend fun getRegistrosDiariosPorFechaYClase(
-        fecha: String, 
+        fecha: String,
         claseId: String
-    ): List<RegistroActividad> {
+    ): List<RegistroDiario> {
         return try {
-            // En lugar de usar una implementación temporal, llamamos directamente al repositorio
+            // Convertir el string de fecha a objeto Date
             val fechaCalendar = Calendar.getInstance()
             try {
-                // Convertir el string de fecha a objeto Date
                 val formatoFecha = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 fechaCalendar.time = formatoFecha.parse(fecha) ?: Date()
             } catch (e: Exception) {
@@ -693,8 +692,8 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
             }
             
             val result = registroDiarioRepository.obtenerRegistrosDiariosPorFechaYClase(
-                fechaCalendar.time,
-                claseId
+                claseId,
+                fechaCalendar.time
             )
             
             if (result is Result.Success) {
@@ -775,17 +774,16 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 Timber.d("ListadoPreRegistroDiarioViewModel (setProfesorId): Alumnos recibidos: ${alumnos.joinToString { it.nombre + " (ID: " + it.id + ", DNI: " + it.dni + ", Presente: " + it.presente + ")" }}")
                 
                 // Obtener registros existentes para la fecha actual
-                val registrosResult = registroDiarioRepository.obtenerRegistrosDiariosPorFechaYClase(
-                    _uiState.value.fechaSeleccionada.toDate(),
+                val registros = getRegistrosDiariosPorFechaYClase(
+                    _uiState.value.fechaSeleccionada.toString(),
                     clase.id
                 )
                 
                 // Actualizar alumnos con registro
-                val alumnosConRegistro = if (registrosResult is Result.Success) {
-                    registrosResult.data.map { it.alumnoId }.toSet()
-                } else {
-                    emptySet()
-                }
+                val alumnosConRegistro = registros
+                    .filter { !it.eliminado } // Filtrar los eliminados
+                    .map { it.alumnoId }
+                    .toSet()
                 
                 Timber.d("Alumnos con registro para la fecha ${_uiState.value.fechaSeleccionada}: $alumnosConRegistro")
                 
@@ -807,6 +805,69 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     error = "Error al cargar los datos: ${e.message}",
                     isLoading = false
                 ) }
+            }
+        }
+    }
+
+    /**
+     * Verifica y actualiza los registros existentes para la fecha actual
+     */
+    private fun verificarRegistrosExistentes() {
+        viewModelScope.launch {
+            try {
+                // Obtener usuario actual y clase
+                val usuario = authRepository.getCurrentUser() ?: return@launch
+                val usuarioProfesor = profesorRepository.getProfesorByUsuarioId(usuario.dni) ?: return@launch
+                
+                // Obtener clases del profesor
+                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.dni)
+                if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) return@launch
+                
+                val clase = clasesResult.data.first()
+                Timber.d("Verificando registros para clase ${clase.nombre} (${clase.id}) en fecha ${_uiState.value.fechaSeleccionada}")
+                
+                // Obtener registros para esta fecha desde ambas colecciones
+                val registros = getRegistrosDiariosPorFechaYClase(
+                    _uiState.value.fechaSeleccionada.toString(),
+                    clase.id
+                )
+                
+                // Actualizar alumnos con registro
+                val alumnosConRegistro = registros
+                    .filter { !it.eliminado } // Filtrar registros no eliminados
+                    .map { it.alumnoId }
+                    .toSet()
+                
+                Timber.d("Alumnos con registro actualizados: $alumnosConRegistro")
+                
+                // Actualizar el estado de asistencia 
+                val fechaJava = _uiState.value.fechaSeleccionada.toDate()
+                val asistenciaResult = asistenciaRepository.obtenerRegistroAsistencia(clase.id, fechaJava)
+                val estadosAsistencia = asistenciaResult?.estadosAsistencia ?: emptyMap()
+                
+                // Actualizar la presencia de los alumnos basado en los estados de asistencia
+                val alumnosActualizados = _uiState.value.alumnos.map { alumno ->
+                    val estado = estadosAsistencia[alumno.id]
+                    alumno.copy(presente = estado == EstadoAsistencia.PRESENTE)
+                }
+                
+                _uiState.update { it.copy(
+                    alumnosConRegistro = alumnosConRegistro,
+                    alumnos = alumnosActualizados,
+                    alumnosFiltrados = if (it.mostrarSoloPresentes) 
+                        alumnosActualizados.filter { a -> a.presente } 
+                    else 
+                        alumnosActualizados,
+                    alumnosPresentes = alumnosActualizados.count { a -> a.presente },
+                    isLoading = false
+                )}
+                
+            } catch (e: Exception) {
+                Timber.e(e, "Error al verificar registros existentes")
+                _uiState.update { it.copy(
+                    error = "Error al verificar registros: ${e.message}",
+                    isLoading = false
+                )}
             }
         }
     }
@@ -837,7 +898,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                         isLoading = false
                     ) }
                     
-                    // Recargar registros para actualizar la UI
+                    // Recargar registros para actualizar la UI y el estado de asistencia
                     verificarRegistrosExistentes()
                     
                     Timber.d("Registro eliminado correctamente: $registroDocId")
@@ -854,52 +915,6 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     error = "Error al eliminar registro: ${e.message}",
                     isLoading = false
                 ) }
-            }
-        }
-    }
-
-    /**
-     * Verifica y actualiza los registros existentes para la fecha actual
-     */
-    private fun verificarRegistrosExistentes() {
-        viewModelScope.launch {
-            try {
-                // Obtener usuario actual y clase
-                val usuario = authRepository.getCurrentUser() ?: return@launch
-                val usuarioProfesor = profesorRepository.getProfesorByUsuarioId(usuario.dni) ?: return@launch
-                
-                // Obtener clases del profesor
-                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.dni)
-                if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) return@launch
-                
-                val clase = clasesResult.data.first()
-                
-                // Obtener registros para esta fecha
-                val registrosResult = registroDiarioRepository.obtenerRegistrosDiariosPorFechaYClase(
-                    _uiState.value.fechaSeleccionada.toDate(),
-                    clase.id
-                )
-                
-                // Actualizar alumnos con registro
-                val alumnosConRegistro = if (registrosResult is Result.Success) {
-                    registrosResult.data.map { it.alumnoId }.toSet()
-                } else {
-                    emptySet()
-                }
-                
-                Timber.d("Alumnos con registro actualizados: $alumnosConRegistro")
-                
-                _uiState.update { it.copy(
-                    alumnosConRegistro = alumnosConRegistro,
-                    isLoading = false
-                )}
-                
-            } catch (e: Exception) {
-                Timber.e(e, "Error al verificar registros existentes")
-                _uiState.update { it.copy(
-                    error = "Error al actualizar registros: ${e.message}",
-                    isLoading = false
-                )}
             }
         }
     }

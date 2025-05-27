@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -164,6 +165,7 @@ fun CentroDashboardScreen(
     var showNotificacionesDialog by remember { mutableStateOf(false) }
     var showPerfilDialog by remember { mutableStateOf(false) }
     var showMensajesUnificadosDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
     
     val solicitudesPendientes by viewModel.solicitudesPendientes.collectAsState()
     val currentDate = remember { 
@@ -196,6 +198,30 @@ fun CentroDashboardScreen(
     
     // Los emails se envían automáticamente a través del SolicitudRepository
     // No se necesita código adicional para gestionar el envío de correos
+    
+    // Diálogo para cambiar el tema
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("Cambiar tema") },
+            text = { Text("¿Quieres cambiar el tema de la aplicación?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showThemeDialog = false
+                        navController.navigate(AppScreens.CambiarTema.route)
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
     
     // Obtener el ID del centro del usuario actual
     val centroId = uiState.currentUser?.perfiles?.firstOrNull { perfil -> 
@@ -709,26 +735,57 @@ fun CentroDashboardScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = onNavigateToPerfil) {
+                    // BadgedBox para notificaciones pendientes
+                    BadgedBox(
+                        badge = {
+                            if (uiState.notificacionesPendientes > 0) {
+                                Badge { 
+                                    Text(
+                                        text = if (uiState.notificacionesPendientes > 99) "99+" else uiState.notificacionesPendientes.toString(),
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                        }
+                    ) {
+                        IconButton(
+                            onClick = {
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al realizar feedback háptico")
+                                }
+                                // Navegar al inbox unificado
+                                navController.navigate(AppScreens.UnifiedInbox.route)
+                                // Actualizar contador de notificaciones
+                                viewModel.actualizarContadorNotificaciones()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = "Mensajes",
+                                tint = Color.White
+                            )
+                        }
+                    }
+                    
+                    // Icono para probar emails
+                    IconButton(
+                        onClick = {
+                            navController.navigate(AppScreens.PruebaEmail.route)
+                        }
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Perfil",
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Probar Email",
                             tint = Color.White
                         )
                     }
                     
-                    // Botón de prueba de email (solo para desarrollo)
-                    IconButton(onClick = { 
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
-                        navController.navigate(AppScreens.PruebaEmail.route) 
-                    }) {
+                    IconButton(onClick = onNavigateToPerfil) {
                         Icon(
-                            imageVector = Icons.Default.Email,
-                            contentDescription = "Prueba Email",
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Perfil",
                             tint = Color.White
                         )
                     }
@@ -933,24 +990,22 @@ fun CentroDashboardScreen(
                                 )
                             }
                             item {
-                                CategoriaCard(
-                                    titulo = "Historial de Solicitudes",
-                                    descripcion = "Ver el historial completo de solicitudes procesadas",
-                                    icono = Icons.Default.History,
-                                    color = CentroColor,
-                                    iconTint = AppColors.PurplePrimary,
-                                    onClick = { navController.navigate(AppScreens.HistorialSolicitudes.route) },
-                                    modifier = Modifier.padding(4.dp)
-                                )
-                            }
-                            item {
                                 BadgedBox(
-                                    count = uiState.notificacionesPendientes,
+                                    badge = {
+                                        if (uiState.notificacionesPendientes > 0) {
+                                            Badge { 
+                                                Text(
+                                                    text = if (uiState.notificacionesPendientes > 99) "99+" else uiState.notificacionesPendientes.toString(),
+                                                    style = MaterialTheme.typography.labelSmall
+                                                )
+                                            }
+                                        }
+                                    },
                                     modifier = Modifier.padding(4.dp)
                                 ) {
                                     CategoriaCard(
                                         titulo = "Comunicación",
-                                        descripcion = "Sistema unificado de mensajes y comunicados",
+                                        descripcion = "Sistema unificado de mensajes\ny comunicados",
                                         icono = Icons.Default.Email,
                                         color = CentroColor,
                                         iconTint = AppColors.Blue500,
@@ -966,6 +1021,28 @@ fun CentroDashboardScreen(
                                         }
                                     )
                                 }
+                            }
+                            item {
+                                CategoriaCard(
+                                    titulo = "Historial de Solicitudes",
+                                    descripcion = "Ver el historial completo de solicitudes procesadas",
+                                    icono = Icons.Default.History,
+                                    color = CentroColor,
+                                    iconTint = AppColors.PurplePrimary,
+                                    onClick = { navController.navigate(AppScreens.HistorialSolicitudes.route) },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                            item {
+                                CategoriaCard(
+                                    titulo = "Tema",
+                                    descripcion = "Cambiar el tema de la aplicación",
+                                    icono = Icons.Default.Palette,
+                                    color = CentroColor,
+                                    iconTint = AppColors.GradientStart,
+                                    onClick = { showThemeDialog = true },
+                                    modifier = Modifier.padding(4.dp)
+                                )
                             }
                             // --- Fin Nueva Sección: Herramientas Administrativas ---
 

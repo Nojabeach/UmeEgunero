@@ -10,6 +10,7 @@ data class RegistroDiario(
     @DocumentId
     val id: String = "",
     val alumnoId: String = "",
+    val alumnoNombre: String? = null,
     val claseId: String = "",
     val fecha: Timestamp = Timestamp.now(),
     val presente: Boolean = false,
@@ -21,5 +22,6 @@ data class RegistroDiario(
     val horaSalida: Timestamp? = null,
     val comportamiento: String = "",
     val participacion: String = "",
-    val metadatos: Map<String, Any> = emptyMap()
+    val metadatos: Map<String, Any> = emptyMap(),
+    val eliminado: Boolean = false
 ) 

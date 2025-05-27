@@ -767,14 +767,16 @@ sealed class AppScreens(val route: String) {
      * Pantalla para crear un nuevo mensaje unificado
      * @param receiverId Identificador del destinatario (opcional)
      * @param messageType Tipo de mensaje a crear (opcional)
+     * @param receiverName Nombre del destinatario (opcional)
      */
-    object NewMessage : AppScreens("new_message?receiverId={receiverId}&messageType={messageType}") {
-        fun createRoute(receiverId: String? = null, messageType: String? = null): String {
+    object NewMessage : AppScreens("new_message?receiverId={receiverId}&messageType={messageType}&receiverName={receiverName}") {
+        fun createRoute(receiverId: String? = null, messageType: String? = null, receiverName: String? = null): String {
             var route = "new_message"
             val params = mutableListOf<String>()
             
             receiverId?.let { params.add("receiverId=$it") }
             messageType?.let { params.add("messageType=$it") }
+            receiverName?.let { params.add("receiverName=${Uri.encode(it)}") }
             
             if (params.isNotEmpty()) {
                 route += "?" + params.joinToString("&")
@@ -793,6 +795,11 @@ sealed class AppScreens(val route: String) {
                 type = NavType.StringType 
                 nullable = true
                 defaultValue = null
+            },
+            navArgument("receiverName") { 
+                type = NavType.StringType 
+                nullable = true
+                defaultValue = null
             }
         )
     }
@@ -808,4 +815,7 @@ sealed class AppScreens(val route: String) {
         
         fun createRoute(registroId: String) = "detalle_preregistro_diario/$registroId"
     }
+    
+    /** Pantalla para cambiar el tema de la aplicación */
+    object CambiarTema : AppScreens("cambiar_tema")
 } 

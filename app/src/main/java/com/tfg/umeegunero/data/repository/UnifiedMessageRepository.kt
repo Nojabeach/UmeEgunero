@@ -583,4 +583,28 @@ class UnifiedMessageRepository @Inject constructor(
             null
         }
     }
+
+    suspend fun getUnreadMessageCount(userId: String): Flow<Result<Int>> = flow {
+        try {
+            emit(Result.Loading())
+            
+            val receiverQuery = firestore.collection(MESSAGES_COLLECTION)
+                .whereEqualTo("receiverId", userId)
+                .whereEqualTo("status", MessageStatus.UNREAD.name)
+                
+            val receiversQuery = firestore.collection(MESSAGES_COLLECTION)
+                .whereArrayContains("receiversIds", userId)
+                .whereEqualTo("status", MessageStatus.UNREAD.name)
+                
+            val receiverCount = receiverQuery.get().await().size()
+            val receiversCount = receiversQuery.get().await().size()
+            
+            val unreadCount = receiverCount + receiversCount
+            
+            emit(Result.Success(unreadCount))
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener conteo de mensajes no leídos")
+            emit(Result.Error(e.message ?: "Error al obtener conteo de mensajes no leídos"))
+        }
+    }
 } 

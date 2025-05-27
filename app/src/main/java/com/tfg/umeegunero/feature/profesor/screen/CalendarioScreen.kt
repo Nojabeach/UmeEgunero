@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -50,6 +53,13 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.*
+import androidx.compose.ui.layout.Placeable
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasurePolicy
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.geometry.Offset
 
 /**
  * Pantalla de calendario para profesores
@@ -444,18 +454,24 @@ fun CrearEventoDialog(
     var titulo by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
     var tipoEvento by remember { mutableStateOf(TipoEvento.CLASE) }
+    var hora by remember { mutableStateOf("") }
+    var showTimePicker by remember { mutableStateOf(false) }
+    var selectedHour by remember { mutableStateOf(12) }
+    var selectedMinute by remember { mutableStateOf(0) }
     
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth(0.95f) // Ocupar el 95% del ancho de la pantalla
                 .padding(16.dp),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 Text(
                     text = "Crear nuevo evento",
@@ -475,9 +491,11 @@ fun CrearEventoDialog(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    Row(
+                    // Chips de tipo de evento en layout de flujo mejorado
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         TipoEvento.values().forEach { tipo ->
                             TipoEventoChip(
@@ -496,8 +514,45 @@ fun CrearEventoDialog(
                     value = titulo,
                     onValueChange = { titulo = it },
                     label = { Text("Título") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
                 )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Selector de hora
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Hora:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.width(60.dp)
+                    )
+                    
+                    Text(
+                        text = if (hora.isNotEmpty()) hora else "No especificada",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    Button(
+                        onClick = { showTimePicker = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ProfesorColor
+                        ),
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = "Seleccionar hora"
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Seleccionar")
+                    }
+                }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
@@ -507,7 +562,8 @@ fun CrearEventoDialog(
                     onValueChange = { descripcion = it },
                     label = { Text("Descripción (opcional)") },
                     modifier = Modifier.fillMaxWidth(),
-                    minLines = 3
+                    minLines = 3,
+                    leadingIcon = { Icon(Icons.Default.Description, contentDescription = null) }
                 )
                 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -517,27 +573,261 @@ fun CrearEventoDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = onDismiss) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text("Cancelar")
                     }
                     
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
                     
                     Button(
                         onClick = {
                             if (titulo.isNotBlank()) {
-                                onConfirm(titulo, descripcion, tipoEvento)
+                                val descripcionFinal = if (hora.isNotEmpty()) {
+                                    "$descripcion\nHora: $hora"
+                                } else {
+                                    descripcion
+                                }
+                                onConfirm(titulo, descripcionFinal, tipoEvento)
                             }
                         },
-                        enabled = titulo.isNotBlank()
+                        enabled = titulo.isNotBlank(),
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ProfesorColor
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 4.dp,
+                            pressedElevation = 8.dp
+                        )
                     ) {
-                        Text("Guardar")
+                        Icon(
+                            imageVector = Icons.Default.Save,
+                            contentDescription = null
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Guardar evento")
                     }
                 }
             }
         }
     }
+    
+    // Diálogo selector de hora
+    if (showTimePicker) {
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text("Seleccionar hora") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Selector de hora
+                        var hourExpanded by remember { mutableStateOf(false) }
+                        ExposedDropdownMenuBox(
+                            expanded = hourExpanded,
+                            onExpandedChange = { hourExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = selectedHour.toString().padStart(2, '0'),
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Hora") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = hourExpanded)
+                                },
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .width(100.dp)
+                            )
+                            
+                            ExposedDropdownMenu(
+                                expanded = hourExpanded,
+                                onDismissRequest = { hourExpanded = false }
+                            ) {
+                                for (h in 0..23) {
+                                    DropdownMenuItem(
+                                        text = { Text(h.toString().padStart(2, '0')) },
+                                        onClick = {
+                                            selectedHour = h
+                                            hourExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        
+                        Text(":", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        
+                        // Selector de minutos
+                        var minuteExpanded by remember { mutableStateOf(false) }
+                        ExposedDropdownMenuBox(
+                            expanded = minuteExpanded,
+                            onExpandedChange = { minuteExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = selectedMinute.toString().padStart(2, '0'),
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Minutos") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = minuteExpanded)
+                                },
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .width(100.dp)
+                            )
+                            
+                            ExposedDropdownMenu(
+                                expanded = minuteExpanded,
+                                onDismissRequest = { minuteExpanded = false }
+                            ) {
+                                for (m in listOf(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)) {
+                                    DropdownMenuItem(
+                                        text = { Text(m.toString().padStart(2, '0')) },
+                                        onClick = {
+                                            selectedMinute = m
+                                            minuteExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        hora = "${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}"
+                        showTimePicker = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ProfesorColor
+                    )
+                ) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showTimePicker = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 }
+
+@Composable
+fun FlowRow(
+    modifier: Modifier = Modifier,
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
+    content: @Composable () -> Unit
+) {
+    Layout(
+        content = content,
+        modifier = modifier,
+        measurePolicy = flowRowMeasurePolicy(horizontalArrangement, verticalArrangement)
+    )
+}
+
+private fun flowRowMeasurePolicy(
+    horizontalArrangement: Arrangement.Horizontal,
+    verticalArrangement: Arrangement.Vertical
+): MeasurePolicy = MeasurePolicy { measurables, constraints ->
+    val rows = mutableListOf<MeasuredRow>()
+    val maxWidth = constraints.maxWidth
+    
+    var currentRow = MeasuredRow(0)
+    var rowWidth = 0
+    
+    measurables.forEach { measurable ->
+        val placeable = measurable.measure(constraints.copy(minWidth = 0))
+        
+        if (rowWidth + placeable.width > maxWidth) {
+            // No cabe en la fila actual, crear una nueva fila
+            rows.add(currentRow)
+            currentRow = MeasuredRow(placeable.height)
+            rowWidth = placeable.width
+            currentRow.placeables.add(placeable)
+        } else {
+            // Añadir a la fila actual
+            rowWidth += placeable.width
+            currentRow.height = maxOf(currentRow.height, placeable.height)
+            currentRow.placeables.add(placeable)
+        }
+    }
+    
+    // Añadir la última fila si tiene elementos
+    if (currentRow.placeables.isNotEmpty()) {
+        rows.add(currentRow)
+    }
+    
+    // Calcular la altura total y establecer las posiciones Y
+    var y = 0
+    rows.forEach { row ->
+        row.y = y
+        y += row.height
+    }
+    
+    // Ajustar alturas según el arreglo vertical
+    val totalHeight = y
+    
+    // Asignar posiciones X según el arreglo horizontal
+    rows.forEach { row ->
+        val rowWidth = row.placeables.sumOf { it.width }
+        val spacing = if (row.placeables.size > 1) {
+            val availableSpace = maxWidth - rowWidth
+            val spaces = row.placeables.size - 1
+            when (horizontalArrangement) {
+                Arrangement.SpaceBetween -> if (spaces > 0) availableSpace / spaces else 0
+                Arrangement.SpaceEvenly -> availableSpace / (spaces + 2)
+                Arrangement.SpaceAround -> availableSpace / (spaces * 2)
+                Arrangement.Center -> 0
+                else -> 0
+            }
+        } else {
+            0
+        }
+        
+        var x = when (horizontalArrangement) {
+            Arrangement.Center -> (maxWidth - rowWidth) / 2
+            Arrangement.End -> maxWidth - rowWidth
+            Arrangement.SpaceEvenly -> spacing
+            Arrangement.SpaceAround -> spacing / 2
+            else -> 0
+        }
+        
+        row.placeables.forEach { placeable ->
+            row.positions.add(Offset(x.toFloat(), 0f))
+            x += placeable.width + spacing
+        }
+    }
+    
+    layout(maxWidth, totalHeight) {
+        rows.forEach { row ->
+            row.placeables.forEachIndexed { index, placeable ->
+                val position = row.positions[index]
+                placeable.place(position.x.toInt(), row.y)
+            }
+        }
+    }
+}
+
+private data class MeasuredRow(
+    var height: Int,
+    val placeables: MutableList<Placeable> = mutableListOf(),
+    val positions: MutableList<Offset> = mutableListOf(),
+    var y: Int = 0
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -556,10 +846,17 @@ fun TipoEventoChip(
         TipoEvento.OTRO -> tipo.color to Icons.Default.Event
     }
     
-    FilterChip(
+    // Usamos ElevatedFilterChip en lugar de FilterChip para evitar conflictos
+    ElevatedFilterChip(
         selected = seleccionado,
         onClick = onClick,
-        label = { Text(tipo.nombre) },
+        label = { 
+            Text(
+                text = tipo.nombre,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            ) 
+        },
         leadingIcon = {
             Icon(
                 imageVector = icon,
@@ -567,12 +864,14 @@ fun TipoEventoChip(
                 tint = if (seleccionado) MaterialTheme.colorScheme.onPrimaryContainer else color
             )
         },
-        colors = FilterChipDefaults.filterChipColors(
+        colors = FilterChipDefaults.elevatedFilterChipColors(
             containerColor = MaterialTheme.colorScheme.surface,
             selectedContainerColor = color.copy(alpha = 0.2f),
             selectedLabelColor = MaterialTheme.colorScheme.onSurface,
             selectedLeadingIconColor = color
-        )
+        ),
+        elevation = FilterChipDefaults.elevatedFilterChipElevation(),
+        modifier = Modifier.widthIn(min = 110.dp)
     )
 }
 

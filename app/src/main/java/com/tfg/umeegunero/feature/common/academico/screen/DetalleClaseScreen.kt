@@ -33,6 +33,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import com.tfg.umeegunero.notification.NotificationHelper
 import kotlinx.coroutines.launch
+import com.tfg.umeegunero.navigation.AppScreens
 
 /**
  * Pantalla de detalle de una clase que muestra información completa sobre:
@@ -150,7 +151,8 @@ fun DetalleClaseScreen(
                                 nombre = "${profesor.nombre} ${profesor.apellidos}",
                                 email = profesor.email,
                                 telefono = profesor.telefono ?: "",
-                                esTitular = true
+                                esTitular = true,
+                                navController = navController
                             )
                         }
                     }
@@ -169,7 +171,8 @@ fun DetalleClaseScreen(
                                 nombre = "${profesor.nombre} ${profesor.apellidos}",
                                 email = profesor.email,
                                 telefono = profesor.telefono ?: "",
-                                esTitular = false
+                                esTitular = false,
+                                navController = navController
                             )
                         }
                     }
@@ -358,7 +361,8 @@ private fun ProfesorCard(
     nombre: String,
     email: String,
     telefono: String,
-    esTitular: Boolean
+    esTitular: Boolean,
+    navController: NavController
 ) {
     val context = LocalContext.current
     var showEnviarNotificacionDialog by remember { mutableStateOf(false) }
@@ -475,7 +479,7 @@ private fun ProfesorCard(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
-                        "Puedes usar el sistema de mensajería unificado de UmeEgunero para comunicarte con el profesor de manera más efectiva.",
+                        "Se utilizará el sistema de mensajería unificado de UmeEgunero para comunicarte con el profesor de manera eficiente.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -484,13 +488,12 @@ private fun ProfesorCard(
                 Button(
                     onClick = {
                         try {
-                            // Navegar al sistema de mensajes unificado con el destinatario preseleccionado
-                            val intent = Intent(context, Class.forName("com.tfg.umeegunero.MainActivity"))
-                            intent.putExtra("navigationTarget", "new_message")
-                            intent.putExtra("recipientEmail", email)
-                            intent.putExtra("recipientName", nombre)
-                            intent.putExtra("messageType", "CHAT")
-                            context.startActivity(intent)
+                            // Navegar directamente a la pantalla de nuevo mensaje con el destinatario preseleccionado
+                            navController.navigate(AppScreens.NewMessage.createRoute(
+                                receiverId = email,
+                                messageType = "CHAT",
+                                receiverName = nombre
+                            ))
                             showEnviarNotificacionDialog = false
                         } catch (e: Exception) {
                             Toast.makeText(
@@ -509,47 +512,15 @@ private fun ProfesorCard(
                             contentDescription = null
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Usar mensajería UmeEgunero")
+                        Text("Enviar mensaje")
                     }
                 }
             },
             dismissButton = {
                 OutlinedButton(
-                    onClick = {
-                        // Opción alternativa para usar correo electrónico
-                        try {
-                            val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
-                                data = Uri.parse("mailto:$email")
-                            }
-                            if (emailIntent.resolveActivity(context.packageManager) != null) {
-                                context.startActivity(emailIntent)
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    "No se encontró una aplicación de correo",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                            showEnviarNotificacionDialog = false
-                        } catch (e: Exception) {
-                            Toast.makeText(
-                                context,
-                                "Error: ${e.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
+                    onClick = { showEnviarNotificacionDialog = false }
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Email,
-                            contentDescription = null
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Usar correo")
-                    }
+                    Text("Cancelar")
                 }
             }
         )

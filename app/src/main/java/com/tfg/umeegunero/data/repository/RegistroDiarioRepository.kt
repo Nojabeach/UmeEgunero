@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.tfg.umeegunero.data.local.dao.RegistroActividadDao
@@ -44,6 +45,33 @@ class RegistroDiarioRepository @Inject constructor(
     private val context: Context
 ) {
     private val registrosCollection = firestore.collection("registros_diarios")
+    
+    /**
+     * Verifica si un registro diario existe en Firestore
+     *
+     * @param registroId ID del registro a verificar
+     * @return true si el registro existe, false en caso contrario
+     */
+    suspend fun verificarRegistroExiste(registroId: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Verificando existencia del registro con ID: $registroId")
+            
+            if (isNetworkAvailable()) {
+                val document = registrosCollection.document(registroId).get().await()
+                val existe = document.exists()
+                Timber.d("Resultado de verificación para registro $registroId: ${if (existe) "EXISTE" else "NO EXISTE"}")
+                return@withContext existe
+            } else {
+                // Si no hay conexión, verificamos en la caché local
+                val existeLocal = localRegistroRepository.getRegistroActividadById(registroId) != null
+                Timber.d("Sin conexión. Verificación local para registro $registroId: ${if (existeLocal) "EXISTE" else "NO EXISTE"}")
+                return@withContext existeLocal
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al verificar existencia del registro: $registroId")
+            return@withContext false
+        }
+    }
     
     /**
      * Verifica si el dispositivo tiene conexión a Internet
@@ -765,55 +793,116 @@ class RegistroDiarioRepository @Inject constructor(
      * @return Resultado con la lista de registros
      */
     suspend fun obtenerRegistrosDiariosPorFechaYClase(
-        fecha: Date,
-        claseId: String
-    ): Result<List<RegistroActividad>> {
-        return withContext(Dispatchers.IO) {
+        claseId: String,
+        fecha: Date
+    ): Result<List<RegistroDiario>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Buscando registros para clase: $claseId, fecha: ${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fecha)}")
+            val listaRegistros = mutableListOf<RegistroDiario>()
+            
+            // Crear timestamp de inicio y fin del día para consultas precisas
+            val calendar = Calendar.getInstance()
+            calendar.time = fecha
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            val inicioDia = Timestamp(calendar.time)
+            
+            calendar.set(Calendar.HOUR_OF_DAY, 23)
+            calendar.set(Calendar.MINUTE, 59)
+            calendar.set(Calendar.SECOND, 59)
+            val finDia = Timestamp(calendar.time)
+            
+            // 1. Primero buscar en la colección registrosActividad (colección principal)
             try {
-                // Convertir fecha a timestamp para el filtrado
-                val calendar = Calendar.getInstance()
-                calendar.time = fecha
-                calendar.set(Calendar.HOUR_OF_DAY, 0)
-                calendar.set(Calendar.MINUTE, 0)
-                calendar.set(Calendar.SECOND, 0)
-                val startOfDay = calendar.time
-                
-                calendar.set(Calendar.HOUR_OF_DAY, 23)
-                calendar.set(Calendar.MINUTE, 59)
-                calendar.set(Calendar.SECOND, 59)
-                val endOfDay = calendar.time
-                
-                val startTimestamp = Timestamp(startOfDay)
-                val endTimestamp = Timestamp(endOfDay)
-                
-                Timber.d("Buscando registros para clase: $claseId, entre $startOfDay y $endOfDay")
-                
-                val registrosSnapshot = firestore.collection("registrosActividad")
+                val snapshot = firestore.collection("registrosActividad")
                     .whereEqualTo("claseId", claseId)
-                    .whereGreaterThanOrEqualTo("fecha", startTimestamp)
-                    .whereLessThanOrEqualTo("fecha", endTimestamp)
+                    .whereGreaterThanOrEqualTo("fecha", inicioDia)
+                    .whereLessThanOrEqualTo("fecha", finDia)
                     .get()
                     .await()
                 
-                val registros = registrosSnapshot.documents.mapNotNull { document ->
+                val registrosActividad = snapshot.documents.mapNotNull { document ->
                     try {
-                        document.toObject(RegistroActividad::class.java)
+                        val registroActividad = document.toObject(RegistroActividad::class.java)
+                        val eliminado = document.getBoolean("eliminado") ?: false
+                        
+                        // Solo incluir registros que no estén marcados como eliminados
+                        if (registroActividad != null && !eliminado) {
+                            // Convertir RegistroActividad a RegistroDiario
+                            RegistroDiario(
+                                id = registroActividad.id,
+                                alumnoId = registroActividad.alumnoId,
+                                alumnoNombre = registroActividad.alumnoNombre,
+                                claseId = registroActividad.claseId,
+                                fecha = registroActividad.fecha,
+                                presente = true, // Por defecto true para registros de actividad
+                                justificada = false,
+                                observaciones = registroActividad.observacionesGenerales ?: "",
+                                profesorId = registroActividad.profesorId,
+                                modificadoPor = registroActividad.modificadoPor,
+                                eliminado = eliminado
+                            )
+                        } else null
                     } catch (e: Exception) {
                         Timber.e(e, "Error al convertir documento a RegistroActividad: ${document.id}")
                         null
                     }
                 }
                 
-                Timber.d("Se encontraron ${registros.size} registros para la clase $claseId y fecha $fecha")
-                registros.forEach { 
-                    Timber.d("Registro: alumnoId=${it.alumnoId}, fecha=${it.fecha}, creado por=${it.creadoPor}")
+                listaRegistros.addAll(registrosActividad)
+                Timber.d("Encontrados ${registrosActividad.size} registros en registrosActividad para clase $claseId en fecha ${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fecha)}")
+            } catch (e: Exception) {
+                Timber.e(e, "Error al buscar en registrosActividad para clase $claseId y fecha ${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fecha)}: ${e.message}")
+            }
+            
+            // 2. Luego buscar en la colección registros_diarios (colección antigua) si es necesario
+            try {
+                // Crear el formato de fecha para la consulta en registros_diarios
+                val fechaString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fecha)
+                
+                val snapshot = registrosCollection
+                    .whereEqualTo("claseId", claseId)
+                    .whereEqualTo("fecha", fechaString)
+                    .get()
+                    .await()
+                
+                val registros = snapshot.documents.mapNotNull { document ->
+                    try {
+                        val registroDiario = document.toObject(RegistroDiario::class.java)
+                        val eliminado = document.getBoolean("eliminado") ?: false
+                        
+                        // Solo incluir registros que no estén marcados como eliminados
+                        if (registroDiario != null && !eliminado) {
+                            registroDiario.copy(eliminado = eliminado)
+                        } else null
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al convertir documento a RegistroDiario: ${document.id}")
+                        null
+                    }
                 }
                 
-                Result.Success(registros)
+                // Verificar duplicados antes de añadir (por si algún registro existe en ambas colecciones)
+                val registrosNoRepetidos = registros.filterNot { registro ->
+                    listaRegistros.any { it.id == registro.id }
+                }
+                
+                listaRegistros.addAll(registrosNoRepetidos)
+                Timber.d("Encontrados ${registrosNoRepetidos.size} registros adicionales en registros_diarios para clase $claseId en fecha ${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fecha)}")
             } catch (e: Exception) {
-                Timber.e(e, "Error al obtener registros por fecha y clase")
-                Result.Error(e)
+                Timber.e(e, "Error al buscar en registros_diarios para clase $claseId y fecha ${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fecha)}: ${e.message}")
             }
+            
+            Timber.d("Total de registros encontrados para clase $claseId en fecha ${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fecha)}: ${listaRegistros.size}")
+            Timber.d("Registros no eliminados: ${listaRegistros.size}")
+            listaRegistros.forEach { registro ->
+                Timber.d("  - Alumno: ${registro.alumnoId}, ID: ${registro.id}, Eliminado: ${registro.eliminado}")
+            }
+            
+            Result.Success(listaRegistros)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registros diarios por clase y fecha: $claseId, ${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fecha)}: ${e.message}")
+            Result.Error(e)
         }
     }
     
@@ -834,168 +923,82 @@ class RegistroDiarioRepository @Inject constructor(
             try {
                 Timber.d("Buscando registros para alumno: $alumnoId, entre $fechaInicio y $fechaFin")
                 
-                // Ahora usamos los índices compuestos creados manualmente en Firestore
-                val registrosSnapshot = firestore.collection("registrosActividad")
-                    .whereEqualTo("alumnoId", alumnoId)
-                    .whereGreaterThanOrEqualTo("fecha", fechaInicio)
-                    .whereLessThanOrEqualTo("fecha", fechaFin)
-                    .get()
-                    .await()
+                val listaRegistros = mutableListOf<RegistroActividad>()
                 
-                val registros = registrosSnapshot.documents.mapNotNull { document ->
-                    try {
-                        document.toObject(RegistroActividad::class.java)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al convertir documento a RegistroActividad: ${document.id}")
-                        null
+                // 1. Primero buscar en la colección registrosActividad (nueva)
+                try {
+                    val registrosSnapshot = firestore.collection("registrosActividad")
+                        .whereEqualTo("alumnoId", alumnoId)
+                        .whereGreaterThanOrEqualTo("fecha", fechaInicio)
+                        .whereLessThanOrEqualTo("fecha", fechaFin)
+                        .get()
+                        .await()
+                    
+                    val registros = registrosSnapshot.documents.mapNotNull { document ->
+                        try {
+                            document.toObject(RegistroActividad::class.java)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al convertir documento a RegistroActividad: ${document.id}")
+                            null
+                        }
                     }
+                    
+                    listaRegistros.addAll(registros)
+                    Timber.d("Encontrados ${registros.size} registros en colección registrosActividad")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al buscar en registrosActividad, continuando con registros_diarios")
                 }
                 
-                Timber.d("Se encontraron ${registros.size} registros para el alumno $alumnoId en el rango de fechas")
-                registros.forEach { 
-                    Timber.d("Registro: id=${it.id}, fecha=${it.fecha}, creado por=${it.creadoPor}")
+                // 2. Luego buscar en la colección registros_diarios (antigua)
+                try {
+                    val registrosDiariosSnapshot = registrosCollection
+                        .whereEqualTo("alumnoId", alumnoId)
+                        .whereGreaterThanOrEqualTo("fecha", fechaInicio)
+                        .whereLessThanOrEqualTo("fecha", fechaFin)
+                        .get()
+                        .await()
+                    
+                    val registrosDiarios = registrosDiariosSnapshot.documents.mapNotNull { document ->
+                        try {
+                            val registroDiario = document.toObject(RegistroDiario::class.java)
+                            if (registroDiario != null) {
+                                // Convertir RegistroDiario a RegistroActividad
+                                RegistroActividad(
+                                    id = registroDiario.id,
+                                    alumnoId = registroDiario.alumnoId,
+                                    claseId = registroDiario.claseId,
+                                    fecha = registroDiario.fecha,
+                                    profesorId = registroDiario.profesorId,
+                                    creadoPor = registroDiario.profesorId,
+                                    modificadoPor = registroDiario.modificadoPor,
+                                    observacionesGenerales = registroDiario.observaciones
+                                )
+                            } else null
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al convertir documento a RegistroDiario: ${document.id}")
+                            null
+                        }
+                    }
+                    
+                    listaRegistros.addAll(registrosDiarios)
+                    Timber.d("Encontrados ${registrosDiarios.size} registros en colección registros_diarios")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al buscar en registros_diarios")
                 }
                 
-                Result.Success(registros)
+                Timber.d("Total de registros encontrados: ${listaRegistros.size}")
+                listaRegistros.forEach { 
+                    Timber.d("Registro: id=${it.id}, fecha=${it.fecha}, profesorId=${it.profesorId}")
+                }
+                
+                Result.Success(listaRegistros)
             } catch (e: Exception) {
-                Timber.e(e, "Error al obtener registros por alumno y fecha")
+                Timber.e(e, "Error general al obtener registros por alumno y fecha")
                 Result.Error(e)
             }
         }
     }
     
-    /**
-     * Elimina un registro diario de la base de datos
-     * 
-     * @param registroId ID del registro a eliminar
-     * @return Resultado de la operación
-     */
-    suspend fun eliminarRegistroDiario(registroId: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            // Si hay conexión, marcamos como eliminado en Firestore
-            if (isNetworkAvailable()) {
-                try {
-                    // En lugar de eliminar físicamente, marcar como eliminado
-                    registrosCollection.document(registroId)
-                        .update(mapOf("eliminado" to true))
-                        .await()
-                    
-                    // También marcamos como eliminado en la base de datos local
-                    val registroResult = obtenerRegistroDiarioPorId(registroId)
-                    if (registroResult is Result.Success) {
-                        val registro = registroResult.data
-                        val registroActualizado = registro.copy(eliminado = true)
-                        localRegistroRepository.updateRegistroActividad(registroActualizado, true)
-                    }
-                    
-                    return@withContext Result.Success(Unit)
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al marcar como eliminado el registro en Firestore")
-                    return@withContext Result.Error(e)
-                }
-            } else {
-                // Si no hay conexión, solo marcamos como pendiente de sincronización
-                // y para eliminar cuando haya conexión
-                val registroResult = obtenerRegistroDiarioPorId(registroId)
-                if (registroResult is Result.Success) {
-                    val registro = registroResult.data
-                    val registroActualizado = registro.copy(eliminado = true)
-                    localRegistroRepository.updateRegistroActividad(registroActualizado, false)
-                }
-                return@withContext Result.Success(Unit)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al eliminar registro diario")
-            return@withContext Result.Error(e)
-        }
-    }
-    
-    /**
-     * Envía una notificación al familiar cuando se crea o actualiza un registro diario
-     * 
-     * @param registro Registro de actividad creado o actualizado
-     * @return Verdadero si la notificación se envió correctamente
-     */
-    suspend fun notificarFamiliarSobreRegistro(registro: RegistroActividad): Boolean = withContext(Dispatchers.IO) {
-        try {
-            // Verificar si hay conexión
-            if (!isNetworkAvailable()) {
-                Timber.d("No hay conexión para enviar notificación al familiar")
-                return@withContext false
-            }
-            
-            // Obtener datos del alumno para personalizar la notificación
-            val alumnoId = registro.alumnoId
-            val alumnoIdDoc = firestore.collection("alumnos").document(alumnoId).get().await()
-            
-            if (!alumnoIdDoc.exists()) {
-                Timber.w("No se encontró el alumno con ID $alumnoId")
-                return@withContext false
-            }
-            
-            val alumnoNombre = alumnoIdDoc.getString("nombre") ?: "su hijo/a"
-            
-            // Formatear la fecha en formato legible
-            val formato = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
-            val fechaRegistro = formato.format(registro.fecha.toDate())
-            
-            // Preparar datos para la notificación
-            val titulo = "Nuevo registro diario"
-            val mensaje = "Se ha creado un nuevo registro de $alumnoNombre para el día $fechaRegistro"
-            
-            // Buscar los familiares del alumno
-            val alumnoDoc = firestore.collection("alumnos").document(alumnoId).get().await()
-            val familiaresIds = alumnoDoc.get("familiarIds") as? List<String> ?: emptyList()
-            
-            if (familiaresIds.isEmpty()) {
-                Timber.w("El alumno $alumnoId no tiene familiares asociados")
-                return@withContext false
-            }
-            
-            // Enviar notificación a cada familiar
-            var notificacionesEnviadas = false
-            
-            for (familiarId in familiaresIds) {
-                try {
-                    // Usar el servicio de notificaciones en lugar de Firebase Functions
-                    // Esta es una implementación simplificada, sería necesario implementar un 
-                    // servicio de notificaciones completo usando FCM
-                    
-                    // Verificar si el familiar tiene registrado un token FCM
-                    val familiarDoc = firestore.collection("usuarios").document(familiarId).get().await()
-                    val fcmToken = familiarDoc.getString("fcmToken")
-                    
-                    if (fcmToken.isNullOrEmpty()) {
-                        Timber.w("El familiar $familiarId no tiene token FCM registrado")
-                        continue
-                    }
-                    
-                    // Actualizar el registro para indicar que se envió notificación
-                    val vistoPor = registro.vistoPor.toMutableMap()
-                    vistoPor[familiarId] = false // Marcamos que se ha enviado pero no leído
-                    
-                    val registroActualizado = registro.copy(
-                        vistoPor = vistoPor
-                    )
-                    
-                    // Guardar el registro actualizado
-                    guardarRegistroDiario(registroActualizado)
-                    
-                    Timber.d("Notificación simulada para familiar $familiarId sobre registro ${registro.id}")
-                    notificacionesEnviadas = true
-                    
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al enviar notificación al familiar $familiarId")
-                }
-            }
-            
-            return@withContext notificacionesEnviadas
-        } catch (e: Exception) {
-            Timber.e(e, "Error al notificar a los familiares sobre el registro")
-            return@withContext false
-        }
-    }
-
     /**
      * Elimina un registro diario por su ID
      *
@@ -1009,16 +1012,121 @@ class RegistroDiarioRepository @Inject constructor(
             // Si hay conexión, eliminar de Firestore
             if (isNetworkAvailable()) {
                 try {
-                    // Eliminación lógica: marcamos como eliminado en lugar de borrar
-                    registrosCollection.document(registroId)
-                        .update("eliminado", true)
-                        .await()
+                    var eliminadoRegistrosActividad = false
+                    var eliminadoAsistencia = false
+                    var alumnoId = ""
+                    var claseId = ""
+                    var fecha: Timestamp? = null
+                    
+                    // 1. Primero intentar obtener los datos del registro desde registrosActividad
+                    try {
+                        val documentRef = firestore.collection("registrosActividad").document(registroId)
+                        val document = documentRef.get().await()
+                        
+                        if (document.exists()) {
+                            // Extraer información relevante antes de eliminar
+                            alumnoId = document.getString("alumnoId") ?: ""
+                            claseId = document.getString("claseId") ?: ""
+                            fecha = document.getTimestamp("fecha")
+                            
+                            // Eliminación lógica: marcamos como eliminado
+                            documentRef.update("eliminado", true).await()
+                            
+                            Timber.d("Registro $registroId eliminado con éxito de la colección registrosActividad")
+                            eliminadoRegistrosActividad = true
+                        } else {
+                            Timber.d("El registro $registroId no existe en la colección registrosActividad")
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al eliminar registro de registrosActividad: $registroId")
+                    }
+                    
+                    // 2. Si no se encontró en registrosActividad, intentar en registros_diarios
+                    if (!eliminadoRegistrosActividad) {
+                        try {
+                            val documentRef = registrosCollection.document(registroId)
+                            val document = documentRef.get().await()
+                            
+                            if (document.exists()) {
+                                // Extraer información si no la tenemos
+                                if (alumnoId.isEmpty()) alumnoId = document.getString("alumnoId") ?: ""
+                                if (claseId.isEmpty()) claseId = document.getString("claseId") ?: ""
+                                if (fecha == null) {
+                                    // En registros_diarios la fecha puede estar en formato string
+                                    val fechaStr = document.getString("fecha")
+                                    if (fechaStr != null) {
+                                        try {
+                                            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                            val fechaDate = sdf.parse(fechaStr)
+                                            if (fechaDate != null) {
+                                                fecha = Timestamp(fechaDate)
+                                            }
+                                        } catch (e: Exception) {
+                                            Timber.e(e, "Error al parsear fecha de registro_diarios")
+                                        }
+                                    } else {
+                                        fecha = document.getTimestamp("fecha")
+                                    }
+                                }
+                                
+                                // Eliminación lógica
+                                documentRef.update("eliminado", true).await()
+                                
+                                Timber.d("Registro $registroId eliminado con éxito de la colección registros_diarios")
+                                eliminadoRegistrosActividad = true
+                            } else {
+                                Timber.d("El registro $registroId no existe en la colección registros_diarios")
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al eliminar registro de registros_diarios: $registroId")
+                        }
+                    }
+                    
+                    // 3. Actualizar la colección de asistencia si tenemos los datos necesarios
+                    if ((alumnoId.isNotEmpty() && claseId.isNotEmpty() && fecha != null) && 
+                        (eliminadoRegistrosActividad || eliminadoAsistencia)) {
+                        try {
+                            // Buscar en ambas colecciones: asistencia y registrosAsistencia
+                            val colecciones = listOf("asistencia", "registrosAsistencia")
+                            
+                            for (coleccion in colecciones) {
+                                val asistenciaQuery = firestore.collection(coleccion)
+                                    .whereEqualTo("claseId", claseId)
+                                    .whereEqualTo("fecha", fecha)
+                                    .get()
+                                    .await()
+                                
+                                if (!asistenciaQuery.isEmpty) {
+                                    for (asistenciaDoc in asistenciaQuery.documents) {
+                                        // Verificar si este documento de asistencia contiene el alumnoId
+                                        val estadosAsistencia = asistenciaDoc.get("estadosAsistencia") as? Map<*, *>
+                                        if (estadosAsistencia != null && estadosAsistencia.containsKey(alumnoId)) {
+                                            // Actualizar estado de asistencia a AUSENTE
+                                            val docRef = firestore.collection(coleccion).document(asistenciaDoc.id)
+                                            docRef.update("estadosAsistencia.$alumnoId", "AUSENTE").await()
+                                            
+                                            Timber.d("Registro de asistencia para alumno $alumnoId actualizado a AUSENTE en colección $coleccion")
+                                            eliminadoAsistencia = true
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al actualizar asistencia para alumnoId=$alumnoId, claseId=$claseId")
+                        }
+                    }
                     
                     // También eliminamos de la caché local
                     localRegistroRepository.deleteRegistroActividad(registroId)
                     
-                    Timber.d("Registro $registroId eliminado con éxito")
-                    return@withContext true
+                    if (eliminadoRegistrosActividad || eliminadoAsistencia) {
+                        Timber.d("Registro $registroId eliminado con éxito de al menos una colección")
+                        return@withContext true
+                    } else {
+                        Timber.e("No se encontró el registro $registroId en ninguna colección")
+                        return@withContext false
+                    }
+                    
                 } catch (e: Exception) {
                     Timber.e(e, "Error al eliminar registro en Firestore: $registroId")
                     return@withContext false
@@ -1051,31 +1159,6 @@ class RegistroDiarioRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener registro diario: $registroId")
-            Result.Error(e)
-        }
-    }
-    
-    /**
-     * Obtiene registros diarios por clase y fecha
-     */
-    suspend fun getRegistrosDiariosPorClaseYFecha(
-        claseId: String,
-        fecha: String
-    ): Result<List<RegistroDiario>> = withContext(Dispatchers.IO) {
-        try {
-            val snapshot = registrosCollection
-                .whereEqualTo("claseId", claseId)
-                .whereEqualTo("fecha", fecha)
-                .get()
-                .await()
-                
-            val registros = snapshot.documents.mapNotNull { document ->
-                document.toObject(RegistroDiario::class.java)
-            }
-            
-            Result.Success(registros)
-        } catch (e: Exception) {
-            Timber.e(e, "Error al obtener registros diarios por clase y fecha: $claseId, $fecha")
             Result.Error(e)
         }
     }
@@ -1115,6 +1198,50 @@ class RegistroDiarioRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error al eliminar registro diario: $registroId")
             Result.Error(e)
+        }
+    }
+
+    /**
+     * Notifica a los familiares sobre un registro
+     *
+     * @param registroId ID del registro a notificar
+     * @return true si la notificación fue exitosa, false en caso contrario
+     */
+    suspend fun notificarFamiliarSobreRegistro(registroId: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            // Implementa la lógica para notificar a los familiares sobre un registro
+            // Esto puede incluir la implementación de un servicio de notificación, enviar correos electrónicos, etc.
+            // Por ahora, simplemente devolvemos true para simular la operación exitosa
+            return@withContext true
+        } catch (e: Exception) {
+            Timber.e(e, "Error al notificar a los familiares sobre el registro")
+            return@withContext false
+        }
+    }
+    
+    /**
+     * Obtiene registros diarios por clase y fecha (string)
+     * Método compatible con ListadoPreRegistroDiarioScreen
+     */
+    suspend fun getRegistrosDiariosPorClaseYFecha(
+        claseId: String,
+        fecha: String
+    ): Result<List<RegistroDiario>> = withContext(Dispatchers.IO) {
+        try {
+            // Convertir la fecha string a Date
+            val formatoFecha = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val fechaDate = try {
+                formatoFecha.parse(fecha) ?: Date()
+            } catch (e: Exception) {
+                Timber.e(e, "Error al parsear fecha: $fecha")
+                Date() // Usar fecha actual si hay error
+            }
+            
+            // Usar el método existente que trabaja con objetos Date
+            return@withContext obtenerRegistrosDiariosPorFechaYClase(claseId, fechaDate)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registros diarios por clase y fecha: $claseId, $fecha")
+            return@withContext Result.Error(e)
         }
     }
 } 

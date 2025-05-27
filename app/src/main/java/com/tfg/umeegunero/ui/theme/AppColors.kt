@@ -26,6 +26,8 @@ object AppColors {
     // Colores estándar
     val Green500 = Color(0xFF4CAF50)
     val Blue500 = Color(0xFF2196F3)    // Añadido para usar en más sitios
+    val Blue700 = Color(0xFF1976D2)    // Añadido para CambiarTemaScreen
+    val Yellow500 = Color(0xFFFFEB3B)  // Añadido para CambiarTemaScreen
     val Red500 = Color(0xFFF44336) // Similar a Error
     val Red100 = Color(0xFFFFCDD2)
 

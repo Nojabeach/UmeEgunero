@@ -26,6 +26,10 @@ import java.util.Date
 import javax.inject.Inject
 import androidx.navigation.NavController
 import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 
 /**
  * Estado UI para la pantalla de dashboard del profesor
@@ -89,7 +93,7 @@ data class ProfesorDashboardUiState(
  * @property usuarioRepository Repositorio para acceder a datos de usuarios, alumnos y registros
  * @property authRepository Repositorio para gestionar la autenticación
  * @property calendarioRepository Repositorio para festivos
- * @property registroRepository Repositorio para registros diarios
+ * @property registroDiarioRepository Repositorio para registros diarios
  * @property registroDiarioRepository Repositorio para registros diarios
  *
  * @author Maitane (Estudiante 2º DAM)
@@ -100,7 +104,8 @@ class ProfesorDashboardViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
     private val authRepository: AuthRepository,
     private val calendarioRepository: CalendarioRepository,
-    private val registroDiarioRepository: RegistroDiarioRepository
+    private val registroDiarioRepository: RegistroDiarioRepository,
+    private val messageRepository: UnifiedMessageRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfesorDashboardUiState())
@@ -110,8 +115,12 @@ class ProfesorDashboardViewModel @Inject constructor(
     private val _unreadMessageCount = MutableStateFlow(0)
     val unreadMessageCount: StateFlow<Int> = _unreadMessageCount.asStateFlow()
 
+    private var messageCheckJob: Job? = null
+
     init {
         cargarDatosInicialesDashboard()
+        checkFestivoHoy()
+        setupMessageChecking()
     }
 
     /**
@@ -446,6 +455,61 @@ class ProfesorDashboardViewModel @Inject constructor(
         alumno: Alumno
     ) {
         navController.navigate("${AppScreens.RegistroDiarioProfesor.route}/${alumno.dni}")
+    }
+
+    /**
+     * Configura la verificación periódica de mensajes no leídos
+     */
+    private fun setupMessageChecking() {
+        messageCheckJob?.cancel()
+        messageCheckJob = viewModelScope.launch {
+            // Cargar inmediatamente por primera vez
+            refreshUnreadMessageCount()
+            
+            // Luego programar actualizaciones periódicas
+            while (true) {
+                delay(60000) // Verificar cada minuto
+                refreshUnreadMessageCount()
+            }
+        }
+    }
+
+    /**
+     * Actualiza el contador de mensajes no leídos
+     */
+    private fun refreshUnreadMessageCount() {
+        viewModelScope.launch {
+            try {
+                val userId = _uiState.value.profesor?.dni ?: return@launch
+                messageRepository.getUnreadMessageCount(userId).collectLatest { result ->
+                    when (result) {
+                        is Result.Success -> {
+                            _unreadMessageCount.value = result.data
+                            Timber.d("Mensajes no leídos: ${result.data}")
+                        }
+                        is Result.Error -> {
+                            Timber.e(result.exception, "Error al obtener mensajes no leídos")
+                        }
+                        else -> { /* Ignorar estado Loading */ }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al verificar mensajes no leídos")
+            }
+        }
+    }
+
+    /**
+     * Configura la verificación periódica de festivo
+     */
+    private fun checkFestivoHoy() {
+        viewModelScope.launch {
+            while (true) {
+                delay(60000) // Verificar cada minuto
+                val hoyEsFestivo = esDiaFestivoHoy()
+                _uiState.update { it.copy(esFestivoHoy = hoyEsFestivo) }
+            }
+        }
     }
 
 }

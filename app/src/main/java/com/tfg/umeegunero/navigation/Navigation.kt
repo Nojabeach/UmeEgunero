@@ -339,7 +339,7 @@ fun Navigation(
                 onNavigateToEstadisticas = { navController.navigate(AppScreens.Estadisticas.route) },
                 onNavigateToSeguridad = { navController.navigate(AppScreens.Seguridad.route) },
                 onNavigateToTema = { 
-                    navController.navigate(AppScreens.Config.route) {
+                    navController.navigate(AppScreens.CambiarTema.route) {
                         launchSingleTop = true
                     }
                 },
@@ -1228,6 +1228,13 @@ fun Navigation(
             com.tfg.umeegunero.feature.centro.screen.HistorialSolicitudesScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla de configuración de tema
+        composable(route = AppScreens.CambiarTema.route) {
+            com.tfg.umeegunero.feature.common.theme.CambiarTemaScreen(
+                navController = navController
             )
         }
     }

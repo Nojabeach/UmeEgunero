@@ -176,5 +176,19 @@ fun NavGraph(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+        
+        // Ruta para la pantalla de detalle de registro de actividad para familiares
+        composable(
+            route = AppScreens.DetalleRegistro.route,
+            arguments = listOf(
+                navArgument("registroId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val registroId = backStackEntry.arguments?.getString("registroId") ?: ""
+            com.tfg.umeegunero.feature.familiar.screen.DetalleRegistroScreen(
+                registroId = registroId,
+                navController = navController
+            )
+        }
     }
 } 

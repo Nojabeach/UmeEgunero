@@ -76,6 +76,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.navigation.NavController
 
 data class DetalleRegistroUiState(
     val isLoading: Boolean = false,
@@ -87,14 +88,19 @@ data class DetalleRegistroUiState(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalleRegistroScreen(
-    viewModel: DetalleRegistroViewModel,
-    onNavigateBack: () -> Unit,
-    onNavigateToChat: (String, String?) -> Unit = { _, _ -> }
+    registroId: String,
+    navController: NavController,
+    viewModel: DetalleRegistroViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
+
+    // Cargar registro al inicializar
+    LaunchedEffect(registroId) {
+        viewModel.cargarRegistro(registroId)
+    }
 
     // Extraer el registro para poder usarlo de forma segura
     val registro = uiState.registro
@@ -119,7 +125,7 @@ fun DetalleRegistroScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver atrás",
@@ -131,7 +137,7 @@ fun DetalleRegistroScreen(
                     // Botón para chatear con el profesor
                     registro?.profesorId?.let { profesorId ->
                         IconButton(
-                            onClick = { onNavigateToChat(profesorId, registro.alumnoId) }
+                            onClick = { navController.navigate("chat/$profesorId/${registro.alumnoId}") }
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Message,
@@ -193,7 +199,7 @@ fun DetalleRegistroScreen(
                         )
 
                         Button(
-                            onClick = onNavigateBack,
+                            onClick = { navController.popBackStack() },
                             modifier = Modifier.padding(top = 16.dp)
                         ) {
                             Text("Volver al listado")

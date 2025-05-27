@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalActivity
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -195,6 +196,7 @@ fun ProfesorDashboardScreen(
     var showMisAlumnosDialog by remember { mutableStateOf(false) }
     var showCalendarioDialog by remember { mutableStateOf(false) }
     var showPerfilDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
 
     // Efecto para mostrar contenido con animación
     LaunchedEffect(Unit) {
@@ -452,6 +454,30 @@ fun ProfesorDashboardScreen(
             }
         )
     }
+    
+    // Diálogo para cambiar el tema
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("Cambiar tema") },
+            text = { Text("¿Quieres cambiar el tema de la aplicación?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showThemeDialog = false
+                        navController.navigate(AppScreens.CambiarTema.route)
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
 
     // --- UI Principal (Scaffold) ---
     Scaffold(
@@ -483,6 +509,7 @@ fun ProfesorDashboardScreen(
                 onMisAlumnosClick = { showMisAlumnosDialog = true },
                 onCalendarioClick = { showCalendarioDialog = true },
                 onRegistroDiarioClick = { showRegistroDiarioDialog = true },
+                onThemeClick = { showThemeDialog = true },
                 haptic = haptic
             )
         }
@@ -582,6 +609,7 @@ private fun ProfesorDashboardTopBar(
  * @param onMisAlumnosClick Callback para ir a Mis Alumnos
  * @param onCalendarioClick Callback para ir a Calendario 
  * @param onRegistroDiarioClick Callback para ir a Registro Diario
+ * @param onThemeClick Callback para ir a Cambiar Tema
  * @param haptic HapticFeedback para proporcionar feedback táctil
  */
 @Composable
@@ -595,6 +623,7 @@ fun ProfesorDashboardContent(
     onMisAlumnosClick: () -> Unit,
     onCalendarioClick: () -> Unit,
     onRegistroDiarioClick: () -> Unit,
+    onThemeClick: () -> Unit,
     haptic: androidx.compose.ui.hapticfeedback.HapticFeedback
 ) {
     val hoyEsFestivo = uiState.esFestivoHoy
@@ -849,6 +878,50 @@ fun ProfesorDashboardContent(
             }
         }
 
+        // --- Añadir la nueva sección después de Gestión y Planificación
+        item { SeccionTitulo("Notificaciones y Preferencias") }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Card de Notificaciones
+                Box(modifier = Modifier.weight(1f)) {
+                    CategoriaCard(
+                        titulo = "Gestión de Notificaciones",
+                        descripcion = "Configura qué notificaciones deseas recibir y cómo",
+                        icono = Icons.Default.Notifications,
+                        color = ProfesorColor,
+                        iconTint = Color.White.copy(alpha = 0.9f),
+                        border = true,
+                        onClick = {
+                            haptic.performHapticFeedbackSafely()
+                            try {
+                                navController.navigate(AppScreens.Notificaciones.route)
+                                Timber.d("Navegación a Gestión de Notificaciones exitosa")
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al navegar a Gestión de Notificaciones")
+                                viewModel.showSnackbarMessage("Error al navegar a Gestión de Notificaciones")
+                            }
+                        }
+                    )
+                }
+                
+                // Card de Tema
+                Box(modifier = Modifier.weight(1f)) {
+                    CategoriaCard(
+                        titulo = "Tema",
+                        descripcion = "Cambiar el tema de la aplicación",
+                        icono = Icons.Default.Palette,
+                        color = ProfesorColor,
+                        iconTint = Color.White.copy(alpha = 0.9f),
+                        border = true,
+                        onClick = { onThemeClick() }
+                    )
+                }
+            }
+        }
+
         // --- Alumnos Pendientes ---
         if (uiState.alumnosPendientes.isNotEmpty() && !hoyEsFestivo) {
              item { SeccionTitulo("Alumnos con Registro Pendiente Hoy") }
@@ -1052,6 +1125,7 @@ fun ProfesorDashboardPreview() {
                 onMisAlumnosClick = {},
                 onCalendarioClick = {},
                 onRegistroDiarioClick = {},
+                onThemeClick = {},
                 haptic = LocalHapticFeedback.current
             )
         }
@@ -1079,6 +1153,7 @@ fun ProfesorDashboardFestivoDarkPreview() {
                 onMisAlumnosClick = {},
                 onCalendarioClick = {},
                 onRegistroDiarioClick = {},
+                onThemeClick = {},
                 haptic = LocalHapticFeedback.current
             )
         }

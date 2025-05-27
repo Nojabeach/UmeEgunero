@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -314,6 +315,7 @@ fun FamiliaDashboardScreen(
     var showNavigateToMensajesDialog by remember { mutableStateOf(false) }
     var showNavigateToConfiguracionDialog by remember { mutableStateOf(false) }
     var showNavigateToHistorialDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
     
     // Efecto para mostrar contenido con animación
     LaunchedEffect(Unit) {
@@ -549,6 +551,30 @@ fun FamiliaDashboardScreen(
         )
     }
     
+    // Diálogo para cambiar el tema
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("Cambiar tema") },
+            text = { Text("¿Quieres cambiar el tema de la aplicación?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showThemeDialog = false
+                        navController.navigate(AppScreens.CambiarTema.route)
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+    
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -750,60 +776,149 @@ fun FamiliaDashboardScreen(
                         }
                     }
                     
-                    // SEGUNDA SECCIÓN: Accesos rápidos
+                    // SEGUNDA SECCIÓN: Accesos rápidos - Eliminar esta sección
                     item {
                         Text(
-                            text = "Accesos rápidos",
+                            text = "Gestión y Acciones",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = FamiliarColor,
                             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                         )
                         HorizontalDivider(thickness = 2.dp, color = FamiliarColor.copy(alpha = 0.2f))
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                     
-                    // Botón de Historial
+                    // Calendario y Eventos
                     item {
-                        AccionRapidaCard(
-                            titulo = "Historial",
-                            descripcion = "Consulta los registros históricos de actividad",
-                            icono = Icons.AutoMirrored.Filled.Assignment,
-                            onClick = { showNavigateToHistorialDialog = true },
-                            enabled = uiState.hijoSeleccionado != null
-                        )
-                    }
-                    
-                    // Botón de Notificaciones
-                    item {
-                        AccionRapidaCard(
-                            titulo = "Notificaciones",
-                            descripcion = "Revisa notificaciones y recordatorios importantes",
-                            icono = Icons.Default.Notifications,
-                            onClick = { navController.navigate(AppScreens.NotificacionesFamiliar.route) },
-                            badgeCount = uiState.registrosSinLeer
-                        )
-                    }
-                    
-                    // Botón de Chat
-                    item {
-                        AccionRapidaCard(
-                            titulo = "Chat",
-                            descripcion = "Comunícate directamente con el profesor",
-                            icono = Icons.AutoMirrored.Filled.Chat,
-                            onClick = { 
-                                // Navegación directa al chat
-                                navController.navigate(AppScreens.ChatContacts.createRoute(AppScreens.ChatFamilia.route)) 
+                        OpcionDashboardCard(
+                            titulo = "Calendario y Eventos",
+                            descripcion = "Consulta el calendario escolar y los próximos eventos importantes",
+                            icono = Icons.Default.CalendarMonth,
+                            onClick = {
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    navController.navigate(AppScreens.CalendarioFamilia.route)
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al navegar a Calendario: ${e.message}")
+                                }
                             }
                         )
                     }
                     
-                    // Botón de Calendario
+                    // Comunicación
                     item {
-                        AccionRapidaCard(
-                            titulo = "Calendario",
-                            descripcion = "Consulta eventos y fechas importantes",
-                            icono = Icons.Default.DateRange,
-                            onClick = { navController.navigate(AppScreens.CalendarioFamilia.route) }
+                        OpcionDashboardCard(
+                            titulo = "Comunicación",
+                            descripcion = "Mensajes, notificaciones y comunicados del centro",
+                            icono = Icons.Default.Email,
+                            onClick = {
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    navController.navigate(AppScreens.UnifiedInbox.route)
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al navegar a Comunicación: ${e.message}")
+                                }
+                            }
                         )
+                    }
+                    
+                    // Historial Completo
+                    item {
+                        OpcionDashboardCard(
+                            titulo = "Historial Completo",
+                            descripcion = "Consulta todos los registros históricos de actividad de tu hijo/a",
+                            icono = Icons.Default.History,
+                            onClick = {
+                                try {
+                                    val hijoId = uiState.hijoSeleccionado?.dni ?: return@OpcionDashboardCard
+                                    val hijoNombre = uiState.hijoSeleccionado?.nombre ?: "Alumno"
+                                    
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al navegar a Historial: ${e.message}")
+                                }
+                                try {
+                                    val hijoId = uiState.hijoSeleccionado?.dni ?: return@OpcionDashboardCard
+                                    val hijoNombre = uiState.hijoSeleccionado?.nombre ?: "Alumno"
+                                    navController.navigate(
+                                        AppScreens.ConsultaRegistroDiario.createRoute(
+                                            alumnoId = hijoId,
+                                            alumnoNombre = hijoNombre
+                                        )
+                                    )
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al navegar a Historial: ${e.message}")
+                                }
+                            }
+                        )
+                    }
+                    
+                    // Información del Centro
+                    item {
+                        OpcionDashboardCard(
+                            titulo = "Información del Centro",
+                            descripcion = "Datos de contacto y horarios del centro educativo",
+                            icono = Icons.Default.Info,
+                            onClick = {
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    scope.launch {
+                                        // Temporalmente muestra un mensaje hasta que se implemente la pantalla
+                                        snackbarHostState.showSnackbar("Próximamente: Información del centro")
+                                    }
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error: ${e.message}")
+                                }
+                            }
+                        )
+                    }
+                    
+                    // Añadir card de gestión de notificaciones
+                    item {
+                        Text(
+                            text = "Notificaciones y Preferencias",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = FamiliarColor,
+                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                        )
+                        HorizontalDivider(thickness = 2.dp, color = FamiliarColor.copy(alpha = 0.2f))
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Card de Notificaciones
+                            Box(modifier = Modifier.weight(1f)) {
+                                OpcionDashboardCard(
+                                    titulo = "Gestión de Notificaciones",
+                                    descripcion = "Configura qué notificaciones deseas recibir y cómo",
+                                    icono = Icons.Default.Notifications,
+                                    onClick = {
+                                        try {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            navController.navigate(AppScreens.Notificaciones.route)
+                                        } catch (e: Exception) {
+                                            Timber.e(e, "Error al navegar a Gestión de Notificaciones: ${e.message}")
+                                        }
+                                    }
+                                )
+                            }
+                            
+                            // Card de Tema
+                            Box(modifier = Modifier.weight(1f)) {
+                                OpcionDashboardCard(
+                                    titulo = "Tema",
+                                    descripcion = "Cambiar el tema de la aplicación",
+                                    icono = Icons.Default.Palette,
+                                    onClick = { showThemeDialog = true }
+                                )
+                            }
+                        }
                     }
                     
                     // Espaciador final
@@ -1436,6 +1551,77 @@ fun ActividadInfoItem(
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold
         )
+    }
+}
+
+/**
+ * Renderiza una tarjeta para una opción del dashboard
+ */
+@Composable
+private fun OpcionDashboardCard(
+    titulo: String,
+    descripcion: String,
+    icono: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 120.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icono en un círculo
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(FamiliarColor.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icono,
+                    contentDescription = null,
+                    tint = FamiliarColor,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // Texto
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = titulo,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Text(
+                    text = descripcion,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            // Flecha indicadora
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = FamiliarColor
+            )
+        }
     }
 }
 

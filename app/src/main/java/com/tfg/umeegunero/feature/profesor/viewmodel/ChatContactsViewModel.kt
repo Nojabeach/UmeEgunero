@@ -814,9 +814,9 @@ class ChatContactsViewModel @Inject constructor(
                 
                 Timber.d("Usando conversaciónId: $conversacionId para chat entre ${currentUser.dni} y $contactId")
                 
-                // Usar las rutas definidas en AppScreens para navegar correctamente
-                if (chatRouteName == AppScreens.ChatProfesor.route) {
-                    // Navegar usando la función createRoute de ChatProfesor
+                // Comprobar si chatRouteName es la ruta base de ChatProfesor o contiene chat_profesor
+                if (chatRouteName == "chat_profesor" || chatRouteName.startsWith("chat_profesor")) {
+                    // Navegar usando la función createRoute de ChatProfesor - solo con los parámetros obligatorios
                     navController.navigate(AppScreens.ChatProfesor.createRoute(
                         conversacionId = conversacionId,
                         participanteId = contactId

@@ -452,7 +452,7 @@ class RegistroDiarioViewModel @Inject constructor(
                 
                 // Para evitar problemas con registros duplicados, verificamos si ya existe
                 val registroExistente = _uiState.value.registro
-                val registro = if (registroExistente == null) {
+                val registro = if (registroExistente.id.isEmpty()) {
                     // Crear un nuevo registro
                     val nuevoRegistro = RegistroActividad(
                         id = UUID.randomUUID().toString(),
@@ -523,7 +523,7 @@ class RegistroDiarioViewModel @Inject constructor(
                         // Enviar notificación al familiar
                         viewModelScope.launch {
                             try {
-                                val notificacionEnviada = registroDiarioRepository.notificarFamiliarSobreRegistro(registro)
+                                val notificacionEnviada = registroDiarioRepository.notificarFamiliarSobreRegistro(registro.id)
                                 if (notificacionEnviada) {
                                     Timber.d("Notificación enviada al familiar sobre el registro ${registro.id}")
                                 } else {
