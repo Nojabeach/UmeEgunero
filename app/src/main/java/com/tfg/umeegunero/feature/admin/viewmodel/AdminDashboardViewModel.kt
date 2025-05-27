@@ -46,6 +46,10 @@ import kotlinx.coroutines.flow.map
  * @property navigateToWelcome Flag para controlar la navegación a la pantalla de bienvenida
  * @property showListadoCentros Flag para controlar la visibilidad del listado de centros
  * @property mensajeExito Mensaje de éxito a mostrar tras completar una operación
+ * @property totalCentros Total de centros educativos registrados en el sistema
+ * @property totalUsuarios Total de usuarios del sistema, incluyendo administradores, profesores y familiares
+ * @property nuevosCentros Total de nuevos centros educativos registrados en el sistema
+ * @property nuevosUsuarios Total de nuevos usuarios del sistema, incluyendo administradores, profesores y familiares
  * 
  * @see AdminDashboardViewModel
  * @see AdminDashboardScreen
@@ -59,7 +63,11 @@ data class AdminDashboardUiState(
     val currentUser: Usuario? = null,
     val navigateToWelcome: Boolean = false,
     val showListadoCentros: Boolean = false,
-    val mensajeExito: String? = null
+    val mensajeExito: String? = null,
+    val totalCentros: Int = 0,
+    val totalUsuarios: Int = 0,
+    val nuevosCentros: Int = 0,
+    val nuevosUsuarios: Int = 0
 )
 
 /**
@@ -527,6 +535,8 @@ class AdminDashboardViewModel @Inject constructor(
             }
         }
     }
+
+
 
     private fun procesarErrorThrowable(exception: Throwable?): String {
         return if (exception is Exception) {

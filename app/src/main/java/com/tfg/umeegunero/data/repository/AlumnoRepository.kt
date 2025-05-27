@@ -190,6 +190,14 @@ interface AlumnoRepository {
      * @return Resultado de la operación
      */
     suspend fun desasignarClaseDeAlumno(alumnoId: String, claseId: String): Result<Unit>
+    
+    /**
+     * Sincroniza todos los alumnos existentes con sus clases correspondientes
+     * Este método busca todos los alumnos que tienen una clase asignada (aulaId o claseId)
+     * y actualiza el array alumnosIds de esas clases
+     * @return Resultado de la operación
+     */
+    suspend fun sincronizarAlumnosConClases(): Result<Unit>
 }
 
 /**
@@ -420,26 +428,37 @@ class AlumnoRepositoryImpl @Inject constructor(
             // Si se proporciona claseId, añadir el alumno a la lista alumnosIds de la clase
             if (claseId.isNotEmpty()) {
                 try {
+                    Timber.d("Intentando agregar alumno $dni a la clase $claseId")
                     val claseRef = firestore.collection("clases").document(claseId)
                     val claseDoc = claseRef.get().await()
                     
                     if (claseDoc.exists()) {
+                        Timber.d("Clase $claseId encontrada, actualizando alumnosIds")
                         val alumnosIdsAny = claseDoc.get("alumnosIds")
                         val alumnosIds = when {
                             alumnosIdsAny is List<*> -> alumnosIdsAny.filterIsInstance<String>().toMutableList()
                             else -> mutableListOf()
                         }
                         
+                        Timber.d("Lista actual de alumnosIds en clase $claseId: $alumnosIds")
+                        
                         if (!alumnosIds.contains(dni)) {
                             alumnosIds.add(dni)
                             claseRef.update("alumnosIds", alumnosIds).await()
-                            Timber.d("Alumno $dni añadido a la lista alumnosIds de la clase $claseId")
+                            Timber.d("✅ Alumno $dni añadido exitosamente a la lista alumnosIds de la clase $claseId")
+                            Timber.d("Nueva lista de alumnosIds: $alumnosIds")
+                        } else {
+                            Timber.d("El alumno $dni ya estaba en la lista alumnosIds de la clase $claseId")
                         }
+                    } else {
+                        Timber.w("⚠️ La clase $claseId no existe, no se puede actualizar alumnosIds")
                     }
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al añadir alumno a la lista de la clase, pero el alumno se creó correctamente")
-                    // No fallar la creación del alumno por este error
+                    Timber.e(e, "❌ Error al añadir alumno $dni a la lista de la clase $claseId, pero el alumno se creó correctamente")
+                    // No fallar la creación del alumno por este error, pero es importante que se registre
                 }
+            } else {
+                Timber.d("No se proporcionó claseId, no se actualiza ninguna clase")
             }
                 
             Timber.d("Alumno creado exitosamente con DNI: $dni, centroId: $centroId, aulaId: $claseId")
@@ -1082,6 +1101,100 @@ class AlumnoRepositoryImpl @Inject constructor(
         if (claseIds.contains(claseId)) {
             docRef.update("claseIds", com.google.firebase.firestore.FieldValue.arrayRemove(claseId)).await()
             Timber.d("AlumnoRepository: ClaseId eliminado del array claseIds")
+        }
+    }
+    
+    /**
+     * Sincroniza todos los alumnos existentes con sus clases correspondientes
+     * Este método busca todos los alumnos que tienen una clase asignada (aulaId o claseId)
+     * y actualiza el array alumnosIds de esas clases
+     * @return Resultado de la operación
+     */
+    override suspend fun sincronizarAlumnosConClases(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("🔄 Iniciando sincronización de alumnos con clases")
+            
+            // 1. Obtener todos los alumnos
+            val alumnosSnapshot = firestore.collection(COLLECTION_ALUMNOS).get().await()
+            val alumnos = alumnosSnapshot.toObjects(Alumno::class.java)
+            
+            Timber.d("📊 Encontrados ${alumnos.size} alumnos para sincronizar")
+            
+            // 2. Agrupar alumnos por clase
+            val alumnosPorClase = mutableMapOf<String, MutableList<String>>()
+            
+            for (alumno in alumnos) {
+                // Verificar aulaId (campo principal)
+                if (!alumno.aulaId.isNullOrBlank()) {
+                    val claseId = alumno.aulaId
+                    if (!alumnosPorClase.containsKey(claseId)) {
+                        alumnosPorClase[claseId] = mutableListOf()
+                    }
+                    alumnosPorClase[claseId]!!.add(alumno.dni)
+                    Timber.d("📝 Alumno ${alumno.dni} asignado a clase $claseId (via aulaId)")
+                }
+                // También verificar claseId (campo legacy)
+                else if (!alumno.claseId.isNullOrBlank()) {
+                    val claseId = alumno.claseId
+                    if (!alumnosPorClase.containsKey(claseId)) {
+                        alumnosPorClase[claseId] = mutableListOf()
+                    }
+                    if (!alumnosPorClase[claseId]!!.contains(alumno.dni)) {
+                        alumnosPorClase[claseId]!!.add(alumno.dni)
+                        Timber.d("📝 Alumno ${alumno.dni} asignado a clase $claseId (via claseId)")
+                    }
+                }
+            }
+            
+            Timber.d("🏫 Encontradas ${alumnosPorClase.size} clases con alumnos asignados")
+            
+            // 3. Actualizar cada clase con su lista de alumnos
+            var clasesActualizadas = 0
+            var errores = 0
+            
+            for ((claseId, alumnosIds) in alumnosPorClase) {
+                try {
+                    val claseRef = firestore.collection("clases").document(claseId)
+                    val claseDoc = claseRef.get().await()
+                    
+                    if (claseDoc.exists()) {
+                        // Obtener la lista actual de alumnosIds
+                        val alumnosIdsActuales = claseDoc.get("alumnosIds") as? List<String> ?: emptyList()
+                        
+                        // Combinar y eliminar duplicados
+                        val alumnosIdsCombinados = (alumnosIdsActuales + alumnosIds).distinct()
+                        
+                        if (alumnosIdsCombinados != alumnosIdsActuales) {
+                            // Actualizar la clase
+                            claseRef.update("alumnosIds", alumnosIdsCombinados).await()
+                            clasesActualizadas++
+                            
+                            Timber.d("✅ Clase $claseId actualizada: ${alumnosIdsActuales.size} -> ${alumnosIdsCombinados.size} alumnos")
+                            Timber.d("   Alumnos: $alumnosIdsCombinados")
+                        } else {
+                            Timber.d("ℹ️ Clase $claseId ya estaba sincronizada")
+                        }
+                    } else {
+                        Timber.w("⚠️ Clase $claseId no existe en Firestore")
+                        errores++
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "❌ Error al actualizar clase $claseId")
+                    errores++
+                }
+            }
+            
+            Timber.d("🎉 Sincronización completada: $clasesActualizadas clases actualizadas, $errores errores")
+            
+            if (errores > 0) {
+                return@withContext Result.Error(Exception("Sincronización completada con $errores errores"))
+            } else {
+                return@withContext Result.Success(Unit)
+            }
+            
+        } catch (e: Exception) {
+            Timber.e(e, "💥 Error general en la sincronización de alumnos con clases")
+            return@withContext Result.Error(e)
         }
     }
 } 

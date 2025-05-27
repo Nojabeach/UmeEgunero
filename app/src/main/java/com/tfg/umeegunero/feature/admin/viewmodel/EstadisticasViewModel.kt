@@ -118,7 +118,9 @@ class EstadisticasViewModel @Inject constructor(
                         val diffDays = TimeUnit.MILLISECONDS.toDays(Date().time - fechaCreacionDate.time)
                         diffDays <= 30 // Centros creados en los últimos 30 días
                     } else {
-                        false
+                        // Si no tiene fechaCreacion, consideramos que es un centro nuevo
+                        // Esto permite mostrar centros existentes que no tienen este campo
+                        true
                     }
                 }
                 
@@ -453,7 +455,13 @@ class EstadisticasViewModel @Inject constructor(
                 
                 // Contar nuevos centros y usuarios en el período específico
                 val nuevosCentros = centros.documents.count { doc ->
-                    doc.getTimestamp("fechaCreacion")?.toDate()?.after(fechaLimite) == true
+                    val fechaCreacion = doc.getTimestamp("fechaCreacion")?.toDate()
+                    if (fechaCreacion != null) {
+                        fechaCreacion.after(fechaLimite)
+                    } else {
+                        // Si no tiene fechaCreacion, consideramos que es un centro nuevo
+                        true
+                    }
                 }
                 
                 val nuevosProfesores = usuarios.documents.count { doc ->

@@ -11,6 +11,7 @@ import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
+import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.util.UsuarioUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -92,6 +93,7 @@ class AddAlumnoViewModel @Inject constructor(
     private val claseRepository: ClaseRepository,
     private val authRepository: AuthRepository,
     private val firestore: FirebaseFirestore,
+    private val alumnoRepository: AlumnoRepository,
     application: Application
 ) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(AddAlumnoUiState())
@@ -305,83 +307,88 @@ class AddAlumnoViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             
             try {
-                // 1. Primero obtener la URL del avatar para ALUMNO
-                Timber.d("Obteniendo URL del avatar para ALUMNO")
-                val avatarUrl = try {
-                    val resourceName = "alumno.png"
-                    
-                    // Verificar si el avatar ya existe en Storage
-                    val avatarPath = "avatares/${resourceName.lowercase()}"
-                    val storageRef = FirebaseStorage.getInstance().reference.child(avatarPath)
-                    
-                    try {
-                        // Intentar obtener URL si ya existe
-                        val downloadTask = storageRef.downloadUrl
-                        Tasks.await(downloadTask).toString()
-                    } catch (e: Exception) {
-                        // Si no existe, subir desde los assets
-                        Timber.d("Avatar no encontrado en Storage, usando uno predeterminado")
-                        "" // Devolvemos cadena vacía y dejamos que el repositorio maneje esto
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al obtener avatar: ${e.message}")
-                    "" // URL vacía en caso de error general
-                }
-                
-                Timber.d("URL de avatar obtenida: $avatarUrl")
-                
-                // 2. Obtenemos el profesor asociado a la clase seleccionada (si existe)
-                val claseId = _uiState.value.claseSeleccionada?.id ?: ""
-                var profesorId = ""
-                
-                if (claseId.isNotEmpty()) {
-                    try {
-                        val claseResult = claseRepository.getClaseById(claseId)
-                        if (claseResult is Result.Success) {
-                            profesorId = claseResult.data.profesorId ?: ""
-                            Timber.d("Obtenido profesorId: $profesorId para la clase: $claseId")
-                        }
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al obtener la información de la clase")
-                    }
-                }
-                
-                // 3. Crear objeto Alumno con los campos correctos
-                val nuevoAlumno = Alumno(
-                    // id se autogenera o usa dni? Usaremos dni como ID del documento
-                    dni = _uiState.value.dni,
+                // 1. Crear el alumno básico usando el método del AlumnoRepository
+                val result = alumnoRepository.crearAlumno(
                     nombre = _uiState.value.nombre,
                     apellidos = _uiState.value.apellidos,
-                    fechaNacimiento = _uiState.value.fechaNacimiento, // Guardar como String dd/MM/yyyy
-                    centroId = _uiState.value.centroId,
-                    curso = _uiState.value.cursoSeleccionado!!.nombre, // Guardar nombre del curso
-                    clase = _uiState.value.claseSeleccionada!!.nombre,  // Guardar nombre de la clase
-                    aulaId = _uiState.value.claseSeleccionada!!.id, // Usar id de clase como aulaId
-                    alergias = _uiState.value.alergias.split(",").map { it.trim() }.filter { it.isNotEmpty() },
-                    medicacion = _uiState.value.medicacion.split(",").map { it.trim() }.filter { it.isNotEmpty() },
-                    necesidadesEspeciales = _uiState.value.necesidadesEspeciales,
-                    observacionesMedicas = _uiState.value.observacionesMedicas,
-                    numeroSS = _uiState.value.numeroSS,
-                    condicionesMedicas = _uiState.value.condicionesMedicas,
-                    observaciones = _uiState.value.observaciones,
-                    activo = true, // Marcar como activo por defecto
-                    profesorId = profesorId, // Asignamos el profesor vinculado a la clase
-                    avatarUrl = avatarUrl // Incluimos la URL del avatar
+                    dni = _uiState.value.dni,
+                    fechaNacimiento = _uiState.value.fechaNacimiento,
+                    cursoId = _uiState.value.cursoSeleccionado?.id ?: "",
+                    claseId = _uiState.value.claseSeleccionada?.id ?: ""
                 )
                 
-                // 4. Guardar el alumno usando el método del repositorio con el contexto
-                val context = getApplication<Application>().applicationContext
-                when (val result = usuarioRepository.guardarAlumno(nuevoAlumno, context)) {
+                when (result) {
                     is Result.Success -> {
-                        // 5. La operación fue exitosa
-                        _uiState.update { it.copy(isLoading = false, success = true) }
-                        
-                        // 6. Registrar el resultado en logs
-                        if (profesorId.isNotEmpty()) {
-                            Timber.d("Alumno ${nuevoAlumno.dni} asignado automáticamente al profesor: $profesorId")
-                        } else {
-                            Timber.d("Alumno guardado correctamente con DNI: ${nuevoAlumno.dni} (sin profesor asignado)")
+                        // 2. Obtener la URL del avatar para ALUMNO
+                        val avatarUrl = try {
+                            val resourceName = "alumno.png"
+                            
+                            // Verificar si el avatar ya existe en Storage
+                            val avatarPath = "avatares/${resourceName.lowercase()}"
+                            val storageRef = FirebaseStorage.getInstance().reference.child(avatarPath)
+                            
+                            try {
+                                // Intentar obtener URL si ya existe
+                                val downloadTask = storageRef.downloadUrl
+                                Tasks.await(downloadTask).toString()
+                            } catch (e: Exception) {
+                                // Si no existe, subir desde los assets
+                                Timber.d("Avatar no encontrado en Storage, usando uno predeterminado")
+                                "" // Devolvemos cadena vacía y dejamos que el repositorio maneje esto
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al obtener avatar: ${e.message}")
+                            "" // URL vacía en caso de error general
                         }
+                        
+                        // 3. Actualizar los datos médicos y observaciones si es necesario
+                        if (_uiState.value.alergias.isNotEmpty() || 
+                            _uiState.value.medicacion.isNotEmpty() || 
+                            _uiState.value.necesidadesEspeciales.isNotEmpty() ||
+                            _uiState.value.observacionesMedicas.isNotEmpty() ||
+                            _uiState.value.numeroSS.isNotEmpty() ||
+                            _uiState.value.condicionesMedicas.isNotEmpty() ||
+                            _uiState.value.observaciones.isNotEmpty() ||
+                            avatarUrl.isNotEmpty()) {
+                            
+                            // Actualizar el alumno con los datos médicos usando Firestore directamente
+                            val alumnoRef = firestore.collection("alumnos").document(_uiState.value.dni)
+                            val updates = mutableMapOf<String, Any>()
+                            
+                            if (_uiState.value.alergias.isNotEmpty()) {
+                                updates["alergias"] = _uiState.value.alergias.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                            }
+                            if (_uiState.value.medicacion.isNotEmpty()) {
+                                updates["medicacion"] = _uiState.value.medicacion.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                            }
+                            if (_uiState.value.necesidadesEspeciales.isNotEmpty()) {
+                                updates["necesidadesEspeciales"] = _uiState.value.necesidadesEspeciales
+                            }
+                            if (_uiState.value.observacionesMedicas.isNotEmpty()) {
+                                updates["observacionesMedicas"] = _uiState.value.observacionesMedicas
+                            }
+                            if (_uiState.value.numeroSS.isNotEmpty()) {
+                                updates["numeroSS"] = _uiState.value.numeroSS
+                            }
+                            if (_uiState.value.condicionesMedicas.isNotEmpty()) {
+                                updates["condicionesMedicas"] = _uiState.value.condicionesMedicas
+                            }
+                            if (_uiState.value.observaciones.isNotEmpty()) {
+                                updates["observaciones"] = _uiState.value.observaciones
+                            }
+                            if (avatarUrl.isNotEmpty()) {
+                                updates["avatarUrl"] = avatarUrl
+                            }
+                            
+                            if (updates.isNotEmpty()) {
+                                alumnoRef.update(updates).await()
+                                Timber.d("Datos médicos y observaciones actualizados para el alumno ${_uiState.value.dni}")
+                            }
+                        }
+                        
+                        // 4. Actualizar estado de éxito
+                        _uiState.update { it.copy(isLoading = false, success = true) }
+                        Timber.d("Alumno guardado correctamente con DNI: ${_uiState.value.dni}")
                     }
                     is Result.Error -> {
                         _uiState.update { 

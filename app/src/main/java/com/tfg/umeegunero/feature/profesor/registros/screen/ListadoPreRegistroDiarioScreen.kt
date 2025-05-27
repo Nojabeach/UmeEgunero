@@ -192,6 +192,7 @@ fun ListadoPreRegistroDiarioScreen(
                 PresentesFAB(
                     selectedCount = uiState.alumnosSeleccionados.size,
                     totalCount = uiState.alumnos.size,
+                    alumnosSinRegistro = uiState.alumnos.count { !uiState.alumnosConRegistro.contains(it.id) },
                     onFabClick = { viewModel.iniciarRegistroDiario() }
                 )
             }
@@ -224,28 +225,62 @@ fun ListadoPreRegistroDiarioScreen(
                     containerColor = ProfesorColor.copy(alpha = 0.1f)
                 )
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(16.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Group,
-                        contentDescription = null,
-                        tint = ProfesorColor
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = uiState.nombreClase,
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Group,
+                            contentDescription = null,
+                            tint = ProfesorColor
                         )
-                        Text(
-                            text = "${uiState.totalAlumnos} alumnos en total · ${uiState.alumnosPresentes} presentes",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = uiState.nombreClase,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = "${uiState.totalAlumnos} alumnos en total · ${uiState.alumnosPresentes} presentes",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                    
+                    // Indicador de registros completados
+                    if (uiState.alumnosConRegistro.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "${uiState.alumnosConRegistro.size} alumno${if (uiState.alumnosConRegistro.size != 1) "s" else ""} con registro completado",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -255,7 +290,9 @@ fun ListadoPreRegistroDiarioScreen(
             // Acciones rápidas
             AccionesRapidas(
                 onSelectAll = { viewModel.seleccionarTodosLosAlumnos() },
-                onDeselectAll = { viewModel.deseleccionarTodosLosAlumnos() }
+                onDeselectAll = { viewModel.deseleccionarTodosLosAlumnos() },
+                alumnosSinRegistro = uiState.alumnos.count { !uiState.alumnosConRegistro.contains(it.id) },
+                alumnosSeleccionados = uiState.alumnosSeleccionados.size
             )
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -462,18 +499,18 @@ fun AlumnoSelectionChip(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(12.dp),
         color = when {
-            tieneRegistro -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-            isSelected -> MaterialTheme.colorScheme.primaryContainer
+            tieneRegistro -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+            isSelected -> ProfesorColor.copy(alpha = 0.1f)
             else -> MaterialTheme.colorScheme.surface
         },
-        border = if (tieneRegistro) {
-            BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-        } else {
-            null
+        border = when {
+            tieneRegistro -> BorderStroke(2.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f))
+            isSelected -> BorderStroke(2.dp, ProfesorColor)
+            else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
         },
-        tonalElevation = 2.dp
+        tonalElevation = if (tieneRegistro) 0.dp else 2.dp
     ) {
         Row(
             modifier = Modifier
@@ -491,80 +528,134 @@ fun AlumnoSelectionChip(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
             ) {
-                // Avatar con inicial
-                Surface(
-                    shape = CircleShape,
-                    color = when {
-                        tieneRegistro -> Color.Gray
-                        isSelected -> ProfesorColor
-                        else -> MaterialTheme.colorScheme.surfaceVariant
-                    },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center
+                // Avatar con inicial y badge de estado
+                Box {
+                    Surface(
+                        shape = CircleShape,
+                        color = when {
+                            tieneRegistro -> MaterialTheme.colorScheme.tertiary
+                            isSelected -> ProfesorColor
+                            else -> MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        modifier = Modifier.size(48.dp)
                     ) {
-                        Text(
-                            text = alumno.nombre.first().toString(),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (isSelected && !tieneRegistro) 
-                                Color.White 
-                            else 
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Box(
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = alumno.nombre.first().toString().uppercase(),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (tieneRegistro || isSelected) 
+                                    Color.White 
+                                else 
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    
+                    // Badge indicador de registro completado
+                    if (tieneRegistro) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .align(Alignment.BottomEnd),
+                            shadowElevation = 2.dp
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Registro completado",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
                     }
                 }
                 
                 // Información del alumno
-                Column {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
                         text = "${alumno.nombre} ${alumno.apellidos}",
                         style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (tieneRegistro) FontWeight.Medium else FontWeight.Normal,
                         color = if (tieneRegistro)
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            MaterialTheme.colorScheme.onSurfaceVariant
                         else
                             MaterialTheme.colorScheme.onSurface
                     )
                     
                     // Mensaje de estado
-                    Text(
-                        text = if (tieneRegistro) 
-                            "Ya registrado hoy • Toca para eliminar" 
-                        else 
-                            "DNI: ${alumno.dni}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (tieneRegistro)
-                            MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        if (tieneRegistro) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Registro completado • Toca para eliminar",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.tertiary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        } else {
+                            Text(
+                                text = "DNI: ${alumno.dni}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
             
-            // Icono de selección o acción
-            if (tieneRegistro) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Eliminar registro",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            } else {
-                Icon(
-                    imageVector = when {
-                        isSelected -> Icons.Default.CheckCircle
-                        else -> Icons.Default.RadioButtonUnchecked
-                    },
-                    contentDescription = when {
-                        isSelected -> "Alumno seleccionado"
-                        else -> "Alumno no seleccionado"
-                    },
-                    tint = when {
-                        isSelected -> ProfesorColor
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                )
+            // Icono de acción
+            Surface(
+                shape = CircleShape,
+                color = when {
+                    tieneRegistro -> MaterialTheme.colorScheme.errorContainer
+                    isSelected -> ProfesorColor
+                    else -> Color.Transparent
+                },
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = when {
+                            tieneRegistro -> Icons.Default.Delete
+                            isSelected -> Icons.Default.Check
+                            else -> Icons.Default.RadioButtonUnchecked
+                        },
+                        contentDescription = when {
+                            tieneRegistro -> "Eliminar registro"
+                            isSelected -> "Alumno seleccionado"
+                            else -> "Alumno no seleccionado"
+                        },
+                        tint = when {
+                            tieneRegistro -> MaterialTheme.colorScheme.error
+                            isSelected -> Color.White
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        },
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }
@@ -577,6 +668,7 @@ fun AlumnoSelectionChip(
 fun PresentesFAB(
     selectedCount: Int,
     totalCount: Int,
+    alumnosSinRegistro: Int,
     onFabClick: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -597,11 +689,21 @@ fun PresentesFAB(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 tonalElevation = 4.dp
             ) {
-                Text(
-                    text = "$selectedCount de $totalCount alumnos seleccionados",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "$selectedCount de $alumnosSinRegistro alumnos disponibles seleccionados",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (totalCount - alumnosSinRegistro > 0) {
+                        Text(
+                            text = "${totalCount - alumnosSinRegistro} ya tienen registro",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
         
@@ -631,11 +733,11 @@ fun PresentesFAB(
                 modifier = Modifier.padding(horizontal = 16.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Check,
+                    imageVector = Icons.Default.EditNote,
                     contentDescription = null
                 )
                 Text(
-                    text = "Registrar $selectedCount Presentes",
+                    text = "Crear Registro ($selectedCount)",
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -649,7 +751,9 @@ fun PresentesFAB(
 @Composable
 fun AccionesRapidas(
     onSelectAll: () -> Unit,
-    onDeselectAll: () -> Unit
+    onDeselectAll: () -> Unit,
+    alumnosSinRegistro: Int = 0,
+    alumnosSeleccionados: Int = 0
 ) {
     Row(
         modifier = Modifier
@@ -660,10 +764,18 @@ fun AccionesRapidas(
         FilterChip(
             selected = false,
             onClick = onSelectAll,
-            label = { Text("Seleccionar Todos") },
+            enabled = alumnosSinRegistro > 0,
+            label = { 
+                Text(
+                    if (alumnosSinRegistro > 0) 
+                        "Seleccionar Todos ($alumnosSinRegistro)" 
+                    else 
+                        "Todos con registro"
+                ) 
+            },
             leadingIcon = {
                 Icon(
-                    Icons.Default.CheckCircle,
+                    if (alumnosSinRegistro > 0) Icons.Default.CheckCircle else Icons.Default.Info,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
@@ -673,6 +785,7 @@ fun AccionesRapidas(
         FilterChip(
             selected = false,
             onClick = onDeselectAll,
+            enabled = alumnosSeleccionados > 0,
             label = { Text("Deseleccionar Todos") },
             leadingIcon = {
                 Icon(

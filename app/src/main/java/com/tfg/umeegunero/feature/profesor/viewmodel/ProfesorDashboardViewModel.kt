@@ -447,4 +447,5 @@ class ProfesorDashboardViewModel @Inject constructor(
     ) {
         navController.navigate("${AppScreens.RegistroDiarioProfesor.route}/${alumno.dni}")
     }
+
 }

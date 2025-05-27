@@ -175,6 +175,9 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 // Crear set con IDs de alumnos que ya tienen registro
                 val alumnosConRegistro = registros.map { it.alumnoId }.toSet()
                 
+                Timber.d("cargarDatos - Fecha seleccionada: $fechaActual")
+                Timber.d("cargarDatos - Alumnos con registro: $alumnosConRegistro")
+                
                 // Verificar si la fecha actual es festiva
                 val esFestivo = esDiaFestivo(fechaActual)
                 
@@ -271,6 +274,10 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 
                 // Actualizar IDs de alumnos con registro
                 val alumnosConRegistro = registros.map { it.alumnoId }.toSet()
+                
+                Timber.d("seleccionarFecha - Nueva fecha: $fecha")
+                Timber.d("seleccionarFecha - Registros encontrados: ${registros.size}")
+                Timber.d("seleccionarFecha - Alumnos con registro: $alumnosConRegistro")
                 
                 // Obtener asistencia para la fecha
                 val fechaJava = java.util.Date.from(
@@ -686,8 +693,19 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
             )
             
             if (result is Result.Success) {
-                Timber.d("Registros obtenidos para clase $claseId en fecha $fecha: ${result.data.size}")
-                result.data
+                // Filtrar registros no eliminados
+                val registrosNoEliminados = result.data.filter { registro ->
+                    !registro.eliminado
+                }
+                
+                Timber.d("Registros obtenidos para clase $claseId en fecha $fecha:")
+                Timber.d("- Total registros: ${result.data.size}")
+                Timber.d("- Registros no eliminados: ${registrosNoEliminados.size}")
+                registrosNoEliminados.forEach { registro ->
+                    Timber.d("  - Alumno: ${registro.alumnoId}, ID: ${registro.id}, Eliminado: ${registro.eliminado}")
+                }
+                
+                registrosNoEliminados
             } else {
                 Timber.e("Error al obtener registros para clase $claseId en fecha $fecha")
                 emptyList()

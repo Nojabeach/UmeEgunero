@@ -121,6 +121,14 @@ interface ClaseRepository {
      * @return Resultado de la operación
      */
     suspend fun desasignarAlumnoDeClase(claseId: String, alumnoId: String): Result<Unit>
+
+    /**
+     * Migra y sincroniza los alumnosIds en todas las clases
+     * Este método busca todos los alumnos que tienen una clase asignada
+     * y actualiza el array alumnosIds de esas clases
+     * @return Resultado de la operación
+     */
+    suspend fun migrarAlumnosIdsEnClases(): Result<Unit>
 }
 
 /**
@@ -654,6 +662,88 @@ class ClaseRepositoryImpl @Inject constructor(
             Result.Success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "ClaseRepository: Error al desasignar alumno $alumnoId de clase $claseId")
+            Result.Error(e)
+        }
+    }
+
+    /**
+     * Migra y sincroniza los alumnosIds en todas las clases
+     * Este método busca todos los alumnos que tienen una clase asignada
+     * y actualiza el array alumnosIds de esas clases
+     * @return Resultado de la operación
+     */
+    override suspend fun migrarAlumnosIdsEnClases(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Iniciando migración de alumnosIds en clases")
+            
+            // 1. Obtener todas las clases
+            val clasesSnapshot = clasesCollection.get().await()
+            val clases = clasesSnapshot.documents
+            
+            Timber.d("Encontradas ${clases.size} clases para migrar")
+            
+            // 2. Para cada clase, buscar alumnos que la tengan asignada
+            for (claseDoc in clases) {
+                try {
+                    val claseId = claseDoc.id
+                    val alumnosIdsActuales = claseDoc.get("alumnosIds") as? List<String> ?: emptyList()
+                    
+                    Timber.d("Procesando clase $claseId - alumnosIds actuales: $alumnosIdsActuales")
+                    
+                    // Buscar alumnos que tengan esta clase asignada en aulaId o claseId
+                    val alumnosConEstaClase = mutableSetOf<String>()
+                    
+                    // Buscar por aulaId
+                    val queryAulaId = firestore.collection("alumnos")
+                        .whereEqualTo("aulaId", claseId)
+                        .get()
+                        .await()
+                    
+                    queryAulaId.documents.forEach { alumnoDoc ->
+                        val dni = alumnoDoc.getString("dni")
+                        if (!dni.isNullOrBlank()) {
+                            alumnosConEstaClase.add(dni)
+                        }
+                    }
+                    
+                    // Buscar por claseId (campo legacy)
+                    val queryClaseId = firestore.collection("alumnos")
+                        .whereEqualTo("claseId", claseId)
+                        .get()
+                        .await()
+                    
+                    queryClaseId.documents.forEach { alumnoDoc ->
+                        val dni = alumnoDoc.getString("dni")
+                        if (!dni.isNullOrBlank()) {
+                            alumnosConEstaClase.add(dni)
+                        }
+                    }
+                    
+                    // Combinar con los alumnosIds existentes
+                    val todosLosAlumnos = (alumnosIdsActuales + alumnosConEstaClase).distinct()
+                    
+                    if (todosLosAlumnos != alumnosIdsActuales) {
+                        // Actualizar la clase con la lista completa
+                        clasesCollection.document(claseId)
+                            .update("alumnosIds", todosLosAlumnos)
+                            .await()
+                        
+                        Timber.d("Clase $claseId actualizada: ${alumnosIdsActuales.size} -> ${todosLosAlumnos.size} alumnos")
+                        Timber.d("Nuevos alumnosIds: $todosLosAlumnos")
+                    } else {
+                        Timber.d("Clase $claseId ya está actualizada")
+                    }
+                    
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al migrar clase ${claseDoc.id}")
+                }
+            }
+            
+            Timber.d("Migración de alumnosIds completada")
+            Result.Success(Unit)
+            
+        } catch (e: Exception) {
+            Timber.e(e, "Error general en la migración de alumnosIds")
             Result.Error(e)
         }
     }

@@ -394,6 +394,22 @@ fun AdminDashboardScreen(
                     }
                     // Separador visual
                     item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
+                    
+                    // Resumen estadístico
+                    item {
+                        AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
+                            ResumenEstadisticasAdminCard(
+                                totalCentros = uiState.totalCentros,
+                                totalUsuarios = uiState.totalUsuarios,
+                                nuevosCentros = uiState.nuevosCentros,
+                                nuevosUsuarios = uiState.nuevosUsuarios,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                    
+                    // Separador visual
+                    item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
                     // Sección: Gestión Académica
                     item {
                         Text(
@@ -705,6 +721,106 @@ data class AdminDashboardUiState(
     val showListadoCentros: Boolean = false,
     val currentUser: Usuario? = null
 )
+
+/**
+ * Tarjeta de resumen estadístico para el dashboard de administrador
+ */
+@Composable
+fun ResumenEstadisticasAdminCard(
+    totalCentros: Int,
+    totalUsuarios: Int,
+    nuevosCentros: Int,
+    nuevosUsuarios: Int,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = AdminColor.copy(alpha = 0.1f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Resumen General",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = AdminColor
+                )
+                
+                Icon(
+                    imageVector = Icons.Default.Assessment,
+                    contentDescription = null,
+                    tint = AdminColor
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Centros
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Centros",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = AdminColor
+                    )
+                    Text(
+                        text = "$totalCentros",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AdminColor
+                    )
+                    Text(
+                        text = "+$nuevosCentros nuevos",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                // Usuarios
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Usuarios",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = AdminColor
+                    )
+                    Text(
+                        text = "$totalUsuarios",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AdminColor
+                    )
+                    Text(
+                        text = "+$nuevosUsuarios nuevos",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+}
 
 /**
  * Previsualización profesional del dashboard de administrador.

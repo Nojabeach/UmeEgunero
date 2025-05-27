@@ -1,10 +1,16 @@
 # UmeEgunero - Plataforma de Gestión Educativa para Centros Preescolares
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.22-blue.svg)](https://kotlinlang.org/)
-[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-1.5.4-green.svg)](https://developer.android.com/jetpack/compose)
-[![Firebase](https://img.shields.io/badge/Firebase-31.5.0-orange.svg)](https://firebase.google.com/)
-[![Hilt](https://img.shields.io/badge/Hilt-2.48-red.svg)](https://dagger.dev/hilt/)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-2024.02.00-green.svg)](https://developer.android.com/jetpack/compose)
+[![Material 3](https://img.shields.io/badge/Material%203-1.2.0-purple.svg)](https://m3.material.io/)
+[![Firebase](https://img.shields.io/badge/Firebase-32.7.2-orange.svg)](https://firebase.google.com/)
+[![Hilt](https://img.shields.io/badge/Hilt-2.50-red.svg)](https://dagger.dev/hilt/)
+[![Room](https://img.shields.io/badge/Room-2.6.1-lightblue.svg)](https://developer.android.com/training/data-storage/room)
+[![Coroutines](https://img.shields.io/badge/Coroutines-1.7.3-brightgreen.svg)](https://kotlinlang.org/docs/coroutines-overview.html)
+[![Ktor](https://img.shields.io/badge/Ktor-2.3.10-yellow.svg)](https://ktor.io/)
 [![Google Apps Script](https://img.shields.io/badge/Google%20Apps%20Script-Enabled-4285F4.svg)](https://developers.google.com/apps-script)
+[![Cloud Functions](https://img.shields.io/badge/Cloud%20Functions-Enabled-FF6F00.svg)](https://firebase.google.com/docs/functions)
+[![Dokka](https://img.shields.io/badge/Dokka-Documented-blueviolet.svg)](docs/dokka/index.html)
 
 <div align="center">
   <img src="docs/images/app_icon.png" alt="UmeEgunero Logo" width="200">
@@ -69,7 +75,7 @@ flowchart TD
     K[Push Notifications] <--> A
 ```
 
-### 👶 Gestión Preescolar Especializada
+### �� Gestión Preescolar Especializada
 - **Registros Diarios**: Seguimiento detallado de actividades, comidas, siestas y más
 - **Desarrollo Infantil**: Monitorización del progreso educativo y evolutivo
 - **Actividades Preescolares**: Asignación y seguimiento de tareas adaptadas
@@ -129,6 +135,16 @@ sequenceDiagram
 - **Eliminación Segura de Usuarios**: Sistema robusto para eliminación completa de perfiles sin costos adicionales
 - **Backend Ligero**: Solución innovadora que evita dependencias de servicios premium
 
+### 🎯 Características Técnicas Destacadas
+- **Arquitectura Reactiva**: UI completamente reactiva con StateFlow y Compose
+- **Offline-First**: Funcionalidad completa sin conexión con sincronización automática
+- **Type-Safe Navigation**: Navegación segura entre pantallas con argumentos tipados
+- **Dependency Injection**: Inyección de dependencias con Hilt para código testeable
+- **Documentación Automática**: Generación automática de documentación con Dokka
+- **Logging Estructurado**: Sistema de logs con Timber para debugging eficiente
+- **Gestión de Estados**: Manejo robusto de estados de UI con sealed classes
+- **Validación de Formularios**: Validación en tiempo real con feedback inmediato
+
 ## 🛠️ Arquitectura y Tecnologías
 
 UmeEgunero ha sido desarrollada siguiendo las mejores prácticas actuales en desarrollo Android:
@@ -139,22 +155,58 @@ UmeEgunero ha sido desarrollada siguiendo las mejores prácticas actuales en des
 - **Principios SOLID**: Implementación de principios de diseño para código mantenible
 
 ### Stack Tecnológico
-- **Kotlin**: Lenguaje principal con utilización de características avanzadas (Coroutines, Flow, Extensions)
-- **Jetpack Compose**: Framework declarativo para construcción de UI moderna con componentes interactivos y feedback háptico
-- **Firebase Suite**: 
-  - Firestore: Base de datos NoSQL en tiempo real
-  - Firebase Authentication: Gestión de usuarios y autenticación
-  - Cloud Storage: Almacenamiento de archivos y documentos
-  - Firebase Cloud Messaging: Sistema de notificaciones push multiplataforma
+
+#### 🎯 Frontend & UI
+- **Kotlin 1.9.22**: Lenguaje principal con características avanzadas (Coroutines, Flow, Extensions)
+- **Jetpack Compose 2024.02.00**: Framework declarativo para UI moderna y reactiva
+- **Material Design 3**: Sistema de diseño moderno con componentes adaptativos
+- **Jetpack Navigation Compose**: Navegación type-safe entre pantallas
+- **Coil**: Carga eficiente de imágenes con soporte para GIF
+- **Accompanist**: Bibliotecas complementarias para Compose (permisos, system UI)
+
+#### 🗄️ Gestión de Datos
+- **Room 2.6.1**: Base de datos local SQLite con ORM type-safe
+- **Firebase Firestore**: Base de datos NoSQL en tiempo real en la nube
+- **DataStore**: Almacenamiento de preferencias moderno y asíncrono
+- **Paging 3**: Carga eficiente de grandes conjuntos de datos
+
+#### 🔐 Autenticación & Seguridad
+- **Firebase Authentication**: Gestión completa de usuarios y sesiones
+- **Biometric Authentication**: Autenticación biométrica (huella, face unlock)
+- **Hilt 2.50**: Inyección de dependencias con Dagger
+
+#### ☁️ Backend & Servicios
+- **Firebase Suite**:
+  - **Firestore**: Base de datos NoSQL en tiempo real
+  - **Cloud Storage**: Almacenamiento de archivos y documentos
+  - **Cloud Messaging (FCM)**: Notificaciones push multiplataforma
+  - **Cloud Functions**: Funciones serverless para lógica backend
+  - **Crashlytics**: Monitoreo de errores en tiempo real
+  - **Analytics**: Análisis de uso y comportamiento
 - **Google Apps Script**: 
-  - Utilizado como backend simple para el envío fiable de correos electrónicos HTML, superando limitaciones de Intents
-  - Implementación de endpoints para gestión administrativa de usuarios en Firebase Authentication
-  - Solución gratuita y eficiente para operaciones administrativas
-- **Inyección de Dependencias**: Hilt para gestión eficiente de dependencias
-- **Navegación**: Jetpack Navigation Compose para rutas y transiciones
-- **Asincronía**: Coroutines y Flow para operaciones no bloqueantes
-- **Networking**: OkHttp y Ktor Client para realizar llamadas HTTP a servicios externos
-- **Serialización**: Kotlinx Serialization y JSONObject para procesamiento de datos
+  - Microservicios serverless para operaciones administrativas
+  - Envío de correos electrónicos HTML personalizados
+  - Gestión de usuarios en Firebase Authentication
+  - Solución gratuita para operaciones backend críticas
+
+#### 🌐 Networking & Comunicación
+- **Ktor Client 2.3.10**: Cliente HTTP moderno y asíncrono
+- **Retrofit 2.9.0**: Cliente REST API con conversores automáticos
+- **OkHttp 4.12.0**: Cliente HTTP eficiente con interceptores
+- **Kotlinx Serialization**: Serialización type-safe de JSON
+
+#### ⚡ Asincronía & Concurrencia
+- **Kotlin Coroutines 1.7.3**: Programación asíncrona estructurada
+- **Flow**: Streams reactivos para datos asíncronos
+- **WorkManager**: Tareas en segundo plano garantizadas
+- **Lifecycle-aware Components**: Componentes conscientes del ciclo de vida
+
+#### 🛠️ Herramientas de Desarrollo
+- **Dokka**: Generación automática de documentación
+- **Timber**: Sistema de logging estructurado
+- **Gradle Kotlin DSL**: Configuración de build type-safe
+- **Lint**: Análisis estático de código
+- **Proguard**: Ofuscación y optimización de código
 
 ## 📂 Estructura del Proyecto
 
@@ -188,36 +240,99 @@ app/
 
 ## 📋 Requisitos Técnicos
 
-- **Android Studio**: Hedgehog | 2023.1.1 o superior
-- **Kotlin**: 1.9.22 o superior
-- **JDK**: Java 17
-- **Firebase**: Proyecto configurado con google-services.json
-- **Dispositivo/Emulador**: Android 8.0 (API 26) o superior
-- **Permisos**: Acceso a notificaciones, Internet
+### 🖥️ Entorno de Desarrollo
+- **Android Studio**: Hedgehog | 2023.1.1 o superior (recomendado: Iguana | 2023.2.1+)
+- **Kotlin**: 1.9.22
+- **JDK**: Java 17 (OpenJDK recomendado)
+- **Gradle**: 8.11.1 (incluido con Android Studio)
+- **Compilación**: Android SDK 34
+
+### 📱 Dispositivo/Emulador
+- **API mínima**: Android 8.0 (API 26)
+- **API objetivo**: Android 14 (API 34)
+- **RAM recomendada**: 4GB o superior
+- **Almacenamiento**: 100MB libres
+
+### ☁️ Servicios Externos
+- **Firebase**: Proyecto configurado con `google-services.json`
+- **Google Apps Script**: Servicios desplegados para backend
+- **Conexión a Internet**: Requerida para funcionalidades en la nube
+
+### 🔐 Permisos Requeridos
+- **Internet**: Comunicación con servicios Firebase
+- **Notificaciones**: Recepción de notificaciones push
+- **Almacenamiento**: Caché de imágenes y datos offline
+- **Biométrico**: Autenticación con huella/face unlock (opcional)
 
 ## ⚙️ Configuración del Proyecto
 
-1. **Clonar el repositorio**
+### 1. 📥 Clonar el Repositorio
+```bash
+git clone https://github.com/usuario/UmeEgunero.git
+cd UmeEgunero
+```
+
+### 2. 🔥 Configurar Firebase
+1. **Crear proyecto Firebase**:
+   - Ir a [Firebase Console](https://console.firebase.google.com/)
+   - Crear nuevo proyecto o usar uno existente
+   - Añadir aplicación Android con package name: `com.tfg.umeegunero`
+
+2. **Descargar configuración**:
+   - Descargar `google-services.json`
+   - Colocar en la carpeta `/app` del proyecto
+
+3. **Habilitar servicios Firebase**:
+   - **Authentication**: Email/Password, Google Sign-In
+   - **Firestore Database**: Modo producción
+   - **Cloud Storage**: Reglas de seguridad configuradas
+   - **Cloud Messaging**: Para notificaciones push
+   - **Crashlytics**: Monitoreo de errores
+   - **Analytics**: Análisis de uso
+
+### 3. 📜 Configurar Google Apps Script
+1. **Crear proyecto GAS**:
+   - Ir a [Google Apps Script](https://script.google.com/)
+   - Crear nuevo proyecto: "UmeEgunero-Backend"
+
+2. **Implementar servicios**:
+   - Copiar código desde `docs/cloud_functions_gas/codigo_backup/`
+   - Configurar triggers y permisos necesarios
+   - Desplegar como aplicación web
+
+3. **URLs de servicios desplegados**:
+   - **Servicio principal**: `https://script.google.com/macros/s/AKfycbze3MmQnykWCV_ymsZgnICiC1wFIZG37-8Pr66ZbJS9X87LiL10wC3JJYVu1MVzsjxP/exec`
+   - Configurar estas URLs en la aplicación
+
+### 4. 🛠️ Configurar Entorno de Desarrollo
+1. **Abrir en Android Studio**:
    ```bash
-   git clone https://github.com/usuario/UmeEgunero.git
-   cd UmeEgunero
+   # Abrir Android Studio y seleccionar la carpeta del proyecto
    ```
 
-2. **Configurar Firebase**
-   - Crear proyecto en [Firebase Console](https://console.firebase.google.com/)
-   - Descargar el archivo `google-services.json` y colocarlo en la carpeta `/app`
-   - Habilitar los servicios necesarios (Authentication, Firestore, Storage, Cloud Messaging)
+2. **Sincronizar dependencias**:
+   ```bash
+   ./gradlew clean
+   ./gradlew build
+   ```
 
-3. **Configurar Google Apps Script**
-   - Crear un nuevo proyecto en [Google Apps Script](https://script.google.com/)
-   - Implementar el endpoint para procesamiento de correos y gestión de usuarios
-   - La URL del servicio es: https://script.google.com/macros/s/AKfycbze3MmQnykWCV_ymsZgnICiC1wFIZG37-8Pr66ZbJS9X87LiL10wC3JJYVu1MVzsjxP/exec
-   - Configurar esta URL en la aplicación
+3. **Generar documentación** (opcional):
+   ```bash
+   ./gradlew dokkaHtml
+   cp -r app/build/dokka/* docs/dokka/
+   ```
 
-4. **Compilar y ejecutar**
-   - Abrir el proyecto en Android Studio
-   - Sincronizar con archivos Gradle
-   - Ejecutar en dispositivo o emulador
+### 5. 🚀 Ejecutar la Aplicación
+1. **Conectar dispositivo** o iniciar emulador
+2. **Ejecutar desde Android Studio** o usar línea de comandos:
+   ```bash
+   ./gradlew installDebug
+   ```
+
+### 6. 🔧 Configuración Adicional
+- **Configurar reglas de Firestore**: Ver `docs/Estructura_Base_Datos.md`
+- **Configurar notificaciones**: Ver `docs/Sistema_Notificaciones.md`
+- **Configurar testing**: Ver `docs/Testing_Aplicacion.md`
 
 ## 📚 Documentación
 
@@ -227,7 +342,7 @@ UmeEgunero incluye documentación completa disponible en múltiples formatos:
 
 La documentación completa del código fuente está disponible en formato HTML generado con Dokka:
 
-- **🏠 [Página Principal de Documentación](app/build/dokka/index.html)**: Punto de entrada a toda la documentación técnica
+- **🏠 [Página Principal de Documentación](docs/dokka/index.html)**: Punto de entrada a toda la documentación técnica
 - **📱 Navegación Interactiva**: Explora todas las clases, funciones y módulos del proyecto
 - **🔍 Búsqueda Avanzada**: Encuentra rápidamente cualquier elemento del código
 - **📊 Estadísticas**: 5,540+ archivos HTML documentados en 934+ paquetes
@@ -239,10 +354,11 @@ La documentación completa del código fuente está disponible en formato HTML g
 ./gradlew dokkaHtml
 
 # La documentación se generará en: app/build/dokka/
-# Abrir en navegador: app/build/dokka/index.html
+# Copiar a ubicación accesible desde GitHub:
+cp -r app/build/dokka/* docs/dokka/
 ```
 
-> **💡 Nota**: La documentación Dokka se genera localmente. Después de ejecutar el comando, puedes abrir el archivo `app/build/dokka/index.html` directamente en tu navegador para navegar por toda la documentación técnica del proyecto.
+> **💡 Nota**: La documentación Dokka está disponible en `docs/dokka/index.html` para acceso desde GitHub. También puedes generar una versión local ejecutando el comando anterior.
 
 #### 📂 Estructura de la Documentación Dokka
 
@@ -267,21 +383,28 @@ La documentación completa del código fuente está disponible en formato HTML g
 - **[Estructura de Base de Datos](docs/Estructura_Base_Datos.md)**: Detalle de colecciones Firestore y relaciones entre entidades
 - **[Manual de Usuario](docs/Manual_Usuario.md)**: Guía de uso para cada perfil de usuario
 - **[Testing Aplicación](docs/Testing_Aplicacion.md)**: Estructura y metodología de pruebas
+- **[Componentes UI](docs/UI-COMPONENTS.md)**: Documentación de componentes de interfaz de usuario
 
 ### 🔔 Sistema de Notificaciones y Comunicación
 
 - **[Sistema de Notificaciones](docs/Sistema_Notificaciones.md)**: Arquitectura completa del sistema de notificaciones, diagnóstico y confirmación de lectura
 - **[Sistema de Solicitudes](docs/Sistema_Solicitudes.md)**: Implementación del proceso de vinculación familiar-alumno
+- **[Sistema de Comunicación Unificado](docs/Sistema_Comunicacion_Unificado.md)**: Documentación del sistema de mensajería integral
+- **[Índice de Comunicación](docs/Sistema_Comunicacion_Indice.md)**: Resumen de todas las funcionalidades de comunicación
+- **[Sistema de Vinculación Familiar](docs/Sistema_Vinculacion_Familiar.md)**: Proceso completo de vinculación familiar-alumno
 
 ### ☁️ Cloud Functions y Google Apps Script
 
 - **[Documentación Cloud Functions & GAS](docs/cloud_functions_gas/README.md)**: Resumen ejecutivo completo del sistema backend
 - **[Configuración Final](docs/cloud_functions_gas/configuracion_final.md)**: Configuración de servicios
 - **[Backup Código Completo](docs/cloud_functions_gas/codigo_backup/index_js_backup_completo.md)**: Backup unificado del código de Cloud Functions
+- **[Backup Google Apps Script](docs/cloud_functions_gas/codigo_backup/gas_script_backup.md)**: Backup del código de Google Apps Script
 
 ### 🔧 Servicios Auxiliares
 
 - **[Google Apps Script para Firebase Auth](docs/Google_Apps_Script_Firebase_Auth.md)**: Implementación de microservicios serverless para gestión de usuarios
+- **[Configuración Dokka](docs/Dokka_Configuration_Summary.md)**: Resumen de configuración de la documentación Dokka
+- **[README Dokka](docs/Dokka_README.md)**: Guía específica para la documentación Dokka
 
 ### 📊 Índice de Funcionalidades Documentadas
 
@@ -293,6 +416,8 @@ La documentación completa del código fuente está disponible en formato HTML g
 | **Cloud Functions** | [Cloud Functions & GAS](docs/cloud_functions_gas/README.md) | `/functions/index.js` |
 | **Google Apps Script** | [Cloud Functions & GAS](docs/cloud_functions_gas/README.md) | 3 servicios desplegados |
 | **Diagnóstico del Sistema** | [Sistema de Notificaciones](docs/Sistema_Notificaciones.md) | `NotificationDiagnostic.kt` |
+| **Comunicación Unificada** | [Sistema de Comunicación Unificado](docs/Sistema_Comunicacion_Unificado.md) | `MensajeRepository.kt`, `ComunicacionViewModel.kt` |
+| **Vinculación Familiar** | [Sistema de Vinculación Familiar](docs/Sistema_Vinculacion_Familiar.md) | `SolicitudRepository.kt`, `VinculacionViewModel.kt` |
 
 ## 🧪 Testing
 
@@ -358,7 +483,7 @@ UmeEgunero incluye un sistema avanzado de confirmación de lectura que permite a
 - Base de datos actualizada a versión 4
 - Interfaz intuitiva con Material Design 3
 
-Para más detalles, consulta la [documentación completa del sistema](docs/sistema_confirmacion_lectura.md).
+Para más detalles, consulta la [documentación del sistema de notificaciones](docs/Sistema_Notificaciones.md).
 
 ## 🙏 Agradecimientos
 

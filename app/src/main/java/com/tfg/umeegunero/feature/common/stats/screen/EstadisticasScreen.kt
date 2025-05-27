@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.tfg.umeegunero.feature.admin.viewmodel.EstadisticasViewModel
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.Month
@@ -72,15 +74,18 @@ data class StatisticsData(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EstadisticasScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: EstadisticasViewModel = hiltViewModel()
 ) {
     val scrollState = rememberScrollState()
+    val uiState by viewModel.uiState.collectAsState()
     
-    // Datos simulados para las estadísticas (en una implementación real vendrían del ViewModel)
-    val centrosCount = 15
-    val profesoresCount = 124
-    val alumnosCount = 937
-    val familiaresCount = 1085
+    // Usar datos reales del ViewModel en lugar de datos simulados
+    val centrosCount = uiState.totalCentros
+    val profesoresCount = uiState.totalProfesores
+    val alumnosCount = uiState.totalAlumnos
+    val familiaresCount = uiState.totalFamiliares
+    val nuevosCentros = uiState.nuevosCentros
     
     // Datos para gráficos
     val datosMensuales = remember { 
@@ -101,13 +106,13 @@ fun EstadisticasScreen(
         )
     }
     
-    // Distribución de tipos de usuarios (simulado)
-    val distribucionUsuarios = remember {
+    // Distribución de tipos de usuarios (datos reales)
+    val distribucionUsuarios = remember(uiState) {
         listOf(
             PieChartData("Alumnos", alumnosCount.toFloat(), Color(0xFF2196F3), "$alumnosCount usuarios"),
             PieChartData("Familiares", familiaresCount.toFloat(), Color(0xFF4CAF50), "$familiaresCount usuarios"),
             PieChartData("Profesores", profesoresCount.toFloat(), Color(0xFFFF9800), "$profesoresCount usuarios"),
-            PieChartData("Administradores", 24f, Color(0xFFF44336), "24 usuarios")
+            PieChartData("Administradores", uiState.totalAdministradores.toFloat(), Color(0xFFF44336), "${uiState.totalAdministradores} usuarios")
         )
     }
     
