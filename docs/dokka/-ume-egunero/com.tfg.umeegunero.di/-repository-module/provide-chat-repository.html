@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" charset="UTF-8">
+    <title>provideChatRepository</title>
+    <link href="../../../images/logo-icon.svg" rel="icon" type="image/svg">
+    <script>var pathToRoot = "../../../";</script>
+    <script>const storage = localStorage.getItem("dokka-dark-mode")
+    if (storage == null) {
+        const osDarkSchemePreferred = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        if (osDarkSchemePreferred === true) {
+            document.getElementsByTagName("html")[0].classList.add("theme-dark")
+        }
+    } else {
+        const savedDarkMode = JSON.parse(storage)
+        if(savedDarkMode === true) {
+            document.getElementsByTagName("html")[0].classList.add("theme-dark")
+        }
+    }
+    </script>
+<script type="text/javascript" src="../../../scripts/sourceset_dependencies.js" async="async"></script>
+<link href="../../../styles/style.css" rel="Stylesheet">
+<link href="../../../styles/jetbrains-mono.css" rel="Stylesheet">
+<link href="../../../styles/main.css" rel="Stylesheet">
+<link href="../../../styles/prism.css" rel="Stylesheet">
+<link href="../../../styles/logo-styles.css" rel="Stylesheet">
+<script type="text/javascript" src="../../../scripts/clipboard.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/navigation-loader.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/platform-content-handler.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/main.js" defer="defer"></script>
+<script type="text/javascript" src="../../../scripts/prism.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/symbol-parameters-wrapper_deferred.js" defer="defer"></script>
+</head>
+<body>
+<div class="navigation-wrapper" id="navigation-wrapper">
+    <div id="leftToggler"><span class="icon-toggler"></span></div>
+    <div class="library-name">
+            <a href="../../../index.html">
+                    <span>UmeEgunero</span>
+            </a>
+    </div>
+    <div>
+1.0    </div>
+    <div class="pull-right d-flex">
+        <div class="filter-section" id="filter-section">
+                <button class="platform-tag platform-selector jvm-like" data-active="" data-filter=":app:dokkaHtml/release">androidJvm</button>
+        </div>
+        <button id="theme-toggle-button"><span id="theme-toggle"></span></button>
+        <div id="searchBar"></div>
+    </div>
+</div>
+<div id="container">
+    <div id="leftColumn">
+        <div id="sideMenu"></div>
+    </div>
+    <div id="main">
+<div class="main-content" data-page-type="member" id="content" pageIds="UmeEgunero::com.tfg.umeegunero.di/RepositoryModule/provideChatRepository/#com.tfg.umeegunero.data.local.dao.ChatMensajeDao#com.tfg.umeegunero.data.local.dao.ConversacionDao#com.google.firebase.firestore.FirebaseFirestore#com.google.firebase.storage.FirebaseStorage#com.tfg.umeegunero.data.repository.AuthRepository/PointingToDeclaration//492899073">
+  <div class="breadcrumbs"><a href="../../../index.html">UmeEgunero</a><span class="delimiter">/</span><a href="../index.html">com.tfg.umeegunero.di</a><span class="delimiter">/</span><a href="index.html">RepositoryModule</a><span class="delimiter">/</span><span class="current">provideChatRepository</span></div>
+  <div class="cover ">
+    <h1 class="cover"><span>provide</span><wbr></wbr><span>Chat</span><wbr></wbr><span><span>Repository</span></span></h1>
+  </div>
+  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><div class="block"><div class="block"><span class="token annotation builtin">@</span><span data-unresolved-link="dagger/Provides///PointingToDeclaration/"><span class="token annotation builtin">Provides</span></span></div><div class="block"><span class="token annotation builtin">@</span><span data-unresolved-link="javax.inject/Singleton///PointingToDeclaration/"><span class="token annotation builtin">Singleton</span></span></div></div><span class="token keyword"></span><span class="token keyword">fun </span><a href="provide-chat-repository.html"><span class="token function">provideChatRepository</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">chatMensajeDao<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.local.dao/-chat-mensaje-dao/index.html">ChatMensajeDao</a><span class="token punctuation">, </span></span><span class="parameter ">conversacionDao<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.local.dao/-conversacion-dao/index.html">ConversacionDao</a><span class="token punctuation">, </span></span><span class="parameter ">firestore<span class="token operator">: </span><span data-unresolved-link="com.google.firebase.firestore/FirebaseFirestore///PointingToDeclaration/">FirebaseFirestore</span><span class="token punctuation">, </span></span><span class="parameter ">storage<span class="token operator">: </span><span data-unresolved-link="com.google.firebase.storage/FirebaseStorage///PointingToDeclaration/">FirebaseStorage</span><span class="token punctuation">, </span></span><span class="parameter ">authRepository<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-auth-repository/index.html">AuthRepository</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-chat-repository/index.html">ChatRepository</a></div><p class="paragraph">Proporciona una instancia del repositorio de chat. Este repositorio maneja todas las operaciones relacionadas con mensajes y conversaciones.</p><span class="kdoc-tag"><h4 class="">Return</h4><p class="paragraph">Instancia de ChatRepository</p></span><h4 class="">Parameters</h4><div class="table"><div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release"><div class="main-subrow keyValue "><div class=""><span class="inline-flex"><div><u><span>chat</span><wbr></wbr><span>Mensaje</span><wbr></wbr><span><span>Dao</span></span></u></div></span></div><div><div class="title"><p class="paragraph">DAO para operaciones con mensajes</p></div></div></div></div><div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release"><div class="main-subrow keyValue "><div class=""><span class="inline-flex"><div><u><span>conversacion</span><wbr></wbr><span><span>Dao</span></span></u></div></span></div><div><div class="title"><p class="paragraph">DAO para operaciones con conversaciones</p></div></div></div></div><div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release"><div class="main-subrow keyValue "><div class=""><span class="inline-flex"><div><u><span><span>firestore</span></span></u></div></span></div><div><div class="title"><p class="paragraph">Instancia de FirebaseFirestore</p></div></div></div></div><div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release"><div class="main-subrow keyValue "><div class=""><span class="inline-flex"><div><u><span><span>storage</span></span></u></div></span></div><div><div class="title"><p class="paragraph">Instancia de FirebaseStorage</p></div></div></div></div><div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release"><div class="main-subrow keyValue "><div class=""><span class="inline-flex"><div><u><span>auth</span><wbr></wbr><span><span>Repository</span></span></u></div></span></div><div><div class="title"><p class="paragraph">Repositorio de autenticación</p></div></div></div></div></div></div></div>
+</div>
+      <div class="footer">
+        <span class="go-to-top-icon"><a href="#content" id="go-to-top-link"></a></span><span>© 2025 Copyright</span><span
+                class="pull-right"><span>Generated by </span><a
+                href="https://github.com/Kotlin/dokka"><span>dokka</span><span class="padded-icon"></span></a></span>
+      </div>
+    </div>
+</div>
+</body>
+</html>

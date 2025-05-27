@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -145,7 +146,7 @@ fun EmailTestScreen(
                             value = uiState.mensajeSoporte,
                             onValueChange = { viewModel.updateMensajeSoporte(it) },
                             label = { Text("Mensaje de prueba para soporte") },
-                            leadingIcon = { Icon(Icons.Default.Message, contentDescription = null) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Message, contentDescription = null) },
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 3,
                             maxLines = 5,
@@ -287,7 +288,7 @@ fun EmailTestScreen(
                                         isHorizontalScrollBarEnabled = false
                                         setScrollBarStyle(WebView.SCROLLBARS_INSIDE_OVERLAY)
                                         // Permitir scroll dentro del WebView
-                                        setOnTouchListener { v, event ->
+                                        setOnTouchListener { v, _ ->
                                             v.parent.requestDisallowInterceptTouchEvent(true)
                                             false
                                         }

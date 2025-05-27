@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -131,7 +131,7 @@ fun ListAdministradoresScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.back)
                         )
                     }
@@ -215,7 +215,7 @@ fun ListAdministradoresScreen(
                                     email = admin.email,
                                     telefono = admin.telefono ?: "No disponible",
                                     avatarUrl = admin.avatarUrl,
-                                    tipoUsuario = admin.perfiles.firstOrNull()?.toString() ?: "Administrador",
+                                    tipoUsuario = admin.perfiles.firstOrNull()?.tipo?.name ?: "Administrador",
                                     onClick = { /* Detalles del administrador si es necesario */ }
                                 )
                                 HorizontalDivider(

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" charset="UTF-8">
+    <title>LocalRegistroActividadRepository</title>
+    <link href="../../../images/logo-icon.svg" rel="icon" type="image/svg">
+    <script>var pathToRoot = "../../../";</script>
+    <script>const storage = localStorage.getItem("dokka-dark-mode")
+    if (storage == null) {
+        const osDarkSchemePreferred = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        if (osDarkSchemePreferred === true) {
+            document.getElementsByTagName("html")[0].classList.add("theme-dark")
+        }
+    } else {
+        const savedDarkMode = JSON.parse(storage)
+        if(savedDarkMode === true) {
+            document.getElementsByTagName("html")[0].classList.add("theme-dark")
+        }
+    }
+    </script>
+<script type="text/javascript" src="../../../scripts/sourceset_dependencies.js" async="async"></script>
+<link href="../../../styles/style.css" rel="Stylesheet">
+<link href="../../../styles/jetbrains-mono.css" rel="Stylesheet">
+<link href="../../../styles/main.css" rel="Stylesheet">
+<link href="../../../styles/prism.css" rel="Stylesheet">
+<link href="../../../styles/logo-styles.css" rel="Stylesheet">
+<script type="text/javascript" src="../../../scripts/clipboard.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/navigation-loader.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/platform-content-handler.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/main.js" defer="defer"></script>
+<script type="text/javascript" src="../../../scripts/prism.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/symbol-parameters-wrapper_deferred.js" defer="defer"></script>
+</head>
+<body>
+<div class="navigation-wrapper" id="navigation-wrapper">
+    <div id="leftToggler"><span class="icon-toggler"></span></div>
+    <div class="library-name">
+            <a href="../../../index.html">
+                    <span>UmeEgunero</span>
+            </a>
+    </div>
+    <div>
+1.0    </div>
+    <div class="pull-right d-flex">
+        <div class="filter-section" id="filter-section">
+                <button class="platform-tag platform-selector jvm-like" data-active="" data-filter=":app:dokkaHtml/release">androidJvm</button>
+        </div>
+        <button id="theme-toggle-button"><span id="theme-toggle"></span></button>
+        <div id="searchBar"></div>
+    </div>
+</div>
+<div id="container">
+    <div id="leftColumn">
+        <div id="sideMenu"></div>
+    </div>
+    <div id="main">
+<div class="main-content" data-page-type="classlike" id="content" pageIds="UmeEgunero::com.tfg.umeegunero.data.repository/LocalRegistroActividadRepository///PointingToDeclaration//492899073">
+  <div class="breadcrumbs"><a href="../../../index.html">UmeEgunero</a><span class="delimiter">/</span><a href="../index.html">com.tfg.umeegunero.data.repository</a><span class="delimiter">/</span><span class="current">LocalRegistroActividadRepository</span></div>
+  <div class="cover ">
+    <h1 class="cover"><span>Local</span><wbr></wbr><span>Registro</span><wbr></wbr><span>Actividad</span><wbr></wbr><span><span>Repository</span></span></h1>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><div class="block"><div class="block"><span class="token annotation builtin">@</span><span data-unresolved-link="javax.inject/Singleton///PointingToDeclaration/"><span class="token annotation builtin">Singleton</span></span></div></div><span class="token keyword">class </span><a href="index.html">LocalRegistroActividadRepository</a> <span><span class="token annotation builtin">@</span><span data-unresolved-link="javax.inject/Inject///PointingToDeclaration/"><span class="token annotation builtin">Inject</span></span> </span><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">registroActividadDao<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.local.dao/-registro-actividad-dao/index.html">RegistroActividadDao</a></span></span><span class="token punctuation">)</span></div><p class="paragraph">Repositorio para gestionar registros de actividad locales en la aplicación UmeEgunero.</p><p class="paragraph">Esta clase proporciona métodos para almacenar, recuperar y gestionar registros de actividad locales, permitiendo un seguimiento detallado de las interacciones y eventos realizados por los usuarios en la aplicación.</p><p class="paragraph">Características principales:</p><ul><li><p class="paragraph">Almacenamiento local de registros de actividad</p></li><li><p class="paragraph">Sincronización con registros en la nube</p></li><li><p class="paragraph">Soporte para diferentes tipos de actividades</p></li><li><p class="paragraph">Registro de eventos de usuario</p></li><li><p class="paragraph">Gestión de privacidad y seguridad</p></li></ul><p class="paragraph">El repositorio permite:</p><ul><li><p class="paragraph">Registrar acciones de usuario</p></li><li><p class="paragraph">Mantener un historial de interacciones</p></li><li><p class="paragraph">Auditar cambios y accesos</p></li><li><p class="paragraph">Generar informes de actividad</p></li><li><p class="paragraph">Depurar y monitorear el uso de la aplicación</p></li></ul><span class="kdoc-tag"><h4 class="">Author</h4><p class="paragraph">Maitane Ibañez Irazabal (2º DAM Online)</p></span><span class="kdoc-tag"><h4 class="">Since</h4><p class="paragraph">2024</p></span></div></div>
+  </div>
+  <div class="tabbedcontent">
+    <div class="tabs-section" tabs-section="tabs-section"><button class="section-tab" data-active="" data-togglable="CONSTRUCTOR,TYPE,PROPERTY,FUNCTION">Members</button></div>
+    <div class="tabs-section-body">
+      <div data-togglable="CONSTRUCTOR">
+        <h2 class="">Constructors</h2>
+        <div class="table"><a data-name="487809952%2FConstructors%2F492899073" anchor-label="LocalRegistroActividadRepository" id="487809952%2FConstructors%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-togglable="CONSTRUCTOR" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="-local-registro-actividad-repository.html"><span>Local</span><wbr></wbr><span>Registro</span><wbr></wbr><span>Actividad</span><wbr></wbr><span><span>Repository</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="487809952%2FConstructors%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><div class="block"><div class="block"><span class="token annotation builtin">@</span><span data-unresolved-link="javax.inject/Inject///PointingToDeclaration/"><span class="token annotation builtin">Inject</span></span></div></div><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">registroActividadDao<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.local.dao/-registro-actividad-dao/index.html">RegistroActividadDao</a></span></span><span class="token punctuation">)</span></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div data-togglable="FUNCTION">
+        <h2 class="">Functions</h2>
+        <div class="table"><a data-name="681047388%2FFunctions%2F492899073" anchor-label="deleteAllRegistros" id="681047388%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="delete-all-registros.html"><span>delete</span><wbr></wbr><span>All</span><wbr></wbr><span><span>Registros</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="681047388%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="delete-all-registros.html"><span class="token function">deleteAllRegistros</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html">Int</a></div><div class="brief "><p class="paragraph">Elimina todos los registros de la base de datos local.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="467189103%2FFunctions%2F492899073" anchor-label="deleteRegistroActividad" id="467189103%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="delete-registro-actividad.html"><span>delete</span><wbr></wbr><span>Registro</span><wbr></wbr><span><span>Actividad</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="467189103%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="delete-registro-actividad.html"><span class="token function">deleteRegistroActividad</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">registroId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Elimina un registro de actividad de la base de datos local por su ID</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="992866638%2FFunctions%2F492899073" anchor-label="deleteRegistroById" id="992866638%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="delete-registro-by-id.html"><span>delete</span><wbr></wbr><span>Registro</span><wbr></wbr><span>By</span><wbr></wbr><span><span>Id</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="992866638%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="delete-registro-by-id.html"><span class="token function">deleteRegistroById</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">id<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a></div><div class="brief "><p class="paragraph">Elimina un registro por su ID.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="690729508%2FFunctions%2F492899073" anchor-label="getRegistroActividadById" id="690729508%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="get-registro-actividad-by-id.html"><span>get</span><wbr></wbr><span>Registro</span><wbr></wbr><span>Actividad</span><wbr></wbr><span>By</span><wbr></wbr><span><span>Id</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="690729508%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="get-registro-actividad-by-id.html"><span class="token function">getRegistroActividadById</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">id<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.model/-registro-actividad/index.html">RegistroActividad</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">Obtiene un registro de actividad por su ID.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-919088802%2FFunctions%2F492899073" anchor-label="getRegistrosActividadByAlumno" id="-919088802%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="get-registros-actividad-by-alumno.html"><span>get</span><wbr></wbr><span>Registros</span><wbr></wbr><span>Actividad</span><wbr></wbr><span>By</span><wbr></wbr><span><span>Alumno</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-919088802%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="get-registros-actividad-by-alumno.html"><span class="token function">getRegistrosActividadByAlumno</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">alumnoId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><span data-unresolved-link="kotlinx.coroutines.flow/Flow///PointingToDeclaration/">Flow</span><span class="token operator">&lt;</span><span class="token keyword"></span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html">List</a><span class="token operator">&lt;</span><span class="token keyword"></span><a href="../../com.tfg.umeegunero.data.model/-registro-actividad/index.html">RegistroActividad</a><span class="token operator">&gt;</span><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">Obtiene los registros de actividad de un alumno.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="630013549%2FFunctions%2F492899073" anchor-label="getRegistrosActividadByAlumnoAndFecha" id="630013549%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="get-registros-actividad-by-alumno-and-fecha.html"><span>get</span><wbr></wbr><span>Registros</span><wbr></wbr><span>Actividad</span><wbr></wbr><span>By</span><wbr></wbr><span>Alumno</span><wbr></wbr><span>And</span><wbr></wbr><span><span>Fecha</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="630013549%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="get-registros-actividad-by-alumno-and-fecha.html"><span class="token function">getRegistrosActividadByAlumnoAndFecha</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">alumnoId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">fecha<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/java/util/Date.html">Date</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html">List</a><span class="token operator">&lt;</span><span class="token keyword"></span><a href="../../com.tfg.umeegunero.data.model/-registro-actividad/index.html">RegistroActividad</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">Obtiene los registros de actividad de un alumno en una fecha específica.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="1520153753%2FFunctions%2F492899073" anchor-label="getRegistrosActividadByAlumnoId" id="1520153753%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="get-registros-actividad-by-alumno-id.html"><span>get</span><wbr></wbr><span>Registros</span><wbr></wbr><span>Actividad</span><wbr></wbr><span>By</span><wbr></wbr><span>Alumno</span><wbr></wbr><span><span>Id</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1520153753%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="get-registros-actividad-by-alumno-id.html"><span class="token function">getRegistrosActividadByAlumnoId</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">alumnoId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html">List</a><span class="token operator">&lt;</span><span class="token keyword"></span><a href="../../com.tfg.umeegunero.data.model/-registro-actividad/index.html">RegistroActividad</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">Obtiene los registros de actividad de un alumno por su ID.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-132846899%2FFunctions%2F492899073" anchor-label="getRegistrosActividadByClaseAndFecha" id="-132846899%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="get-registros-actividad-by-clase-and-fecha.html"><span>get</span><wbr></wbr><span>Registros</span><wbr></wbr><span>Actividad</span><wbr></wbr><span>By</span><wbr></wbr><span>Clase</span><wbr></wbr><span>And</span><wbr></wbr><span><span>Fecha</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-132846899%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="get-registros-actividad-by-clase-and-fecha.html"><span class="token function">getRegistrosActividadByClaseAndFecha</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">claseId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">fecha<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/java/util/Date.html">Date</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html">List</a><span class="token operator">&lt;</span><span class="token keyword"></span><a href="../../com.tfg.umeegunero.data.model/-registro-actividad/index.html">RegistroActividad</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">Obtiene los registros de actividad de una clase en una fecha específica.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="2054264761%2FFunctions%2F492899073" anchor-label="getRegistrosSinLeerCount" id="2054264761%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="get-registros-sin-leer-count.html"><span>get</span><wbr></wbr><span>Registros</span><wbr></wbr><span>Sin</span><wbr></wbr><span>Leer</span><wbr></wbr><span><span>Count</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="2054264761%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="get-registros-sin-leer-count.html"><span class="token function">getRegistrosSinLeerCount</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">familiarId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-int/index.html">Int</a></div><div class="brief "><p class="paragraph">Obtiene el número de registros no leídos. El parámetro familiarId se ignora en la implementación actual pero se mantiene para compatibilidad con la interfaz.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="50857007%2FFunctions%2F492899073" anchor-label="getUnsyncedRegistros" id="50857007%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="get-unsynced-registros.html"><span>get</span><wbr></wbr><span>Unsynced</span><wbr></wbr><span><span>Registros</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="50857007%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="get-unsynced-registros.html"><span class="token function">getUnsyncedRegistros</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html">List</a><span class="token operator">&lt;</span><span class="token keyword"></span><a href="../../com.tfg.umeegunero.data.model/-registro-actividad/index.html">RegistroActividad</a><span class="token operator">&gt;</span></div><div class="brief "><p class="paragraph">Obtiene los registros no sincronizados con el servidor.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="1219681559%2FFunctions%2F492899073" anchor-label="markAsSynced" id="1219681559%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="mark-as-synced.html"><span>mark</span><wbr></wbr><span>As</span><wbr></wbr><span><span>Synced</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1219681559%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="mark-as-synced.html"><span class="token function">markAsSynced</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">id<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a></div><div class="brief "><p class="paragraph">Marca un registro como sincronizado con el servidor.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1338093032%2FFunctions%2F492899073" anchor-label="saveRegistroActividad" id="-1338093032%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="save-registro-actividad.html"><span>save</span><wbr></wbr><span>Registro</span><wbr></wbr><span><span>Actividad</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1338093032%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="save-registro-actividad.html"><span class="token function">saveRegistroActividad</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">registro<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.model/-registro-actividad/index.html">RegistroActividad</a><span class="token punctuation">, </span></span><span class="parameter ">isSynced<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Guarda un registro de actividad en la base de datos local.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1583409283%2FFunctions%2F492899073" anchor-label="saveRegistrosActividad" id="-1583409283%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="save-registros-actividad.html"><span>save</span><wbr></wbr><span>Registros</span><wbr></wbr><span><span>Actividad</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1583409283%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="save-registros-actividad.html"><span class="token function">saveRegistrosActividad</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">registros<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin.collections/-list/index.html">List</a><span class="token operator">&lt;</span><span class="token keyword"></span><a href="../../com.tfg.umeegunero.data.model/-registro-actividad/index.html">RegistroActividad</a><span class="token operator">&gt;</span><span class="token punctuation">, </span></span><span class="parameter ">isSynced<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Guarda múltiples registros de actividad en la base de datos local.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1731712092%2FFunctions%2F492899073" anchor-label="updateRegistroActividad" id="-1731712092%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="update-registro-actividad.html"><span>update</span><wbr></wbr><span>Registro</span><wbr></wbr><span><span>Actividad</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1731712092%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="update-registro-actividad.html"><span class="token function">updateRegistroActividad</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">registro<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.model/-registro-actividad/index.html">RegistroActividad</a><span class="token punctuation">, </span></span><span class="parameter ">isSynced<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Actualiza un registro de actividad existente en la base de datos local.</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      <div class="footer">
+        <span class="go-to-top-icon"><a href="#content" id="go-to-top-link"></a></span><span>© 2025 Copyright</span><span
+                class="pull-right"><span>Generated by </span><a
+                href="https://github.com/Kotlin/dokka"><span>dokka</span><span class="padded-icon"></span></a></span>
+      </div>
+    </div>
+</div>
+</body>
+</html>

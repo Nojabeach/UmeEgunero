@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" charset="UTF-8">
+    <title>VincularProfesorClaseViewModel</title>
+    <link href="../../../images/logo-icon.svg" rel="icon" type="image/svg">
+    <script>var pathToRoot = "../../../";</script>
+    <script>const storage = localStorage.getItem("dokka-dark-mode")
+    if (storage == null) {
+        const osDarkSchemePreferred = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        if (osDarkSchemePreferred === true) {
+            document.getElementsByTagName("html")[0].classList.add("theme-dark")
+        }
+    } else {
+        const savedDarkMode = JSON.parse(storage)
+        if(savedDarkMode === true) {
+            document.getElementsByTagName("html")[0].classList.add("theme-dark")
+        }
+    }
+    </script>
+<script type="text/javascript" src="../../../scripts/sourceset_dependencies.js" async="async"></script>
+<link href="../../../styles/style.css" rel="Stylesheet">
+<link href="../../../styles/jetbrains-mono.css" rel="Stylesheet">
+<link href="../../../styles/main.css" rel="Stylesheet">
+<link href="../../../styles/prism.css" rel="Stylesheet">
+<link href="../../../styles/logo-styles.css" rel="Stylesheet">
+<script type="text/javascript" src="../../../scripts/clipboard.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/navigation-loader.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/platform-content-handler.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/main.js" defer="defer"></script>
+<script type="text/javascript" src="../../../scripts/prism.js" async="async"></script>
+<script type="text/javascript" src="../../../scripts/symbol-parameters-wrapper_deferred.js" defer="defer"></script>
+</head>
+<body>
+<div class="navigation-wrapper" id="navigation-wrapper">
+    <div id="leftToggler"><span class="icon-toggler"></span></div>
+    <div class="library-name">
+            <a href="../../../index.html">
+                    <span>UmeEgunero</span>
+            </a>
+    </div>
+    <div>
+1.0    </div>
+    <div class="pull-right d-flex">
+        <div class="filter-section" id="filter-section">
+                <button class="platform-tag platform-selector jvm-like" data-active="" data-filter=":app:dokkaHtml/release">androidJvm</button>
+        </div>
+        <button id="theme-toggle-button"><span id="theme-toggle"></span></button>
+        <div id="searchBar"></div>
+    </div>
+</div>
+<div id="container">
+    <div id="leftColumn">
+        <div id="sideMenu"></div>
+    </div>
+    <div id="main">
+<div class="main-content" data-page-type="classlike" id="content" pageIds="UmeEgunero::com.tfg.umeegunero.feature.centro.viewmodel/VincularProfesorClaseViewModel///PointingToDeclaration//492899073">
+  <div class="breadcrumbs"><a href="../../../index.html">UmeEgunero</a><span class="delimiter">/</span><a href="../index.html">com.tfg.umeegunero.feature.centro.viewmodel</a><span class="delimiter">/</span><span class="current">VincularProfesorClaseViewModel</span></div>
+  <div class="cover ">
+    <h1 class="cover"><span>Vincular</span><wbr></wbr><span>Profesor</span><wbr></wbr><span>Clase</span><wbr></wbr><span>View</span><wbr></wbr><span><span>Model</span></span></h1>
+    <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">class </span><a href="index.html">VincularProfesorClaseViewModel</a> <span><span class="token annotation builtin">@</span><span data-unresolved-link="javax.inject/Inject///PointingToDeclaration/"><span class="token annotation builtin">Inject</span></span> </span><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">usuarioRepository<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-usuario-repository/index.html">UsuarioRepository</a><span class="token punctuation">, </span></span><span class="parameter ">claseRepository<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-clase-repository/index.html">ClaseRepository</a><span class="token punctuation">, </span></span><span class="parameter ">centroRepository<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-centro-repository/index.html">CentroRepository</a><span class="token punctuation">, </span></span><span class="parameter ">cursoRepository<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-curso-repository/index.html">CursoRepository</a><span class="token punctuation">, </span></span><span class="parameter ">authRepository<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-auth-repository/index.html">AuthRepository</a><span class="token punctuation">, </span></span><span class="parameter ">profesorRepository<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-profesor-repository/index.html">ProfesorRepository</a></span></span><span class="token punctuation">)</span> : <a href="https://developer.android.com/reference/kotlin/androidx/lifecycle/ViewModel.html">ViewModel</a></div><p class="paragraph">ViewModel para la pantalla de vinculación de profesores a clases</p></div></div>
+  </div>
+  <div class="tabbedcontent">
+    <div class="tabs-section" tabs-section="tabs-section"><button class="section-tab" data-active="" data-togglable="CONSTRUCTOR,TYPE,PROPERTY,FUNCTION">Members</button></div>
+    <div class="tabs-section-body">
+      <div data-togglable="CONSTRUCTOR">
+        <h2 class="">Constructors</h2>
+        <div class="table"><a data-name="1058469374%2FConstructors%2F492899073" anchor-label="VincularProfesorClaseViewModel" id="1058469374%2FConstructors%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-togglable="CONSTRUCTOR" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="-vincular-profesor-clase-view-model.html"><span>Vincular</span><wbr></wbr><span>Profesor</span><wbr></wbr><span>Clase</span><wbr></wbr><span>View</span><wbr></wbr><span><span>Model</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1058469374%2FConstructors%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><div class="block"><div class="block"><span class="token annotation builtin">@</span><span data-unresolved-link="javax.inject/Inject///PointingToDeclaration/"><span class="token annotation builtin">Inject</span></span></div></div><span class="token keyword">constructor</span><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">usuarioRepository<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-usuario-repository/index.html">UsuarioRepository</a><span class="token punctuation">, </span></span><span class="parameter ">claseRepository<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-clase-repository/index.html">ClaseRepository</a><span class="token punctuation">, </span></span><span class="parameter ">centroRepository<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-centro-repository/index.html">CentroRepository</a><span class="token punctuation">, </span></span><span class="parameter ">cursoRepository<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-curso-repository/index.html">CursoRepository</a><span class="token punctuation">, </span></span><span class="parameter ">authRepository<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-auth-repository/index.html">AuthRepository</a><span class="token punctuation">, </span></span><span class="parameter ">profesorRepository<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.repository/-profesor-repository/index.html">ProfesorRepository</a></span></span><span class="token punctuation">)</span></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div data-togglable="PROPERTY">
+        <h2 class="">Properties</h2>
+        <div class="table"><a data-name="1832570925%2FProperties%2F492899073" anchor-label="uiState" id="1832570925%2FProperties%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="ui-state.html"><span>ui</span><wbr></wbr><span><span>State</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1832570925%2FProperties%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">val </span><a href="ui-state.html">uiState</a><span class="token operator">: </span><span data-unresolved-link="kotlinx.coroutines.flow/StateFlow///PointingToDeclaration/">StateFlow</span><span class="token operator">&lt;</span><span class="token keyword"></span><a href="../-vincular-profesor-clase-ui-state/index.html">VincularProfesorClaseUiState</a><span class="token operator">&gt;</span></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div data-togglable="FUNCTION">
+        <h2 class="">Functions</h2>
+        <div class="table"><a data-name="264516373%2FFunctions%2F492899073" anchor-label="addCloseable" id="264516373%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="../../com.tfg.umeegunero.navigation/-navigation-view-model/index.html#264516373%2FFunctions%2F492899073"><span>add</span><wbr></wbr><span><span>Closeable</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="264516373%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">open </span><span class="token keyword"></span><span class="token keyword">fun </span><a href="../../com.tfg.umeegunero.navigation/-navigation-view-model/index.html#264516373%2FFunctions%2F492899073"><span class="token function">addCloseable</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter "><span><span class="token annotation builtin">@</span><a href="https://developer.android.com/reference/kotlin/androidx/annotation/NonNull.html"><span class="token annotation builtin">NonNull</span></a> </span>p0<span class="token operator">: </span><a href="https://developer.android.com/reference/kotlin/java/io/Closeable.html">Closeable</a></span></span><span class="token punctuation">)</span></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="998930113%2FFunctions%2F492899073" anchor-label="asignarProfesorAClase" id="998930113%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="asignar-profesor-a-clase.html"><span>asignar</span><wbr></wbr><span>Profesor</span><wbr></wbr><span><span>AClase</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="998930113%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="asignar-profesor-a-clase.html"><span class="token function">asignarProfesorAClase</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">profesorId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">claseId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Asigna un profesor a una clase</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="923312874%2FFunctions%2F492899073" anchor-label="cargarClasesPorCurso" id="923312874%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="cargar-clases-por-curso.html"><span>cargar</span><wbr></wbr><span>Clases</span><wbr></wbr><span>Por</span><wbr></wbr><span><span>Curso</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="923312874%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="cargar-clases-por-curso.html"><span class="token function">cargarClasesPorCurso</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">cursoId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Carga las clases de un curso específico</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1014441457%2FFunctions%2F492899073" anchor-label="cargarCursos" id="-1014441457%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="cargar-cursos.html"><span>cargar</span><wbr></wbr><span><span>Cursos</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1014441457%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="cargar-cursos.html"><span class="token function">cargarCursos</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">centroId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Carga los cursos de un centro</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="168504720%2FFunctions%2F492899073" anchor-label="cargarProfesores" id="168504720%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="cargar-profesores.html"><span>cargar</span><wbr></wbr><span><span>Profesores</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="168504720%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="cargar-profesores.html"><span class="token function">cargarProfesores</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">centroId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Carga los profesores de un centro específico</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-259502357%2FFunctions%2F492899073" anchor-label="cargarTodosCentros" id="-259502357%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="cargar-todos-centros.html"><span>cargar</span><wbr></wbr><span>Todos</span><wbr></wbr><span><span>Centros</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-259502357%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="cargar-todos-centros.html"><span class="token function">cargarTodosCentros</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Carga todos los centros disponibles</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1248994975%2FFunctions%2F492899073" anchor-label="desasignarProfesorDeClase" id="-1248994975%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="desasignar-profesor-de-clase.html"><span>desasignar</span><wbr></wbr><span>Profesor</span><wbr></wbr><span>De</span><wbr></wbr><span><span>Clase</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1248994975%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="desasignar-profesor-de-clase.html"><span class="token function">desasignarProfesorDeClase</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">profesorId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">claseId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Desasigna un profesor de una clase</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="24699737%2FFunctions%2F492899073" anchor-label="inicializarConClase" id="24699737%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="inicializar-con-clase.html"><span>inicializar</span><wbr></wbr><span>Con</span><wbr></wbr><span><span>Clase</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="24699737%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="inicializar-con-clase.html"><span class="token function">inicializarConClase</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">claseId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Inicializa el ViewModel con una clase específica</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="1543578116%2FFunctions%2F492899073" anchor-label="isProfesorAsignadoAClase" id="1543578116%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="is-profesor-asignado-a-clase.html"><span>is</span><wbr></wbr><span>Profesor</span><wbr></wbr><span>Asignado</span><wbr></wbr><span><span>AClase</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1543578116%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="is-profesor-asignado-a-clase.html"><span class="token function">isProfesorAsignadoAClase</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">profesorId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a><span class="token punctuation">, </span></span><span class="parameter ">claseId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-boolean/index.html">Boolean</a></div><div class="brief "><p class="paragraph">Verifica si un profesor está asignado a una clase</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-26699838%2FFunctions%2F492899073" anchor-label="limpiarError" id="-26699838%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="limpiar-error.html"><span>limpiar</span><wbr></wbr><span><span>Error</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-26699838%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="limpiar-error.html"><span class="token function">limpiarError</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Limpia los errores</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1731928354%2FFunctions%2F492899073" anchor-label="limpiarMensajeExito" id="-1731928354%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="limpiar-mensaje-exito.html"><span>limpiar</span><wbr></wbr><span>Mensaje</span><wbr></wbr><span><span>Exito</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1731928354%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="limpiar-mensaje-exito.html"><span class="token function">limpiarMensajeExito</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Limpia los mensajes de éxito</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-100555751%2FFunctions%2F492899073" anchor-label="mostrarDialogoAsignarClases" id="-100555751%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="mostrar-dialogo-asignar-clases.html"><span>mostrar</span><wbr></wbr><span>Dialogo</span><wbr></wbr><span>Asignar</span><wbr></wbr><span><span>Clases</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-100555751%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="mostrar-dialogo-asignar-clases.html"><span class="token function">mostrarDialogoAsignarClases</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Muestra el diálogo para asignar clases a un profesor</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="569243040%2FFunctions%2F492899073" anchor-label="mostrarDialogoConfirmarDesasignacion" id="569243040%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="mostrar-dialogo-confirmar-desasignacion.html"><span>mostrar</span><wbr></wbr><span>Dialogo</span><wbr></wbr><span>Confirmar</span><wbr></wbr><span><span>Desasignacion</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="569243040%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="mostrar-dialogo-confirmar-desasignacion.html"><span class="token function">mostrarDialogoConfirmarDesasignacion</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Muestra el diálogo de confirmación para desasignar un profesor de una clase</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-495762052%2FFunctions%2F492899073" anchor-label="mostrarError" id="-495762052%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="mostrar-error.html"><span>mostrar</span><wbr></wbr><span><span>Error</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-495762052%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="mostrar-error.html"><span class="token function">mostrarError</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">mensaje<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Muestra un mensaje de error en la UI</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="932746707%2FFunctions%2F492899073" anchor-label="mostrarMensaje" id="932746707%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="mostrar-mensaje.html"><span>mostrar</span><wbr></wbr><span><span>Mensaje</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="932746707%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="mostrar-mensaje.html"><span class="token function">mostrarMensaje</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">mensaje<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Muestra un mensaje en la UI</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="298407910%2FFunctions%2F492899073" anchor-label="obtenerCentroPorId" id="298407910%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="obtener-centro-por-id.html"><span>obtener</span><wbr></wbr><span>Centro</span><wbr></wbr><span>Por</span><wbr></wbr><span><span>Id</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="298407910%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword">suspend </span><span class="token keyword">fun </span><a href="obtener-centro-por-id.html"><span class="token function">obtenerCentroPorId</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">centroId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span><span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.model/-centro/index.html">Centro</a><span class="token operator">?</span></div><div class="brief "><p class="paragraph">Obtiene un centro por su ID</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-2050411585%2FFunctions%2F492899073" anchor-label="ocultarDialogoAsignarClases" id="-2050411585%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="ocultar-dialogo-asignar-clases.html"><span>ocultar</span><wbr></wbr><span>Dialogo</span><wbr></wbr><span>Asignar</span><wbr></wbr><span><span>Clases</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-2050411585%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="ocultar-dialogo-asignar-clases.html"><span class="token function">ocultarDialogoAsignarClases</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Oculta el diálogo para asignar clases a un profesor</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="1406574778%2FFunctions%2F492899073" anchor-label="ocultarDialogoConfirmarDesasignacion" id="1406574778%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="ocultar-dialogo-confirmar-desasignacion.html"><span>ocultar</span><wbr></wbr><span>Dialogo</span><wbr></wbr><span>Confirmar</span><wbr></wbr><span><span>Desasignacion</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1406574778%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="ocultar-dialogo-confirmar-desasignacion.html"><span class="token function">ocultarDialogoConfirmarDesasignacion</span></a><span class="token punctuation">(</span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Oculta el diálogo de confirmación para desasignar un profesor</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="1357263629%2FFunctions%2F492899073" anchor-label="seleccionarCentro" id="1357263629%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="seleccionar-centro.html"><span>seleccionar</span><wbr></wbr><span><span>Centro</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1357263629%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="seleccionar-centro.html"><span class="token function">seleccionarCentro</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">centroId<span class="token operator">: </span><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin-stdlib/kotlin/-string/index.html">String</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Selecciona un centro y carga sus cursos</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-1980006113%2FFunctions%2F492899073" anchor-label="seleccionarClase" id="-1980006113%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="seleccionar-clase.html"><span>seleccionar</span><wbr></wbr><span><span>Clase</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-1980006113%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="seleccionar-clase.html"><span class="token function">seleccionarClase</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">clase<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.model/-clase/index.html">Clase</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Selecciona una clase</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="1809605087%2FFunctions%2F492899073" anchor-label="seleccionarCurso" id="1809605087%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="seleccionar-curso.html"><span>seleccionar</span><wbr></wbr><span><span>Curso</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="1809605087%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="seleccionar-curso.html"><span class="token function">seleccionarCurso</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">curso<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.model/-curso/index.html">Curso</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Selecciona un curso</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+<a data-name="-484938691%2FFunctions%2F492899073" anchor-label="seleccionarProfesor" id="-484938691%2FFunctions%2F492899073" data-filterable-set=":app:dokkaHtml/release"></a>
+          <div class="table-row" data-filterable-current=":app:dokkaHtml/release" data-filterable-set=":app:dokkaHtml/release">
+            <div class="main-subrow keyValue ">
+              <div class=""><span class="inline-flex">
+                  <div><a href="seleccionar-profesor.html"><span>seleccionar</span><wbr></wbr><span><span>Profesor</span></span></a></div>
+<span class="anchor-wrapper"><span class="anchor-icon" pointing-to="-484938691%2FFunctions%2F492899073"></span>
+                    <div class="copy-popup-wrapper "><span class="copy-popup-icon"></span><span>Link copied to clipboard</span></div>
+                  </span></span></div>
+              <div>
+                <div class="title">
+                  <div class="platform-hinted " data-platform-hinted="data-platform-hinted"><div class="content sourceset-dependent-content" data-active="" data-togglable=":app:dokkaHtml/release"><div class="symbol monospace"><span class="token keyword"></span><span class="token keyword">fun </span><a href="seleccionar-profesor.html"><span class="token function">seleccionarProfesor</span></a><span class="token punctuation">(</span><span class="parameters "><span class="parameter ">profesor<span class="token operator">: </span><a href="../../com.tfg.umeegunero.data.model/-usuario/index.html">Usuario</a></span></span><span class="token punctuation">)</span></div><div class="brief "><p class="paragraph">Selecciona un profesor y carga sus clases asignadas</p></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      <div class="footer">
+        <span class="go-to-top-icon"><a href="#content" id="go-to-top-link"></a></span><span>© 2025 Copyright</span><span
+                class="pull-right"><span>Generated by </span><a
+                href="https://github.com/Kotlin/dokka"><span>dokka</span><span class="padded-icon"></span></a></span>
+      </div>
+    </div>
+</div>
+</body>
+</html>

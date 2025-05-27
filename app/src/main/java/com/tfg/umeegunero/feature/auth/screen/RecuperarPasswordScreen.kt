@@ -98,7 +98,6 @@ fun RecuperarPasswordScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val focusManager = LocalFocusManager.current
 
     // Efecto para mostrar errores
     LaunchedEffect(uiState.error) {

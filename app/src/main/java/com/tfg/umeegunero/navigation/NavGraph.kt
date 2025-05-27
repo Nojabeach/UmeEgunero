@@ -63,8 +63,6 @@ fun NavGraph(
                 onNavigateToTema = {},
                 onNavigateToEmailConfig = {},
                 onNavigateToComunicados = {},
-                onNavigateToBandejaEntrada = {},
-                onNavigateToComponerMensaje = {},
                 onNavigateToSoporteTecnico = {},
                 onNavigateToFAQ = {},
                 onNavigateToTerminos = {},

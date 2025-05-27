@@ -345,8 +345,6 @@ fun Navigation(
                 },
                 onNavigateToEmailConfig = { navController.navigate(AppScreens.EmailConfig.route) },
                 onNavigateToComunicados = { navController.navigate(AppScreens.ComunicadosCirculares.route) },
-                onNavigateToBandejaEntrada = { navController.navigate(AppScreens.BandejaEntrada.route) },
-                onNavigateToComponerMensaje = { navController.navigate(AppScreens.ComponerMensaje.route) },
                 onNavigateToSoporteTecnico = { navController.navigate(AppScreens.SoporteTecnico.route) },
                 onNavigateToFAQ = { navController.navigate(AppScreens.FAQ.route) },
                 onNavigateToTerminos = { navController.navigate(AppScreens.TerminosCondiciones.route) },

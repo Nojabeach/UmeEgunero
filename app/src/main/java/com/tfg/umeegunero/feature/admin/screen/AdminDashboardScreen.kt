@@ -78,8 +78,6 @@ import androidx.compose.material3.HorizontalDivider
  * @param onNavigateToTema Callback para navegar a configuración de tema
  * @param onNavigateToEmailConfig Callback para navegar a configuración de email
  * @param onNavigateToComunicados Callback para navegar a comunicados
- * @param onNavigateToBandejaEntrada Callback para navegar a bandeja de entrada
- * @param onNavigateToComponerMensaje Callback para navegar a componer mensaje
  * @param onNavigateToSoporteTecnico Callback para navegar a soporte técnico
  * @param onNavigateToFAQ Callback para navegar a FAQ
  * @param onNavigateToTerminos Callback para navegar a términos y condiciones
@@ -101,8 +99,6 @@ fun AdminDashboardScreen(
     onNavigateToTema: () -> Unit,
     onNavigateToEmailConfig: () -> Unit,
     onNavigateToComunicados: () -> Unit,
-    onNavigateToBandejaEntrada: () -> Unit = { navController.navigate(AppScreens.UnifiedInbox.route) },
-    onNavigateToComponerMensaje: () -> Unit = { navController.navigate(AppScreens.NewMessage.createRoute()) },
     onNavigateToSoporteTecnico: () -> Unit,
     onNavigateToFAQ: () -> Unit,
     onNavigateToTerminos: () -> Unit,
@@ -110,7 +106,6 @@ fun AdminDashboardScreen(
     onNavigateToProfile: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val haptic = LocalHapticFeedback.current
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showEmailConfigDialog by remember { mutableStateOf(false) }
@@ -838,8 +833,6 @@ fun VistaPreviaDashboardAdmin() {
             onNavigateToTema = {},
             onNavigateToEmailConfig = {},
             onNavigateToComunicados = {},
-            onNavigateToBandejaEntrada = {},
-            onNavigateToComponerMensaje = {},
             onNavigateToSoporteTecnico = {},
             onNavigateToFAQ = {},
             onNavigateToTerminos = {},

@@ -201,7 +201,7 @@ class ClaseRepositoryImpl @Inject constructor(
                     val data = document.data
                     Timber.d("📄 Documento clase: id=${document.id}, data=$data")
                     
-                    val clase = document.toObject<Clase>()?.copy(id = document.id)
+                    val clase = document.toObject(Clase::class.java)?.copy(id = document.id)
                     clase?.also { Timber.d("✅ Clase mapeada: ${it.nombre} (${it.id})") }
                     clase
                 } catch (e: Exception) {
@@ -234,7 +234,7 @@ class ClaseRepositoryImpl @Inject constructor(
             try {
                 val clases = snapshot.documents.mapNotNull { document ->
                     try {
-                        val clase = document.toObject<Clase>()?.copy(id = document.id)
+                        val clase = document.toObject(Clase::class.java)?.copy(id = document.id)
                         Timber.d("📝 Clase actualizada: id=${document.id}, nombre=${clase?.nombre ?: "null"}")
                         clase
                     } catch (e: Exception) {
@@ -380,7 +380,7 @@ class ClaseRepositoryImpl @Inject constructor(
                 
             val clases = documentos.mapNotNull { document ->
                 try {
-                    document.toObject<Clase>()?.copy(id = document.id)
+                    document.toObject(Clase::class.java)?.copy(id = document.id)
                 } catch (e: Exception) {
                     Timber.e(e, "Error al convertir documento a Clase: ${document.id}")
                     null
@@ -403,7 +403,7 @@ class ClaseRepositoryImpl @Inject constructor(
                 return@withContext Result.Error(Exception("La clase no existe"))
             }
             
-            val clase = claseDoc.toObject<Clase>()
+            val clase = claseDoc.toObject(Clase::class.java)
             
             // Si la clase ya tiene este profesor como titular, no hacemos nada
             if (clase?.profesorTitularId == profesorId) {
@@ -436,7 +436,7 @@ class ClaseRepositoryImpl @Inject constructor(
                 return@withContext Result.Error(Exception("La clase no existe"))
             }
             
-            val clase = claseDoc.toObject<Clase>()
+            val clase = claseDoc.toObject(Clase::class.java)
             
             // Si el profesor es el titular, no permitimos eliminarlo por esta vía
             if (clase?.profesorTitularId == profesorId) {
@@ -469,7 +469,7 @@ class ClaseRepositoryImpl @Inject constructor(
                 return@withContext Result.Error(Exception("La clase no existe"))
             }
             
-            val clase = claseDoc.toObject<Clase>()
+            val clase = claseDoc.toObject(Clase::class.java)
             
             // Combinamos el titular y los auxiliares
             val todosLosProfesores = mutableListOf<String>()
@@ -686,7 +686,10 @@ class ClaseRepositoryImpl @Inject constructor(
             for (claseDoc in clases) {
                 try {
                     val claseId = claseDoc.id
-                    val alumnosIdsActuales = claseDoc.get("alumnosIds") as? List<String> ?: emptyList()
+                    val alumnosIdsActuales = when (val alumnosIdsAny = claseDoc.get("alumnosIds")) {
+                        is List<*> -> alumnosIdsAny.filterIsInstance<String>()
+                        else -> emptyList()
+                    }
                     
                     Timber.d("Procesando clase $claseId - alumnosIds actuales: $alumnosIdsActuales")
                     
