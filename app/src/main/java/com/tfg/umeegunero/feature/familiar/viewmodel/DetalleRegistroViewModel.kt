@@ -7,7 +7,6 @@ import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
-import com.tfg.umeegunero.feature.familiar.screen.DetalleRegistroUiState
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.model.LecturaFamiliar
@@ -24,6 +23,8 @@ import java.util.Date
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 /**
  * Estado de UI para la pantalla de detalle de registro
@@ -287,11 +288,56 @@ class DetalleRegistroViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
+                Timber.d("Cargando registro por fecha para alumno: $alumnoId, fecha: $fecha")
+                
+                // Crear el formato para obtener un ID de registro basado en la fecha
+                val formatter = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+                val fechaStr = formatter.format(fecha)
+                val posibleRegistroId = "registro_${fechaStr}_$alumnoId"
+                
+                Timber.d("Intentando cargar registro con ID calculado: $posibleRegistroId")
+                
+                // Primero intentar obtener el registro por ID calculado
+                val resultadoDirecto = registroDiarioRepository.obtenerRegistroDiarioPorId(posibleRegistroId)
+                
+                if (resultadoDirecto is Result.Success && resultadoDirecto.data != null) {
+                    val registro = resultadoDirecto.data
+                    Timber.d("Registro encontrado directamente por ID: $posibleRegistroId")
+                    
+                    // Si hay profesor, cargar su nombre
+                    var profesorNombre: String? = null
+                    if (registro.profesorId.isNotBlank()) {
+                        try {
+                            val profesorResult = usuarioRepository.getUsuarioById(registro.profesorId)
+                            
+                            if (profesorResult is Result.Success) {
+                                val profesor = profesorResult.data
+                                profesorNombre = "${profesor.nombre} ${profesor.apellidos}"
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al cargar información del profesor: ${e.message}")
+                        }
+                    }
+                    
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        registro = registro,
+                        profesorNombre = profesorNombre,
+                        error = null
+                    )}
+                    
+                    // Marcar como visto por el familiar
+                    marcarComoVistoPorFamiliar(registro)
+                    return@launch
+                }
+                
+                // Si no encontramos el registro por ID, intentar por fecha
                 val result = registroDiarioRepository.obtenerRegistroPorAlumnoYFecha(alumnoId, fecha)
                 
                 when (result) {
                     is Result.Success<RegistroActividad> -> {
                         val registro = result.data
+                        Timber.d("Registro encontrado por alumno y fecha: ${registro.id}")
                         
                         // Si hay profesor, cargar su nombre
                         var profesorNombre: String? = null

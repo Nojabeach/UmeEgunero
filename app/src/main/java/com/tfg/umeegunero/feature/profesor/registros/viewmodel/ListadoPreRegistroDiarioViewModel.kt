@@ -33,6 +33,9 @@ import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.time.format.DateTimeFormatter
+import com.tfg.umeegunero.data.model.NotificacionAusencia
+import com.tfg.umeegunero.data.repository.NotificacionAusenciaRepository
+import com.tfg.umeegunero.data.model.EstadoNotificacionAusencia
 
 /**
  * Extensión para convertir LocalDate a Date
@@ -74,6 +77,7 @@ data class InformeAsistencia(
  * @property fechaSeleccionada Fecha seleccionada para el registro
  * @property esFestivo Indica si la fecha seleccionada es festiva
  * @property nombreClase Nombre de la clase actual
+ * @property claseId ID de la clase actual
  * @property mostrarSoloPresentes Filtro para mostrar sólo alumnos presentes
  * @property totalAlumnos Total de alumnos en la clase
  * @property alumnosPresentes Total de alumnos presentes hoy
@@ -84,6 +88,9 @@ data class InformeAsistencia(
  * @property profesorId ID del profesor (cuando se recibe desde otra pantalla)
  * @property mostrarDialogoInforme Indica si debe mostrarse el diálogo de informe
  * @property datosInforme Datos del informe de asistencia
+ * @property ausenciasNotificadas Lista de notificaciones de ausencia para la clase actual
+ * @property mostrarDialogoAusencia Indica si debe mostrarse el diálogo de detalle de ausencia
+ * @property ausenciaSeleccionada Notificación de ausencia seleccionada para mostrar detalles
  */
 data class ListadoPreRegistroDiarioUiState(
     val alumnos: List<Alumno> = emptyList(),
@@ -93,6 +100,7 @@ data class ListadoPreRegistroDiarioUiState(
     val fechaSeleccionada: LocalDate = LocalDate.now(),
     val esFestivo: Boolean = false,
     val nombreClase: String = "",
+    val claseId: String = "",
     val mostrarSoloPresentes: Boolean = false,
     val totalAlumnos: Int = 0,
     val alumnosPresentes: Int = 0,
@@ -102,7 +110,10 @@ data class ListadoPreRegistroDiarioUiState(
     val navegarARegistroDiario: Boolean = false,
     val profesorId: String = "",
     val mostrarDialogoInforme: Boolean = false,
-    val datosInforme: InformeAsistencia = InformeAsistencia()
+    val datosInforme: InformeAsistencia = InformeAsistencia(),
+    val ausenciasNotificadas: List<NotificacionAusencia> = emptyList(),
+    val mostrarDialogoAusencia: Boolean = false,
+    val ausenciaSeleccionada: NotificacionAusencia? = null
 )
 
 /**
@@ -110,14 +121,14 @@ data class ListadoPreRegistroDiarioUiState(
  */
 @HiltViewModel
 class ListadoPreRegistroDiarioViewModel @Inject constructor(
-    private val alumnoRepository: AlumnoRepository,
-    private val claseRepository: ClaseRepository, 
-    private val profesorRepository: ProfesorRepository,
-    private val asistenciaRepository: AsistenciaRepository,
-    private val calendarioRepository: CalendarioRepository,
-    private val registroDiarioRepository: RegistroDiarioRepository,
+    private val authRepository: AuthRepository,
     private val usuarioRepository: UsuarioRepository,
-    private val authRepository: AuthRepository
+    private val asistenciaRepository: AsistenciaRepository,
+    private val alumnoRepository: AlumnoRepository,
+    private val registroDiarioRepository: RegistroDiarioRepository,
+    private val claseRepository: ClaseRepository,
+    private val calendarioRepository: CalendarioRepository,
+    private val notificacionAusenciaRepository: NotificacionAusenciaRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ListadoPreRegistroDiarioUiState())
@@ -152,8 +163,8 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 }
                 
                 // Obtener el profesor por el ID de usuario
-                val usuarioProfesor = profesorRepository.getProfesorByUsuarioId(usuarioActual.dni)
-                if (usuarioProfesor == null) {
+                val usuarioProfesor = usuarioRepository.getUsuarioById(usuarioActual.dni)
+                if (usuarioProfesor !is Result.Success) {
                     _uiState.update { it.copy(
                         error = "No se encontró información del profesor",
                         isLoading = false
@@ -162,7 +173,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 }
                 
                 // Obtener las clases asignadas al profesor
-                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.dni)
+                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.data.dni)
                 if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) {
                     _uiState.update { it.copy(
                         error = "No hay clases asignadas a este profesor",
@@ -222,12 +233,16 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                         alumnos = alumnosConPresencia,
                         alumnosFiltrados = alumnosFiltrados,
                         nombreClase = clase.nombre,
+                        claseId = clase.id,
                         totalAlumnos = alumnosConPresencia.size,
                         alumnosPresentes = alumnosConPresencia.count { it.presente },
                         esFestivo = esFestivo,
                         alumnosConRegistro = alumnosConRegistro
                     )
                 }
+                
+                // Cargar ausencias notificadas
+                cargarAusenciasNotificadas()
                 
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar datos")
@@ -246,7 +261,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
         try {
             val resultado = calendarioRepository.esDiaFestivo(fecha)
             return when (resultado) {
-                is Result.Success -> resultado.data
+                is Result.Success<Boolean> -> resultado.data
                 else -> fecha.dayOfWeek.value > 5 // Considerar fin de semana como festivo
             }
         } catch (e: Exception) {
@@ -269,10 +284,11 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 
                 // Obtener usuario y profesor
                 val usuario = authRepository.getCurrentUser() ?: return@launch
-                val usuarioProfesor = profesorRepository.getProfesorByUsuarioId(usuario.dni) ?: return@launch
+                val usuarioProfesor = usuarioRepository.getUsuarioById(usuario.dni)
+                if (usuarioProfesor !is Result.Success) return@launch
                 
                 // Obtener clases del profesor
-                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.dni)
+                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.data.dni)
                 if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) return@launch
                 
                 val clase = clasesResult.data.first()
@@ -444,8 +460,8 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     return@launch
                 }
                 
-                val usuarioProfesor = profesorRepository.getProfesorByUsuarioId(usuario.dni)
-                if (usuarioProfesor == null) {
+                val usuarioProfesor = usuarioRepository.getUsuarioById(usuario.dni)
+                if (usuarioProfesor !is Result.Success) {
                     _uiState.update { it.copy(
                         error = "No se encontró información del profesor",
                         isLoading = false
@@ -454,7 +470,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 }
                 
                 // Obtener clase
-                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.dni)
+                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.data.dni)
                 if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) {
                     _uiState.update { it.copy(
                         error = "No hay clases asignadas a este profesor",
@@ -479,7 +495,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     val resultado = crearRegistroAutomatico(
                         alumnoId = alumno.id,
                         claseId = clase.id,
-                        profesorId = usuarioProfesor.dni,
+                        profesorId = usuarioProfesor.data.dni,
                         fecha = fecha
                     )
                     
@@ -573,8 +589,8 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     return@launch
                 }
                 
-                val usuarioProfesor = profesorRepository.getProfesorByUsuarioId(usuario.dni)
-                if (usuarioProfesor == null) {
+                val usuarioProfesor = usuarioRepository.getUsuarioById(usuario.dni)
+                if (usuarioProfesor !is Result.Success) {
                     _uiState.update { it.copy(
                         error = "No se encontró información del profesor",
                         isLoading = false
@@ -583,7 +599,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 }
                 
                 // Obtener clases del profesor
-                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.dni)
+                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.data.dni)
                 if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) {
                     _uiState.update { it.copy(
                         error = "No hay clases asignadas a este profesor",
@@ -605,7 +621,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 // Registrar la asistencia en Firestore
                 val registroAsistencia = com.tfg.umeegunero.data.model.RegistroAsistencia(
                     claseId = clase.id,
-                    profesorId = usuarioProfesor.dni,
+                    profesorId = usuarioProfesor.data.dni,
                     fecha = com.google.firebase.Timestamp(fecha),
                     estadosAsistencia = estadosAsistencia,
                     observaciones = ""
@@ -755,85 +771,28 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
      * @param profesorId ID del profesor
      */
     fun setProfesorId(profesorId: String) {
+        _uiState.update { it.copy(profesorId = profesorId) }
+        
         viewModelScope.launch {
             try {
-                _uiState.update { it.copy(isLoading = true, profesorId = profesorId) }
-                
-                Timber.d("Estableciendo profesor ID: $profesorId")
-                
-                // Obtener datos del profesor
-                val profesor = profesorRepository.getProfesorById(profesorId)
-                if (profesor == null) {
-                    _uiState.update { it.copy(
-                        error = "No se encontró información del profesor",
-                        isLoading = false
-                    ) }
-                    return@launch
-                }
-                
-                // Obtener las clases asignadas al profesor
-                val clasesResult = claseRepository.getClasesByProfesor(profesor.dni)
-                if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) {
-                    _uiState.update { it.copy(
-                        error = "No hay clases asignadas a este profesor",
-                        isLoading = false
-                    ) }
-                    return@launch
-                }
-                
-                val clase = clasesResult.data.first()
-                Timber.d("Clase obtenida: ${clase.nombre} (ID: ${clase.id})")
-                
-                val alumnosResult = usuarioRepository.getAlumnosByClase(clase.id)
-                val alumnos = if (alumnosResult is Result.Success) alumnosResult.data else emptyList()
-                Timber.d("ListadoPreRegistroDiarioViewModel (setProfesorId): Alumnos recibidos: ${alumnos.joinToString { it.nombre + " (ID: " + it.id + ", DNI: " + it.dni + ", Presente: " + it.presente + ")" }}")
-                
-                // Obtener registros existentes para la fecha actual
-                val registros = getRegistrosDiariosPorFechaYClase(
-                    _uiState.value.fechaSeleccionada.toString(),
-                    clase.id
-                )
-                
-                // Actualizar alumnos con registro
-                val alumnosConRegistro = registros
-                    .filter { !it.eliminado } // Filtrar los eliminados
-                    .map { it.alumnoId }
-                    .toSet()
-                
-                Timber.d("Alumnos con registro para la fecha ${_uiState.value.fechaSeleccionada}: $alumnosConRegistro")
-                
-                // Obtener datos de asistencia
-                val fechaJava = java.util.Date.from(
-                    _uiState.value.fechaSeleccionada.atStartOfDay().atZone(java.time.ZoneId.systemDefault()).toInstant()
-                )
-                
-                val asistenciaResult = asistenciaRepository.obtenerRegistroAsistencia(clase.id, fechaJava)
-                val estadosAsistencia = asistenciaResult?.estadosAsistencia ?: emptyMap()
-                
-                // Actualizar presentes en los alumnos basado en asistencia
-                val alumnosConPresencia = alumnos.map { alumno ->
-                    val estado = estadosAsistencia[alumno.id]
-                    alumno.copy(presente = estado == EstadoAsistencia.PRESENTE)
-                }
-                
-                _uiState.update { 
-                    it.copy(
-                        nombreClase = clase.nombre,
-                        alumnos = alumnosConPresencia,
-                        alumnosFiltrados = if (it.mostrarSoloPresentes) alumnosConPresencia.filter { a -> a.presente } else alumnosConPresencia,
-                        totalAlumnos = alumnosConPresencia.size,
-                        alumnosPresentes = alumnosConPresencia.count { a -> a.presente },
-                        alumnosConRegistro = alumnosConRegistro,
-                        alumnosSeleccionados = it.alumnosSeleccionados.filter { alumno -> !alumnosConRegistro.contains(alumno.id) },
-                        isLoading = false
-                    )
+                // Obtener la clase asignada al profesor
+                val profesorResult = usuarioRepository.getUsuarioById(profesorId)
+                if (profesorResult is Result.Success) {
+                    // Buscar la clase asignada al profesor en los clasesIds
+                    val claseAsignada = if (profesorResult.data.clasesIds.isNotEmpty()) {
+                        profesorResult.data.clasesIds.first()
+                    } else {
+                        // Intentar obtener de otra forma si no tiene clasesIds
+                        ""
+                    }
+                    
+                    if (claseAsignada.isNotBlank()) {
+                        _uiState.update { it.copy(claseId = claseAsignada) }
+                        cargarDatos()
+                    }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al establecer profesor: ${e.message}")
-                _uiState.update { it.copy(
-                    error = "Error al cargar los datos: ${e.message}",
-                    isLoading = false
-                ) }
+                Timber.e(e, "Error al obtener la clase asignada al profesor")
             }
         }
     }
@@ -846,10 +805,11 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
             try {
                 // Obtener usuario actual y clase
                 val usuario = authRepository.getCurrentUser() ?: return@launch
-                val usuarioProfesor = profesorRepository.getProfesorByUsuarioId(usuario.dni) ?: return@launch
+                val usuarioProfesor = usuarioRepository.getUsuarioById(usuario.dni)
+                if (usuarioProfesor !is Result.Success) return@launch
                 
                 // Obtener clases del profesor
-                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.dni)
+                val clasesResult = claseRepository.getClasesByProfesor(usuarioProfesor.data.dni)
                 if (clasesResult !is Result.Success || clasesResult.data.isEmpty()) return@launch
                 
                 val clase = clasesResult.data.first()
@@ -1167,5 +1127,119 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
         sb.append("Fecha de emisión: ${java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))}")
         
         return sb.toString()
+    }
+
+    /**
+     * Carga las notificaciones de ausencia para la clase actual
+     */
+    fun cargarAusenciasNotificadas() {
+        viewModelScope.launch {
+            try {
+                val claseActual = _uiState.value.claseId
+                if (claseActual.isNotBlank()) {
+                    Timber.d("Cargando ausencias para clase: $claseActual")
+                    val resultado = notificacionAusenciaRepository.obtenerAusenciasPendientesPorClase(claseActual)
+                    
+                    if (resultado is Result.Success) {
+                        _uiState.update { it.copy(
+                            ausenciasNotificadas = resultado.data
+                        ) }
+                        Timber.d("Ausencias cargadas: ${resultado.data.size}")
+                    } else {
+                        Timber.d("No se pudieron cargar ausencias para la clase")
+                    }
+                } else {
+                    Timber.d("No hay claseId definido para cargar ausencias")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar ausencias notificadas")
+                // No actualizamos el estado de error para no interrumpir la experiencia
+            }
+        }
+    }
+
+    /**
+     * Muestra el diálogo de detalle de ausencia
+     */
+    fun mostrarDetalleAusencia(ausencia: NotificacionAusencia) {
+        _uiState.update { it.copy(
+            mostrarDialogoAusencia = true,
+            ausenciaSeleccionada = ausencia
+        ) }
+    }
+
+    /**
+     * Cierra el diálogo de detalle de ausencia
+     */
+    fun cerrarDetalleAusencia() {
+        _uiState.update { it.copy(
+            mostrarDialogoAusencia = false,
+            ausenciaSeleccionada = null
+        ) }
+    }
+
+    /**
+     * Procesa una ausencia notificada (aceptar o rechazar)
+     */
+    fun procesarAusencia(ausencia: NotificacionAusencia, aceptar: Boolean) {
+        viewModelScope.launch {
+            try {
+                val profesorId = authRepository.getCurrentUserId() ?: return@launch
+                
+                val estado = if (aceptar) 
+                    EstadoNotificacionAusencia.ACEPTADA 
+                else 
+                    EstadoNotificacionAusencia.RECHAZADA
+                
+                val resultado = notificacionAusenciaRepository.actualizarEstadoAusencia(
+                    notificacionId = ausencia.id,
+                    estado = estado,
+                    profesorId = profesorId
+                )
+                
+                if (resultado is Result.Success) {
+                    // Recargar ausencias
+                    cargarAusenciasNotificadas()
+                    
+                    // Cerrar diálogo
+                    cerrarDetalleAusencia()
+                    
+                    // Mostrar mensaje de éxito
+                    _uiState.update { it.copy(
+                        mensajeExito = if (aceptar) 
+                            "Ausencia aceptada correctamente" 
+                        else 
+                            "Ausencia rechazada"
+                    ) }
+                    
+                    // Si se aceptó, actualizar el estado de asistencia del alumno
+                    if (aceptar) {
+                        // Buscar el alumno en la lista
+                        val alumno = _uiState.value.alumnos.find { it.id == ausencia.alumnoId }
+                        
+                        if (alumno != null) {
+                            // Marcar como ausente en los datos de UI (para actualizar la vista)
+                            val alumnosActualizados = _uiState.value.alumnos.map {
+                                if (it.id == alumno.id) it.copy(presente = false) else it
+                            }
+                            
+                            _uiState.update { it.copy(
+                                alumnos = alumnosActualizados,
+                                alumnosPresentes = alumnosActualizados.count { alumno -> alumno.presente }
+                            ) }
+                        }
+                    }
+                } else if (resultado is Result.Error) {
+                    _uiState.update { it.copy(
+                        error = "Error al procesar la ausencia: ${resultado.exception?.message ?: "Error desconocido"}"
+                    ) }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al procesar ausencia")
+                _uiState.update { it.copy(
+                    error = "Error al procesar la ausencia: ${e.message}"
+                ) }
+            }
+        }
     }
 } 

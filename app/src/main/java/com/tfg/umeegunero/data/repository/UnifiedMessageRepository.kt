@@ -77,14 +77,119 @@ class UnifiedMessageRepository @Inject constructor(
                 return Result.Error("Usuario no autenticado")
             }
             
+            // Primero obtenemos el mensaje para saber su tipo
+            val messageDoc = firestore.collection(MESSAGES_COLLECTION)
+                .document(messageId)
+                .get()
+                .await()
+                
+            if (!messageDoc.exists()) {
+                return Result.Error("Mensaje no encontrado")
+            }
+            
+            val messageData = messageDoc.data ?: return Result.Error("Datos del mensaje no válidos")
+            val messageType = MessageType.valueOf(messageData["type"] as? String ?: MessageType.CHAT.name)
+            val relatedEntityId = messageData["relatedEntityId"] as? String
+            
+            // Actualizar en la colección unificada
             firestore.collection(MESSAGES_COLLECTION)
                 .document(messageId)
                 .update(
-                    "status", MessageStatus.READ.name,
-                    "readTimestamp", Timestamp.now()
+                    mapOf(
+                        "status" to MessageStatus.READ.name,
+                        "readTimestamp" to Timestamp.now(),
+                        "readBy.${currentUser.dni}" to Timestamp.now()
+                    )
                 )
                 .await()
             
+            // Actualizar también en la colección original según el tipo
+            when (messageType) {
+                MessageType.CHAT -> {
+                    // Para mensajes de chat, actualizar en la colección de mensajes
+                    if (!relatedEntityId.isNullOrEmpty()) {
+                        try {
+                            firestore.collection("mensajes")
+                                .document(relatedEntityId)
+                                .update(
+                                    mapOf(
+                                        "leido" to true,
+                                        "fechaLectura" to Timestamp.now()
+                                    )
+                                )
+                                .await()
+                        } catch (e: Exception) {
+                            Timber.w(e, "No se pudo actualizar el mensaje original en 'mensajes'")
+                        }
+                    }
+                }
+                MessageType.ANNOUNCEMENT -> {
+                    // Para comunicados, actualizar en la colección de comunicados
+                    if (!relatedEntityId.isNullOrEmpty()) {
+                        try {
+                            firestore.collection("comunicados")
+                                .document(relatedEntityId)
+                                .update(
+                                    mapOf(
+                                        "lecturasPor.${currentUser.dni}" to Timestamp.now()
+                                    )
+                                )
+                                .await()
+                        } catch (e: Exception) {
+                            Timber.w(e, "No se pudo actualizar el comunicado original")
+                        }
+                    }
+                }
+                MessageType.NOTIFICATION -> {
+                    // Para notificaciones, actualizar si es necesario
+                    if (!relatedEntityId.isNullOrEmpty()) {
+                        try {
+                            firestore.collection("notificaciones")
+                                .document(relatedEntityId)
+                                .update(
+                                    mapOf(
+                                        "leida" to true,
+                                        "fechaLectura" to Timestamp.now()
+                                    )
+                                )
+                                .await()
+                        } catch (e: Exception) {
+                            Timber.w(e, "No se pudo actualizar la notificación original")
+                        }
+                    }
+                }
+                MessageType.DAILY_RECORD -> {
+                    // Para registros de actividad diaria, marcar como leído por el familiar
+                    if (!relatedEntityId.isNullOrEmpty()) {
+                        try {
+                            firestore.collection("registrosActividad")
+                                .document(relatedEntityId)
+                                .update(
+                                    mapOf(
+                                        "lecturasPorFamiliar.${currentUser.dni}" to mapOf(
+                                            "familiarId" to currentUser.dni,
+                                            "fechaLectura" to Timestamp.now()
+                                        )
+                                    )
+                                )
+                                .await()
+                        } catch (e: Exception) {
+                            Timber.w(e, "No se pudo actualizar el registro de actividad original")
+                        }
+                    }
+                }
+                MessageType.GROUP_CHAT,
+                MessageType.TASK,
+                MessageType.EVENT,
+                MessageType.SYSTEM,
+                MessageType.INCIDENT,
+                MessageType.ATTENDANCE -> {
+                    // Para estos tipos, no se requiere actualización adicional por ahora
+                    Timber.d("Tipo de mensaje $messageType marcado como leído, sin actualización adicional requerida")
+                }
+            }
+            
+            Timber.d("Mensaje $messageId marcado como leído exitosamente")
             Result.Success(true)
         } catch (e: Exception) {
             Timber.e(e, "Error al marcar mensaje como leído: $messageId")

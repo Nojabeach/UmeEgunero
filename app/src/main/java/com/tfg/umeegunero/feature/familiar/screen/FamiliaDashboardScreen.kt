@@ -29,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Feed
 import androidx.compose.material.icons.automirrored.filled.Announcement
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Sick
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -79,6 +80,10 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import timber.log.Timber
 import kotlinx.coroutines.CoroutineScope
+import com.tfg.umeegunero.data.model.NotificacionAusencia
+import com.tfg.umeegunero.data.model.EstadoNotificacionAusencia
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * Modelo para representar una solicitud de vinculación pendiente
@@ -278,6 +283,377 @@ fun NuevaSolicitudDialog(
 }
 
 /**
+ * Diálogo para notificar una ausencia
+ *
+ * @param alumno Alumno que estará ausente
+ * @param onDismiss Callback al cerrar el diálogo
+ * @param onSubmit Callback al enviar la notificación (alumnoId, alumnoNombre, fecha, motivo, duración, claseId, claseCurso)
+ * @param isLoading Indica si se está procesando el envío
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotificarAusenciaDialog(
+    alumno: Alumno,
+    onDismiss: () -> Unit,
+    onSubmit: (String, String, Date, String, Int, String, String) -> Unit,
+    isLoading: Boolean = false
+) {
+    var motivo by remember { mutableStateOf("") }
+    var fechaSeleccionada by remember { mutableStateOf(Date()) }
+    var duracion by remember { mutableStateOf(1) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    
+    val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    
+    // Control de errores
+    var motivoError by remember { mutableStateOf<String?>(null) }
+    
+    // DatePicker
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = fechaSeleccionada.time
+        )
+        
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let {
+                            fechaSeleccionada = Date(it)
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Sick,
+                    contentDescription = null,
+                    tint = FamiliarColor,
+                    modifier = Modifier.size(36.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text(
+                    text = "Notificar ausencia",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Text(
+                    text = "Alumno: ${alumno.nombre} ${alumno.apellidos ?: ""}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                // Selector de fecha
+                OutlinedTextField(
+                    value = dateFormatter.format(fechaSeleccionada),
+                    onValueChange = { /* No editable manualmente */ },
+                    readOnly = true,
+                    label = { Text("Fecha de ausencia") },
+                    leadingIcon = { 
+                        Icon(
+                            imageVector = Icons.Default.DateRange, 
+                            contentDescription = null
+                        )
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Seleccionar fecha"
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Selector de duración
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Duración:",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                    ) {
+                        IconButton(
+                            onClick = { if (duracion > 1) duracion-- },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Remove,
+                                contentDescription = "Disminuir días"
+                            )
+                        }
+                        
+                        Text(
+                            text = "$duracion día${if (duracion > 1) "s" else ""}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.width(70.dp),
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        IconButton(
+                            onClick = { if (duracion < 14) duracion++ },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Aumentar días"
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Campo motivo
+                OutlinedTextField(
+                    value = motivo,
+                    onValueChange = { 
+                        motivo = it
+                        motivoError = if (it.isBlank()) "El motivo es obligatorio" else null
+                    },
+                    label = { Text("Motivo de la ausencia") },
+                    placeholder = { Text("Ejemplo: Enfermedad, cita médica...") },
+                    leadingIcon = { 
+                        Icon(
+                            imageVector = Icons.Default.Info, 
+                            contentDescription = null
+                        )
+                    },
+                    isError = motivoError != null,
+                    supportingText = { 
+                        if (motivoError != null) {
+                            Text(motivoError!!, color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Botones
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        enabled = !isLoading
+                    ) {
+                        Text("Cancelar")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Button(
+                        onClick = {
+                            if (motivo.isBlank()) {
+                                motivoError = "El motivo es obligatorio"
+                                return@Button
+                            }
+                            
+                            onSubmit(
+                                alumno.id,
+                                "${alumno.nombre} ${alumno.apellidos ?: ""}",
+                                fechaSeleccionada,
+                                motivo,
+                                duracion,
+                                alumno.claseId,
+                                alumno.curso ?: ""
+                            )
+                        },
+                        enabled = !isLoading && motivo.isNotBlank()
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Notificar")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tarjeta para mostrar las ausencias pendientes
+ */
+@Composable
+fun AusenciasPendientesCard(
+    ausencias: List<NotificacionAusencia>,
+    modifier: Modifier = Modifier
+) {
+    if (ausencias.isEmpty()) return
+    
+    val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Sick,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(24.dp)
+                )
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                Text(
+                    text = "Ausencias notificadas",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            ausencias.take(3).forEach { ausencia ->
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = ausencia.alumnoNombre,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            Text(
+                                text = "Fecha: ${dateFormatter.format(ausencia.fechaAusencia.toDate())}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            
+                            if (ausencia.duracion > 1) {
+                                Text(
+                                    text = "Duración: ${ausencia.duracion} días",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                        
+                        AssistChip(
+                            onClick = { },
+                            label = { 
+                                Text(
+                                    text = when (ausencia.estado) {
+                                        EstadoNotificacionAusencia.PENDIENTE.name -> "Pendiente"
+                                        EstadoNotificacionAusencia.ACEPTADA.name -> "Aceptada"
+                                        EstadoNotificacionAusencia.RECHAZADA.name -> "Rechazada"
+                                        else -> "Completada"
+                                    }
+                                )
+                            },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = when (ausencia.estado) {
+                                    EstadoNotificacionAusencia.PENDIENTE.name -> MaterialTheme.colorScheme.primaryContainer
+                                    EstadoNotificacionAusencia.ACEPTADA.name -> MaterialTheme.colorScheme.tertiaryContainer
+                                    EstadoNotificacionAusencia.RECHAZADA.name -> MaterialTheme.colorScheme.errorContainer
+                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                }
+                            )
+                        )
+                    }
+                }
+            }
+            
+            if (ausencias.size > 3) {
+                Text(
+                    text = "Y ${ausencias.size - 3} más...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
+                    modifier = Modifier.align(Alignment.End).padding(top = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
  * Pantalla principal del dashboard para familiares
  * 
  * Esta pantalla muestra toda la información relevante para los familiares de los alumnos:
@@ -321,6 +697,9 @@ fun FamiliaDashboardScreen(
     var showNavigateToConfiguracionDialog by remember { mutableStateOf(false) }
     var showNavigateToHistorialDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
+    
+    // Estado para controlar el diálogo de notificación de ausencia
+    var showNotificarAusenciaDialog by remember { mutableStateOf(false) }
     
     // Efecto para mostrar contenido con animación
     LaunchedEffect(Unit) {
@@ -595,6 +974,44 @@ fun FamiliaDashboardScreen(
         )
     }
     
+    // Diálogo de notificación de ausencia
+    val hijoSeleccionado = uiState.hijoSeleccionado
+    if (showNotificarAusenciaDialog && hijoSeleccionado != null) {
+        NotificarAusenciaDialog(
+            alumno = hijoSeleccionado,
+            onDismiss = { showNotificarAusenciaDialog = false },
+            onSubmit = { alumnoId, alumnoNombre, fecha, motivo, duracion, claseId, claseCurso ->
+                viewModel.notificarAusencia(
+                    alumnoId = alumnoId,
+                    alumnoNombre = alumnoNombre,
+                    fechaAusencia = fecha,
+                    motivo = motivo,
+                    duracion = duracion,
+                    claseId = claseId,
+                    claseCurso = claseCurso
+                )
+                showNotificarAusenciaDialog = false
+            },
+            isLoading = uiState.isNotificandoAusencia
+        )
+    }
+    
+    // Notificación de éxito
+    LaunchedEffect(uiState.ausenciaNotificada) {
+        if (uiState.ausenciaNotificada) {
+            val mensaje = uiState.mensajeExitoAusencia
+            if (mensaje != null) {
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = mensaje,
+                        duration = SnackbarDuration.Short
+                    )
+                    viewModel.resetAusenciaNotificada()
+                }
+            }
+        }
+    }
+    
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -606,7 +1023,7 @@ fun FamiliaDashboardScreen(
                 },
                 actions = {
                     // Badge para mensajes no leídos
-                    val pendingCount = uiState.registrosSinLeer
+                    val pendingCount = uiState.totalMensajesNoLeidos
                     
                     // Botón de mensajes con badge
                     BadgedBox(

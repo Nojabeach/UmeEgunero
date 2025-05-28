@@ -3,6 +3,8 @@ package com.tfg.umeegunero.feature.familiar.screen
 import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,26 +22,24 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LocalActivity
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Message
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,51 +54,53 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.google.firebase.Timestamp
-import com.tfg.umeegunero.data.model.EstadoComida
+import com.tfg.umeegunero.data.model.Actividad
+import com.tfg.umeegunero.data.model.CacaControl
 import com.tfg.umeegunero.data.model.Comida
 import com.tfg.umeegunero.data.model.Comidas
-import com.tfg.umeegunero.data.model.Siesta
-import com.tfg.umeegunero.data.model.CacaControl
-import com.tfg.umeegunero.data.model.Actividad
+import com.tfg.umeegunero.data.model.EstadoComida
 import com.tfg.umeegunero.data.model.RegistroActividad
+import com.tfg.umeegunero.data.model.Siesta
 import com.tfg.umeegunero.feature.familiar.viewmodel.DetalleRegistroViewModel
+import com.tfg.umeegunero.feature.familiar.viewmodel.DetalleRegistroUiState
 import com.tfg.umeegunero.ui.theme.FamiliarColor
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import androidx.navigation.NavController
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.style.TextOverflow
 
-data class DetalleRegistroUiState(
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val registro: RegistroActividad? = null,
-    val profesorNombre: String? = null,
-    val fechaSeleccionada: Date = Date(),
-    val registrosDisponibles: List<Date> = emptyList(),
-    val alumnoId: String? = null,
-    val alumnoNombre: String? = null,
-    val mostrarSelectorFecha: Boolean = false
-)
-
+/**
+ * Pantalla de detalle de registro de actividad diaria
+ * 
+ * Muestra la información completa de un registro de actividad de un alumno,
+ * incluyendo alimentación, siesta, higiene y observaciones generales.
+ * 
+ * @param registroId ID del registro a mostrar
+ * @param navController Controlador de navegación
+ * @param viewModel ViewModel que gestiona el estado de la pantalla
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalleRegistroScreen(
@@ -114,6 +116,7 @@ fun DetalleRegistroScreen(
 
     // Cargar registro al inicializar
     LaunchedEffect(registroId) {
+        Timber.d("LaunchedEffect en DetalleRegistroScreen, cargando registro ID: $registroId")
         viewModel.cargarRegistro(registroId)
     }
 
@@ -128,6 +131,11 @@ fun DetalleRegistroScreen(
                 viewModel.clearError()
             }
         }
+    }
+    
+    // Efecto para manejar cambios en fecha seleccionada
+    LaunchedEffect(uiState.fechaSeleccionada) {
+        Timber.d("Fecha seleccionada cambió a: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(uiState.fechaSeleccionada)}")
     }
 
     Scaffold(
@@ -161,7 +169,14 @@ fun DetalleRegistroScreen(
                     // Selector de fecha si hay fechas disponibles
                     if (uiState.registrosDisponibles.isNotEmpty()) {
                         IconButton(
-                            onClick = { viewModel.toggleSelectorFecha() }
+                            onClick = { 
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.toggleSelectorFecha() 
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error en feedback háptico: ${e.message}")
+                                }
+                            }
                         ) {
                             Icon(
                                 imageVector = Icons.Default.DateRange,
@@ -174,7 +189,14 @@ fun DetalleRegistroScreen(
                     // Botón para chatear con el profesor
                     registro?.profesorId?.let { profesorId ->
                         IconButton(
-                            onClick = { navController.navigate("chat/$profesorId/${registro.alumnoId}") }
+                            onClick = { 
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    navController.navigate("chat/$profesorId/${registro.alumnoId}") 
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error en feedback háptico: ${e.message}")
+                                }
+                            }
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Message,
@@ -256,7 +278,10 @@ fun DetalleRegistroScreen(
                         fechaSeleccionada = uiState.fechaSeleccionada,
                         fechasDisponibles = uiState.registrosDisponibles,
                         mostrarSelector = uiState.mostrarSelectorFecha,
-                        onFechaSeleccionada = { viewModel.seleccionarFecha(it) },
+                        onFechaSeleccionada = { 
+                            Timber.d("Seleccionando nueva fecha: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it)}")
+                            viewModel.seleccionarFecha(it) 
+                        },
                         onToggleSelector = { viewModel.toggleSelectorFecha() },
                         onHaptic = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
                     )
@@ -349,6 +374,8 @@ fun DetalleRegistroScreen(
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
+                                
+                                HorizontalDivider()
                                 
                                 // Detalles de la comida
                                 Column {
@@ -602,7 +629,10 @@ fun DetalleRegistroScreen(
                 FechaSelectorDropdown(
                     fechaSeleccionada = uiState.fechaSeleccionada,
                     fechasDisponibles = uiState.registrosDisponibles,
-                    onFechaSeleccionada = { viewModel.seleccionarFecha(it) },
+                    onFechaSeleccionada = { 
+                        Timber.d("Fecha seleccionada desde dropdown: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it)}")
+                        viewModel.seleccionarFecha(it) 
+                    },
                     onDismiss = { viewModel.toggleSelectorFecha() }
                 )
             }
@@ -1701,14 +1731,14 @@ fun FechaSelectorDropdown(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 
-                Divider()
+                HorizontalDivider()
                 
                 Column(
                     modifier = Modifier
                         .heightIn(max = 300.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    fechasDisponibles.forEach { fecha ->
+                    fechasDisponibles.sortedByDescending { it.time }.forEach { fecha ->
                         val isSelected = fechaSeleccionada.time == fecha.time
                         val formattedDate = dateFormat.format(fecha).replaceFirstChar { it.uppercase() }
                         val shortDate = dayFormat.format(fecha)
@@ -1718,6 +1748,7 @@ fun FechaSelectorDropdown(
                                 .fillMaxWidth()
                                 .clickable {
                                     onFechaSeleccionada(fecha)
+                                    onDismiss() // Cerrar el selector automáticamente tras seleccionar
                                 },
                             color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
                         ) {
@@ -1733,7 +1764,9 @@ fun FechaSelectorDropdown(
                                         text = formattedDate,
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                     
                                     Text(
@@ -1753,7 +1786,7 @@ fun FechaSelectorDropdown(
                             }
                         }
                         
-                        Divider()
+                        HorizontalDivider()
                     }
                 }
                 
@@ -1768,4 +1801,27 @@ fun FechaSelectorDropdown(
             }
         }
     }
+}
+
+// Función para determinar si una fecha es hoy
+private fun esHoy(fecha: Date): Boolean {
+    val hoy = Calendar.getInstance()
+    val cal = Calendar.getInstance()
+    cal.time = fecha
+    
+    return hoy.get(Calendar.YEAR) == cal.get(Calendar.YEAR) &&
+           hoy.get(Calendar.DAY_OF_YEAR) == cal.get(Calendar.DAY_OF_YEAR)
+}
+
+// Función para determinar si una fecha es ayer
+private fun esAyer(fecha: Date): Boolean {
+    val hoy = Calendar.getInstance()
+    val ayer = Calendar.getInstance()
+    ayer.add(Calendar.DAY_OF_YEAR, -1)
+    
+    val cal = Calendar.getInstance()
+    cal.time = fecha
+    
+    return ayer.get(Calendar.YEAR) == cal.get(Calendar.YEAR) &&
+           ayer.get(Calendar.DAY_OF_YEAR) == cal.get(Calendar.DAY_OF_YEAR)
 }

@@ -33,6 +33,9 @@ import androidx.navigation.NavController
 import com.tfg.umeegunero.navigation.AppScreens
 import java.util.Date
 import kotlinx.coroutines.delay
+import com.tfg.umeegunero.data.model.NotificacionAusencia
+import com.tfg.umeegunero.data.repository.NotificacionAusenciaRepository
+import com.tfg.umeegunero.data.model.EstadoNotificacionAusencia
 
 /**
  * Estado UI para la pantalla de dashboard del familiar
@@ -97,7 +100,19 @@ data class FamiliarDashboardUiState(
     val centros: List<Centro> = emptyList(),
     
     // Timestamp de la última actualización de datos
-    val ultimaActualizacion: Date? = null
+    val ultimaActualizacion: Date? = null,
+    
+    // Notificaciones de ausencia pendientes
+    val ausenciasPendientes: List<NotificacionAusencia> = emptyList(),
+    
+    // Estado de envío de notificación de ausencia
+    val isNotificandoAusencia: Boolean = false,
+    
+    // Confirmación de ausencia notificada
+    val ausenciaNotificada: Boolean = false,
+    
+    // Mensaje de éxito para ausencia notificada
+    val mensajeExitoAusencia: String? = null
 )
 
 /**
@@ -123,7 +138,8 @@ class FamiliarDashboardViewModel @Inject constructor(
     private val registroDiarioRepository: RegistroDiarioRepository,
     private val solicitudRepository: SolicitudRepository,
     private val usuarioRepository: UsuarioRepository,
-    private val unifiedMessageRepository: UnifiedMessageRepository
+    private val unifiedMessageRepository: UnifiedMessageRepository,
+    private val notificacionAusenciaRepository: NotificacionAusenciaRepository
 ) : ViewModel() {
 
     // Estado mutable interno que solo el ViewModel puede modificar
@@ -208,6 +224,9 @@ class FamiliarDashboardViewModel @Inject constructor(
                             
                             // Cargar registros sin leer
                             cargarRegistrosSinLeer(familiarId)
+                            
+                            // Cargar ausencias pendientes
+                            cargarAusenciasPendientes()
                         } else {
                             Timber.e("Familiar nulo en resultado exitoso")
                             _uiState.update {
@@ -894,5 +913,119 @@ class FamiliarDashboardViewModel @Inject constructor(
                 _unreadMessageCount.update { 0 }
             }
         }
+    }
+
+    /**
+     * Notifica una ausencia para un alumno específico
+     */
+    fun notificarAusencia(
+        alumnoId: String,
+        alumnoNombre: String,
+        fechaAusencia: Date,
+        motivo: String,
+        duracion: Int,
+        claseId: String,
+        claseCurso: String
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(
+                isNotificandoAusencia = true,
+                ausenciaNotificada = false,
+                mensajeExitoAusencia = null,
+                error = null
+            ) }
+
+            try {
+                // Obtener datos del usuario familiar
+                val usuario = authRepository.getCurrentUser()
+                if (usuario == null) {
+                    _uiState.update { it.copy(
+                        isNotificandoAusencia = false,
+                        error = "No se pudo obtener información del usuario"
+                    ) }
+                    return@launch
+                }
+
+                // Crear notificación de ausencia
+                val notificacion = NotificacionAusencia(
+                    alumnoId = alumnoId,
+                    alumnoNombre = alumnoNombre,
+                    claseId = claseId,
+                    claseCurso = claseCurso,
+                    familiarId = usuario.dni ?: "", // Usar DNI como ID
+                    familiarNombre = "${usuario.nombre} ${usuario.apellidos}",
+                    fechaAusencia = Timestamp(fechaAusencia),
+                    fechaNotificacion = Timestamp.now(),
+                    motivo = motivo,
+                    duracion = duracion,
+                    estado = EstadoNotificacionAusencia.PENDIENTE.name
+                )
+
+                // Guardar notificación
+                val resultado = notificacionAusenciaRepository.registrarAusencia(notificacion)
+                
+                when (resultado) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(
+                            isNotificandoAusencia = false,
+                            ausenciaNotificada = true,
+                            mensajeExitoAusencia = "Ausencia notificada correctamente"
+                        ) }
+                        
+                        // Recargar ausencias pendientes
+                        cargarAusenciasPendientes()
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(
+                            isNotificandoAusencia = false,
+                            error = "Error al notificar ausencia: ${resultado.exception?.message ?: "Error desconocido"}"
+                        ) }
+                    }
+                    else -> { /* Estado de carga, no hacemos nada */ }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al notificar ausencia")
+                _uiState.update { it.copy(
+                    isNotificandoAusencia = false,
+                    error = "Error al notificar ausencia: ${e.message}"
+                ) }
+            }
+        }
+    }
+
+    /**
+     * Carga las ausencias pendientes notificadas por el familiar
+     */
+    fun cargarAusenciasPendientes() {
+        viewModelScope.launch {
+            try {
+                val usuario = authRepository.getCurrentUser()
+                if (usuario != null) {
+                    val familiarId = usuario.dni ?: return@launch // Usar DNI como ID
+                    val resultado = notificacionAusenciaRepository.obtenerAusenciasPorFamiliar(familiarId)
+                    
+                    if (resultado is Result.Success) {
+                        val ausencias = resultado.data.filter { 
+                            it.estado == EstadoNotificacionAusencia.PENDIENTE.name ||
+                            it.estado == EstadoNotificacionAusencia.ACEPTADA.name
+                        }
+                        _uiState.update { it.copy(ausenciasPendientes = ausencias) }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar ausencias pendientes")
+                // No actualizamos el estado de error para no interrumpir la experiencia
+            }
+        }
+    }
+
+    /**
+     * Reinicia el estado de notificación de ausencia
+     */
+    fun resetAusenciaNotificada() {
+        _uiState.update { it.copy(
+            ausenciaNotificada = false,
+            mensajeExitoAusencia = null
+        ) }
     }
 }
