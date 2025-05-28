@@ -750,25 +750,14 @@ fun FamiliaDashboardScreen(
                                 alumno = uiState.hijoSeleccionado!!,
                                 registrosActividad = uiState.registrosActividad,
                                 onVerDetalles = { registroId ->
-                                    try {
-                                        Timber.d("Intentando navegar a DetalleRegistro con ID: $registroId")
-                                        scope.launch {
-                                            try {
-                                                navController.navigate(
-                                                    AppScreens.DetalleRegistro.createRoute(registroId)
-                                                )
-                                            } catch (e: Exception) {
-                                                Timber.e(e, "Error al navegar a DetalleRegistro: ${e.message}")
-                                                snackbarHostState.showSnackbar("Error al abrir detalle: ${e.message}")
-                                            }
-                                        }
-                                    } catch (e: Exception) {
-                                        Timber.e(e, "Error al preparar navegación a DetalleRegistro: ${e.message}")
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("No se pudo navegar a los detalles")
-                                        }
-                                    }
-                                }
+                                    viewModel.navegarAConsultaRegistroDiario(
+                                        navController = navController,
+                                        alumno = uiState.hijoSeleccionado!!,
+                                        registroId = registroId
+                                    )
+                                },
+                                viewModel = viewModel,
+                                navController = navController
                             )
                         }
                     } else if (uiState.hijos.isEmpty()) {
@@ -1422,7 +1411,9 @@ fun StatusBadge(
 fun ResumenActividadCard(
     alumno: Alumno,
     registrosActividad: List<RegistroActividad>,
-    onVerDetalles: (String) -> Unit
+    onVerDetalles: (String) -> Unit,
+    viewModel: FamiliarDashboardViewModel,
+    navController: NavController
 ) {
     val ultimoRegistro = registrosActividad.maxByOrNull { it.fecha }
     val haptic = LocalHapticFeedback.current
@@ -1461,13 +1452,18 @@ fun ResumenActividadCard(
                         onClick = { 
                             try {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                Timber.d("Navegando a DetalleRegistro con ID: ${ultimoRegistro.id}")
-                                // Usar Navigation para navegar directamente al detalle
-                                onVerDetalles(ultimoRegistro.id)
+                                Timber.d("Navegando a ConsultaRegistroDiario con registroId: ${ultimoRegistro.id}")
+                                
+                                // Usar la función navegarADetalleRegistro del viewModel
+                                viewModel.navegarAConsultaRegistroDiario(
+                                    navController = navController,
+                                    alumno = alumno,
+                                    registroId = ultimoRegistro.id
+                                )
                                 // Mostrar Toast como indicador de que se está procesando
                                 Toast.makeText(context, "Abriendo detalle del registro...", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
-                                Timber.e(e, "Error al navegar a Detalle de Registro: ${e.message}")
+                                Timber.e(e, "Error al navegar al detalle del registro: ${e.message}")
                                 Toast.makeText(context, "Error al abrir el detalle: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         },

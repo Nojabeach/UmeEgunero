@@ -777,12 +777,18 @@ class FamiliarDashboardViewModel @Inject constructor(
      * 
      * @param navController Controlador de navegación de Jetpack Compose
      * @param alumno Objeto Alumno cuyos registros se quieren consultar
+     * @param registroId ID opcional de un registro específico para ver su detalle
      */
-    fun navegarAConsultaRegistroDiario(navController: NavController, alumno: Alumno) {
+    fun navegarAConsultaRegistroDiario(
+        navController: NavController, 
+        alumno: Alumno,
+        registroId: String? = null
+    ) {
         navController.navigate(
             AppScreens.ConsultaRegistroDiario.createRoute(
                 alumnoId = alumno.dni,
-                alumnoNombre = "${alumno.nombre} ${alumno.apellidos}"
+                alumnoNombre = "${alumno.nombre} ${alumno.apellidos}",
+                registroId = registroId
             )
         )
     }

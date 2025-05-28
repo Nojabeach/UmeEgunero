@@ -78,6 +78,7 @@ fun ConsultaRegistroDiarioScreen(
     alumnoId: String,
     alumnoNombre: String,
     onNavigateBack: () -> Unit,
+    registroId: String? = null,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -112,8 +113,18 @@ fun ConsultaRegistroDiarioScreen(
         }
     }
     
-    LaunchedEffect(alumnoId) {
-        viewModel.cargarRegistros(alumnoId)
+    // Efecto para cargar datos al iniciar la pantalla
+    LaunchedEffect(alumnoId, registroId, fechaSeleccionada) {
+        if (registroId != null) {
+            // Si tenemos un ID específico, cargamos ese registro
+            viewModel.cargarRegistroPorId(registroId)
+        } else if (fechaSeleccionada != null) {
+            // Si tenemos fecha seleccionada, cargamos registros de esa fecha
+            viewModel.cargarRegistrosPorFecha(alumnoId, fechaSeleccionada!!)
+        } else {
+            // Si no, cargamos todos los registros del alumno
+            viewModel.cargarRegistros(alumnoId)
+        }
     }
     
     // Diálogo para seleccionar fecha
@@ -123,15 +134,24 @@ fun ConsultaRegistroDiarioScreen(
             onDateSelected = { fecha ->
                 fechaSeleccionada = fecha
                 mostrarSelectorFecha = false
+                // Cargar registros por la fecha seleccionada
+                viewModel.cargarRegistrosPorFecha(alumnoId, fecha)
             },
             fechaActual = fechaSeleccionada ?: Date()
         )
     }
     
+    // Determinar el nombre a mostrar (del estado o del parámetro)
+    val nombreMostrado = if (uiState.alumnoNombre.isNotEmpty()) {
+        uiState.alumnoNombre
+    } else {
+        alumnoNombre
+    }
+    
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Registros de $alumnoNombre") },
+                title = { Text("Registros de $nombreMostrado") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
@@ -148,7 +168,12 @@ fun ConsultaRegistroDiarioScreen(
                     
                     // Si hay una fecha seleccionada, mostrar botón para limpiar filtro
                     if (fechaSeleccionada != null) {
-                        IconButton(onClick = { fechaSeleccionada = null }) {
+                        IconButton(
+                            onClick = { 
+                                fechaSeleccionada = null
+                                viewModel.cargarRegistros(alumnoId)
+                            }
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Clear,
                                 contentDescription = "Limpiar filtro"
@@ -187,7 +212,26 @@ fun ConsultaRegistroDiarioScreen(
                 }
             }
             
-            if (uiState.isLoading && uiState.registros.isEmpty()) {
+            // Si tenemos un registro específico cargado, mostrarlo
+            if (uiState.registroSeleccionado != null && registroId != null) {
+                LazyColumn(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        RegistroDiarioCard(
+                            registro = uiState.registroSeleccionado!!,
+                            onClick = { viewModel.marcarComoVisto(uiState.registroSeleccionado!!.id) }
+                        )
+                    }
+                    
+                    item {
+                        Spacer(modifier = Modifier.height(60.dp))
+                    }
+                }
+            } else if (uiState.isLoading && uiState.registros.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
@@ -224,7 +268,10 @@ fun ConsultaRegistroDiarioScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                             
                             Button(
-                                onClick = { fechaSeleccionada = null },
+                                onClick = { 
+                                    fechaSeleccionada = null
+                                    viewModel.cargarRegistros(alumnoId)
+                                },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary
                                 )
@@ -629,16 +676,17 @@ fun HiltConsultaRegistroDiarioScreen(
     viewModel: ConsultaRegistroDiarioViewModel = hiltViewModel(),
     alumnoId: String,
     alumnoNombre: String,
+    registroId: String? = null,
     onNavigateBack: () -> Unit
 ) {
-    LaunchedEffect(alumnoId) {
-        viewModel.cargarRegistros(alumnoId)
-    }
+    // No necesitamos un LaunchedEffect aquí, ya que el componente ConsultaRegistroDiarioScreen
+    // tiene su propio LaunchedEffect que gestiona la carga de datos basándose en los parámetros
     
     ConsultaRegistroDiarioScreen(
         viewModel = viewModel,
         alumnoId = alumnoId,
         alumnoNombre = alumnoNombre,
+        registroId = registroId,
         onNavigateBack = onNavigateBack
     )
 }

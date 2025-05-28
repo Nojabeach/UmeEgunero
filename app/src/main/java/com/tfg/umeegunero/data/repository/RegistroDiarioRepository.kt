@@ -1182,4 +1182,107 @@ class RegistroDiarioRepository @Inject constructor(
             return@withContext Result.Error(e)
         }
     }
+
+    /**
+     * Obtiene un registro específico por su ID
+     * 
+     * @param registroId ID del registro a obtener
+     * @return Resultado con el registro encontrado o error
+     */
+    suspend fun obtenerRegistroPorId(registroId: String): Result<RegistroActividad> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Obteniendo registro por ID: $registroId")
+            
+            // Primero intentamos obtener del caché local
+            val registroLocal = localRegistroRepository.getRegistroActividadById(registroId)
+            if (registroLocal != null) {
+                Timber.d("Registro encontrado en caché local: $registroId")
+                return@withContext Result.Success(registroLocal)
+            }
+            
+            // Si no está en caché y hay conexión, buscamos en Firestore
+            if (isNetworkAvailable()) {
+                val document = registrosCollection.document(registroId).get().await()
+                if (document.exists()) {
+                    val registro = document.toObject(RegistroActividad::class.java)
+                    if (registro != null) {
+                        // Guardamos en caché local
+                        localRegistroRepository.saveRegistroActividad(registro, true)
+                        Timber.d("Registro obtenido de Firestore y guardado en local: $registroId")
+                        return@withContext Result.Success(registro)
+                    }
+                }
+                
+                Timber.w("No se encontró el registro con ID: $registroId")
+                return@withContext Result.Error(Exception("No se encontró el registro"))
+            } else {
+                Timber.w("No hay conexión a internet y el registro no está en caché local")
+                return@withContext Result.Error(Exception("No hay conexión a internet y el registro no está disponible offline"))
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registro por ID: $registroId")
+            return@withContext Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene registros para un alumno en un rango de fechas específico
+     * 
+     * @param alumnoId ID del alumno
+     * @param fechaInicio Fecha de inicio del rango
+     * @param fechaFin Fecha de fin del rango
+     * @return Resultado con la lista de registros
+     */
+    suspend fun obtenerRegistrosPorFecha(
+        alumnoId: String,
+        fechaInicio: Timestamp,
+        fechaFin: Timestamp
+    ): Result<List<RegistroActividad>> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Buscando registros para alumno: $alumnoId entre $fechaInicio y $fechaFin")
+            
+            if (isNetworkAvailable()) {
+                val query = registrosCollection
+                    .whereEqualTo("alumnoId", alumnoId)
+                    .whereGreaterThanOrEqualTo("fecha", fechaInicio)
+                    .whereLessThanOrEqualTo("fecha", fechaFin)
+                    .get()
+                    .await()
+                
+                val registros = query.documents.mapNotNull { document ->
+                    try {
+                        document.toObject(RegistroActividad::class.java)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al convertir documento a RegistroActividad: ${document.id}")
+                        null
+                    }
+                }
+                
+                // Guardar en caché local
+                registros.forEach { registro ->
+                    localRegistroRepository.saveRegistroActividad(registro, true)
+                }
+                
+                Timber.d("Registros encontrados: ${registros.size}")
+                return@withContext Result.Success(registros)
+            } else {
+                // Intentar obtener registros locales
+                // Nota: Esta implementación es simplificada y podría necesitar más lógica
+                // para filtrar correctamente por fecha en la base de datos local
+                val alumno = alumnoId
+                Timber.d("No hay conexión, intentando obtener registros locales para alumno: $alumno")
+                val registrosLocales = localRegistroRepository.getRegistrosActividadByAlumnoAndFechaRange(
+                    alumnoId = alumno,
+                    fechaInicio = fechaInicio.toDate(),
+                    fechaFin = fechaFin.toDate()
+                )
+                
+                Timber.d("Registros locales encontrados: ${registrosLocales.size}")
+                return@withContext Result.Success(registrosLocales)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registros por fecha para alumno: $alumnoId")
+            return@withContext Result.Error(e)
+        }
+    }
 } 

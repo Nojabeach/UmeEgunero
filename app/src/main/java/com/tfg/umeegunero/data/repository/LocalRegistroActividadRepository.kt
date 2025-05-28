@@ -293,4 +293,38 @@ class LocalRegistroActividadRepository @Inject constructor(
             Timber.e(e, "Error al eliminar registro local: $registroId")
         }
     }
+    
+    /**
+     * Obtiene los registros de actividad de un alumno entre dos fechas.
+     * 
+     * @param alumnoId ID del alumno
+     * @param fechaInicio Fecha de inicio del rango
+     * @param fechaFin Fecha de fin del rango
+     * @return Lista de registros encontrados en ese rango de fechas
+     */
+    suspend fun getRegistrosActividadByAlumnoAndFechaRange(
+        alumnoId: String,
+        fechaInicio: Date,
+        fechaFin: Date
+    ): List<RegistroActividad> {
+        try {
+            // Convertir fechas a timestamps
+            val inicioDia = fechaInicio.time
+            val finDia = fechaFin.time
+            
+            Timber.d("Buscando registros locales para alumno $alumnoId entre $fechaInicio y $fechaFin")
+            
+            val entities = registroActividadDao.getRegistrosActividadByAlumnoAndFecha(
+                alumnoId = alumnoId,
+                startTime = inicioDia,
+                endTime = finDia
+            )
+            
+            Timber.d("Encontrados ${entities.size} registros locales")
+            return entities.map { it.toRegistroActividad() }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registros por alumno y rango de fechas: $alumnoId")
+            return emptyList()
+        }
+    }
 } 

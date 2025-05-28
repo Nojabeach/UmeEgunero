@@ -519,10 +519,26 @@ sealed class AppScreens(val route: String) {
      * Consulta del historial de registros diarios
      * @param alumnoId Identificador del alumno
      * @param alumnoNombre Nombre del alumno (para mostrar)
+     * @param registroId Identificador del registro específico (opcional)
      */
-    object ConsultaRegistroDiario : AppScreens("consulta_registro_diario/{alumnoId}/{alumnoNombre}") {
-        fun createRoute(alumnoId: String, alumnoNombre: String) = 
-            "consulta_registro_diario/$alumnoId/$alumnoNombre"
+    object ConsultaRegistroDiario : AppScreens("consulta_registro_diario/{alumnoId}/{alumnoNombre}?registroId={registroId}") {
+        fun createRoute(alumnoId: String, alumnoNombre: String, registroId: String? = null): String {
+            return if (registroId != null) {
+                "consulta_registro_diario/$alumnoId/$alumnoNombre?registroId=$registroId"
+            } else {
+                "consulta_registro_diario/$alumnoId/$alumnoNombre"
+            }
+        }
+        
+        val arguments = listOf(
+            navArgument("alumnoId") { type = NavType.StringType },
+            navArgument("alumnoNombre") { type = NavType.StringType },
+            navArgument("registroId") { 
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            }
+        )
     }
     
     /**
