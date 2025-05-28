@@ -73,33 +73,100 @@ class CalendarioViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CalendarioUiState())
     val uiState: StateFlow<CalendarioUiState> = _uiState.asStateFlow()
 
+    private var userId: String? = null
+    private var centroId: String? = null
+
     init {
         loadEventos()
     }
 
     /**
-     * Carga los eventos del calendario
+     * Inicializa el ViewModel con los datos del usuario actual
+     * @param userId ID del usuario (DNI)
+     * @param centroId ID del centro
+     */
+    fun inicializar(userId: String, centroId: String) {
+        this.userId = userId
+        this.centroId = centroId
+        Timber.d("CalendarioViewModel inicializado con userId=$userId, centroId=$centroId")
+        loadEventos()
+    }
+
+    /**
+     * Carga los eventos desde el repositorio
      */
     fun loadEventos() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
             try {
-                val eventos = calendarioRepository.getEventos()
-                _uiState.update { 
-                    it.copy(
-                        eventos = eventos,
-                        isLoading = false
-                    ) 
+                // Si no tenemos userId o centroId, intentamos obtenerlos del usuario actual
+                if (userId.isNullOrEmpty() || centroId.isNullOrEmpty()) {
+                    Timber.d("CalendarioViewModel: Obteniendo usuario actual para cargar eventos")
+                    
+                    val usuario = try {
+                        // En lugar de usar first(), usaremos una suspensión manual
+                        var foundUser: Usuario? = null
+                        usuarioRepository.getUsuarioActual().collect { resultado ->
+                            if (resultado is Result.Success<Usuario>) {
+                                foundUser = resultado.data
+                            }
+                        }
+                        foundUser ?: authRepository.getCurrentUser()
+                    } catch (e: Exception) {
+                        authRepository.getCurrentUser()
+                    }
+                    
+                    if (usuario != null) {
+                        this@CalendarioViewModel.userId = usuario.dni
+                        
+                        // Obtener el centroId según el tipo de usuario
+                        val perfilAdmin = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                        val perfilProfesor = usuario.perfiles.find { it.tipo == TipoUsuario.PROFESOR }
+                        val perfilFamiliar = usuario.perfiles.find { it.tipo == TipoUsuario.FAMILIAR }
+                        
+                        this@CalendarioViewModel.centroId = when {
+                            perfilAdmin != null -> perfilAdmin.centroId
+                            perfilProfesor != null -> perfilProfesor.centroId
+                            perfilFamiliar != null -> perfilFamiliar.centroId
+                            else -> null
+                        }
+                        
+                        Timber.d("CalendarioViewModel: Usuario obtenido - userId=${usuario.dni}, centroId=${this@CalendarioViewModel.centroId}")
+                    } else {
+                        Timber.e("CalendarioViewModel: No se pudo obtener el usuario actual")
+                        _uiState.update { it.copy(
+                            isLoading = false, 
+                            error = "No se pudo obtener el usuario actual"
+                        )}
+                        return@launch
+                    }
                 }
+                
+                // Ahora deberíamos tener userId y centroId
+                if (userId.isNullOrEmpty() || centroId.isNullOrEmpty()) {
+                    Timber.e("CalendarioViewModel: No se pudo determinar userId o centroId")
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        error = "No se pudo determinar la identidad del usuario o el centro"
+                    )}
+                    return@launch
+                }
+                
+                // Cargar eventos según el usuario y centro
+                val eventos = calendarioRepository.obtenerEventosParaUsuario(userId!!, centroId!!)
+                Timber.d("CalendarioViewModel: Cargados ${eventos.size} eventos para userId=$userId, centroId=$centroId")
+                
+                _uiState.update { it.copy(
+                    eventos = eventos,
+                    isLoading = false
+                )}
             } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        error = "Error al cargar eventos: ${e.message}",
-                        isLoading = false
-                    ) 
-                }
                 Timber.e(e, "Error al cargar eventos")
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    error = "Error al cargar eventos: ${e.message}"
+                )}
             }
         }
     }
@@ -226,52 +293,52 @@ class CalendarioViewModel @Inject constructor(
     fun saveEvento() {
         viewModelScope.launch {
             val currentState = _uiState.value
-            
             if (currentState.selectedEventType == null) {
                 _uiState.update { it.copy(error = "Debes seleccionar un tipo de evento") }
                 return@launch
             }
-            
             if (currentState.eventDescription.isBlank() && (currentState.eventTitle == null || currentState.eventTitle.isBlank())) {
                 _uiState.update { it.copy(error = "Debes proporcionar un título o descripción") }
                 return@launch
             }
-            
             _uiState.update { it.copy(isLoading = true) }
-            
             try {
                 // Obtener el usuario actual y su centro de manera adecuada
+                val usuario = authRepository.getCurrentUser()
                 val usuarioId = calendarioRepository.obtenerUsuarioId()
                 val centroId = calendarioRepository.obtenerCentroId()
-                
+                val perfil = usuario?.perfiles?.firstOrNull()
+                val tipoUsuario = perfil?.tipo
+                var destinatarios: List<String> = emptyList()
+                if (tipoUsuario == TipoUsuario.ADMIN_CENTRO && centroId.isNotEmpty()) {
+                    // Obtener todos los profesores del centro
+                    val resultadoProfesores = usuarioRepository.getProfesoresByCentroId(centroId)
+                    destinatarios = if (resultadoProfesores is Result.Success) {
+                        resultadoProfesores.data.map { it.dni }
+                    } else emptyList()
+                }
                 // Construir título y descripción completos
                 val title = currentState.eventTitle?.takeIf { it.isNotBlank() } 
                     ?: currentState.eventDescription.lines().firstOrNull()?.takeIf { it.isNotBlank() }
                     ?: "Evento"
-                
-                // Construir descripción que incluya ubicación y hora si se especificaron
                 var descripcionCompleta = currentState.eventDescription
-                
                 if (!currentState.eventLocation.isNullOrBlank()) {
                     descripcionCompleta += "\nLugar: ${currentState.eventLocation}"
                 }
-                
                 if (!currentState.eventTime.isNullOrBlank()) {
                     descripcionCompleta += "\nHora: ${currentState.eventTime}"
                 }
-                
                 val newEvent = Evento(
-                    id = "", // Será generado por Firestore
+                    id = "",
                     titulo = title,
                     descripcion = descripcionCompleta,
                     fecha = currentState.selectedDate.atStartOfDay().toTimestamp(),
                     tipo = currentState.selectedEventType,
                     creadorId = usuarioId,
-                    centroId = centroId
+                    centroId = centroId,
+                    destinatarios = destinatarios
                 )
-
                 val result = calendarioRepository.saveEvento(newEvent)
-                
                 when (result) {
                     is Result.Success -> {
                         val eventoGuardado = result.data
@@ -295,19 +362,18 @@ class CalendarioViewModel @Inject constructor(
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
+                                showEventDialog = false,
                                 error = result.exception?.message ?: "Error al guardar el evento"
                             ) 
                         }
                         Timber.e(result.exception, "Error al guardar el evento")
                     }
-                    is Result.Loading -> {
-                        // Ya estamos en estado de carga
-                    }
+                    is Result.Loading -> {}
                     else -> {
-                        // Caso por defecto para manejar todos los posibles valores
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
+                                showEventDialog = false,
                                 error = "Estado desconocido al guardar el evento"
                             ) 
                         }
@@ -317,6 +383,7 @@ class CalendarioViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
+                        showEventDialog = false,
                         error = "Error al guardar el evento: ${e.message}"
                     ) 
                 }

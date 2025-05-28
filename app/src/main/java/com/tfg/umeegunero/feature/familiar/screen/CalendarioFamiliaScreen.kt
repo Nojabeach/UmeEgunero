@@ -64,34 +64,16 @@ fun CalendarioFamiliaScreen(
     
     // Obtener eventos y filtrar por tipo de usuario
     LaunchedEffect(selectedDate.value, viewModel) {
-        viewModel.clearEvents()
-        
-        // Obtener centro educativo del usuario actual (familiar)
-        val userInfo = viewModel.getUserInfo()
-        val centroId = userInfo.centroId
-        
-        if (centroId.isNotEmpty()) {
-            // Cargar eventos del centro
-            viewModel.loadEventosByCentro(centroId)
-            
-            // Cargar eventos creados por profesores
-            viewModel.loadEventosByProfesores(centroId)
-            
-            // Cargar eventos personalizados del familiar
-            viewModel.loadEventosByUsuario(userInfo.id)
-            
-            // Cargar eventos específicos para los hijos del familiar
-            viewModel.loadEventosByHijos()
-            
-            // Cargar eventos generales para todos los alumnos
-            viewModel.loadEventosGenerales()
-        } else {
-            // Si no hay centroId, cargar solo eventos del usuario
-            viewModel.loadEventosByUsuario(userInfo.id)
-        }
+        // Usar el método principal que ya está correctamente implementado
+        // para cargar todos los eventos relevantes para el familiar 
+        viewModel.cargarEventos()
         
         // Log para verificar la carga de eventos
         Timber.d("Eventos cargados: ${viewModel.uiState.value.eventos.size}")
+        Timber.d("Verificando destinatarios de eventos:")
+        viewModel.uiState.value.eventos.forEach { evento ->
+            Timber.d("Evento ID: ${evento.id}, Título: ${evento.titulo}, Destinatarios: ${evento.destinatarios}")
+        }
     }
     
     // SnackbarHostState para mostrar mensajes de error
@@ -108,19 +90,32 @@ fun CalendarioFamiliaScreen(
     }
     
     // Filtrado de eventos para el día seleccionado
-    val eventosDiaSeleccionado = uiState.eventos.filter { evento ->
-        val fechaEvento = Calendar.getInstance().apply { 
-            // Convertir Timestamp a milisegundos para usar con Calendar
-            timeInMillis = if (evento.fecha is com.google.firebase.Timestamp) {
-                (evento.fecha as com.google.firebase.Timestamp).seconds * 1000
-            } else {
-                // Asumir que ya está en formato Long
-                evento.fecha as Long
+    val eventosDiaSeleccionado = remember(uiState.eventos, uiState.fechaSeleccionada) {
+        uiState.eventos.filter { evento ->
+            val fechaEvento = Calendar.getInstance().apply { 
+                // Convertir Timestamp a milisegundos para usar con Calendar
+                timeInMillis = if (evento.fecha is com.google.firebase.Timestamp) {
+                    (evento.fecha as com.google.firebase.Timestamp).seconds * 1000
+                } else {
+                    // Asumir que ya está en formato Long
+                    evento.fecha as Long
+                }
             }
+            
+            // Comparar año, mes y día
+            val mismoAnio = fechaEvento.get(Calendar.YEAR) == uiState.fechaSeleccionada.get(Calendar.YEAR)
+            val mismoMes = fechaEvento.get(Calendar.MONTH) == uiState.fechaSeleccionada.get(Calendar.MONTH)
+            val mismoDia = fechaEvento.get(Calendar.DAY_OF_MONTH) == uiState.fechaSeleccionada.get(Calendar.DAY_OF_MONTH)
+            
+            val coincide = mismoAnio && mismoMes && mismoDia
+            
+            // Registrar para depuración
+            if (coincide) {
+                Timber.d("Evento coincide con fecha seleccionada: ${evento.titulo} (${evento.fecha})")
+            }
+            
+            coincide
         }
-        fechaEvento.get(Calendar.YEAR) == uiState.fechaSeleccionada.get(Calendar.YEAR) &&
-        fechaEvento.get(Calendar.MONTH) == uiState.fechaSeleccionada.get(Calendar.MONTH) &&
-        fechaEvento.get(Calendar.DAY_OF_MONTH) == uiState.fechaSeleccionada.get(Calendar.DAY_OF_MONTH)
     }
     
     Scaffold(

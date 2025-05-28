@@ -82,10 +82,26 @@ class CalendarioFamiliaViewModel @Inject constructor(
                 val centroId = perfil?.centroId ?: ""
                 val familiarId = usuario.dni
                 
+                Timber.d("CalendarioFamiliaViewModel: Cargando eventos para familiar $familiarId en centro $centroId")
+                
                 // Usar el nuevo método para obtener eventos específicos para el usuario
                 val eventos = if (centroId.isNotEmpty() && familiarId.isNotEmpty()) {
-                    eventoRepository.obtenerEventosParaUsuario(familiarId, centroId)
+                    // Obtener eventos donde el familiar es destinatario o son públicos
+                    val eventosUsuario = eventoRepository.obtenerEventosParaUsuario(familiarId, centroId)
+                    Timber.d("CalendarioFamiliaViewModel: Encontrados ${eventosUsuario.size} eventos para el familiar $familiarId")
+                    
+                    // Registrar información sobre los eventos cargados
+                    eventosUsuario.forEach { evento ->
+                        Timber.d("CalendarioFamiliaViewModel: Evento ID: ${evento.id}, Título: ${evento.titulo}")
+                        Timber.d("CalendarioFamiliaViewModel: - Creador: ${evento.creadorId}")
+                        Timber.d("CalendarioFamiliaViewModel: - Destinatarios: ${evento.destinatarios}")
+                        Timber.d("CalendarioFamiliaViewModel: - Público: ${evento.publico}")
+                        Timber.d("CalendarioFamiliaViewModel: - Fecha: ${evento.fecha}")
+                    }
+                    
+                    eventosUsuario
                 } else {
+                    Timber.w("CalendarioFamiliaViewModel: No se pudo obtener centroId o familiarId")
                     emptyList()
                 }
                 
@@ -257,7 +273,36 @@ class CalendarioFamiliaViewModel @Inject constructor(
      * Actualiza la fecha seleccionada
      */
     fun seleccionarFecha(fecha: Calendar) {
+        Timber.d("CalendarioFamiliaViewModel: Seleccionada nueva fecha: ${fecha.time}")
         _uiState.update { it.copy(fechaSeleccionada = fecha) }
+        
+        // Al seleccionar un nuevo día, verificamos si hay eventos para esta fecha
+        viewModelScope.launch {
+            val fechaFormateada = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(fecha.time)
+            Timber.d("CalendarioFamiliaViewModel: Verificando eventos para la fecha: $fechaFormateada")
+            
+            val eventosEnFecha = _uiState.value.eventos.filter { evento ->
+                val fechaEvento = Calendar.getInstance().apply { 
+                    timeInMillis = if (evento.fecha is com.google.firebase.Timestamp) {
+                        (evento.fecha as com.google.firebase.Timestamp).seconds * 1000
+                    } else {
+                        evento.fecha as Long
+                    }
+                }
+                
+                val mismaFecha = fechaEvento.get(Calendar.YEAR) == fecha.get(Calendar.YEAR) &&
+                                fechaEvento.get(Calendar.MONTH) == fecha.get(Calendar.MONTH) &&
+                                fechaEvento.get(Calendar.DAY_OF_MONTH) == fecha.get(Calendar.DAY_OF_MONTH)
+                
+                if (mismaFecha) {
+                    Timber.d("CalendarioFamiliaViewModel: Evento encontrado para la fecha $fechaFormateada: ${evento.titulo}")
+                }
+                
+                mismaFecha
+            }
+            
+            Timber.d("CalendarioFamiliaViewModel: Total de eventos para la fecha $fechaFormateada: ${eventosEnFecha.size}")
+        }
     }
     
     /**
@@ -267,6 +312,9 @@ class CalendarioFamiliaViewModel @Inject constructor(
         val nuevaFecha = _uiState.value.fechaSeleccionada.clone() as Calendar
         nuevaFecha.add(Calendar.MONTH, -1)
         _uiState.update { it.copy(fechaSeleccionada = nuevaFecha) }
+        
+        // Recargar eventos al cambiar de mes
+        cargarEventos()
     }
     
     /**
@@ -276,5 +324,8 @@ class CalendarioFamiliaViewModel @Inject constructor(
         val nuevaFecha = _uiState.value.fechaSeleccionada.clone() as Calendar
         nuevaFecha.add(Calendar.MONTH, 1)
         _uiState.update { it.copy(fechaSeleccionada = nuevaFecha) }
+        
+        // Recargar eventos al cambiar de mes
+        cargarEventos()
     }
 } 

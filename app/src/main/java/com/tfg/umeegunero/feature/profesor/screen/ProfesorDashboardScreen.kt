@@ -417,7 +417,9 @@ fun ProfesorDashboardScreen(
                     onClick = {
                         showCalendarioDialog = false
                         try {
-                            navController.navigate(AppScreens.ProfesorCalendario.route)
+                            val profesorId = uiState.profesor?.dni ?: return@TextButton
+                            val centroId = uiState.profesor?.perfiles?.find { it.tipo.name == "PROFESOR" }?.centroId ?: return@TextButton
+                            navController.navigate("calendario_profesor/$profesorId/$centroId")
                             Timber.d("Navegando a Calendario")
                         } catch (e: Exception) {
                             Timber.e(e, "Error al navegar a Calendario")
@@ -684,9 +686,28 @@ fun ProfesorDashboardContent(
             descripcion = "Eventos escolares y festivos",
             icono = Icons.Default.CalendarMonth,
             color = ProfesorColor,
-            onClick = { 
+            onClick = lambda@{
                 haptic.performHapticFeedbackSafely()
-                onCalendarioClick()
+                try {
+                    // Navegando explícitamente a Calendario
+                    val profesorDni = uiState.profesor?.dni
+                    if (profesorDni == null) {
+                        viewModel.showSnackbarMessage("No se pudo obtener el ID del profesor")
+                        return@lambda
+                    }
+                    
+                    val perfilProfesor = uiState.profesor?.perfiles?.find { it.tipo.name == "PROFESOR" }
+                    val centroId = perfilProfesor?.centroId
+                    if (centroId == null) {
+                        viewModel.showSnackbarMessage("No se pudo obtener el ID del centro")
+                        return@lambda
+                    }
+                    
+                    navController.navigate("calendario_profesor/$profesorDni/$centroId")
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al navegar a Calendario Profesor")
+                    viewModel.showSnackbarMessage("Error al navegar al Calendario")
+                }
             }
         )
     )
@@ -858,12 +879,24 @@ fun ProfesorDashboardContent(
                             color = gestionPlanificacionCards[1].color,
                             iconTint = gestionPlanificacionCards[1].iconTint,
                             border = true,
-                            onClick = {
+                            onClick = lambda@{
                                 haptic.performHapticFeedbackSafely()
                                 try {
                                     // Navegando explícitamente a Calendario
-                                    navController.navigate(AppScreens.ProfesorCalendario.route)
-                                    Timber.d("Navegación a Calendario Profesor exitosa")
+                                    val profesorDni = uiState.profesor?.dni
+                                    if (profesorDni == null) {
+                                        viewModel.showSnackbarMessage("No se pudo obtener el ID del profesor")
+                                        return@lambda
+                                    }
+                                    
+                                    val perfilProfesor = uiState.profesor?.perfiles?.find { it.tipo.name == "PROFESOR" }
+                                    val centroId = perfilProfesor?.centroId
+                                    if (centroId == null) {
+                                        viewModel.showSnackbarMessage("No se pudo obtener el ID del centro")
+                                        return@lambda
+                                    }
+                                    
+                                    navController.navigate("calendario_profesor/$profesorDni/$centroId")
                                 } catch (e: Exception) {
                                     Timber.e(e, "Error al navegar a Calendario Profesor")
                                     viewModel.showSnackbarMessage("Error al navegar al Calendario")

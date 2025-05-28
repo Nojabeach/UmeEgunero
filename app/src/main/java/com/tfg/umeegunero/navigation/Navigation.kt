@@ -1065,13 +1065,6 @@ fun Navigation(
             )
         }
 
-        composable(route = AppScreens.ProfesorCalendario.route) {
-            com.tfg.umeegunero.feature.profesor.screen.CalendarioProfesorScreen(
-                navController = navController,
-                viewModel = hiltViewModel()
-            )
-        }
-
         // Pantallas específicas de familiar
         composable(route = AppScreens.CalendarioFamilia.route) {
             com.tfg.umeegunero.feature.familiar.screen.CalendarioFamiliaScreen(
@@ -1309,6 +1302,23 @@ fun Navigation(
             com.tfg.umeegunero.feature.familiar.screen.DetalleRegistroScreen(
                 registroId = registroId,
                 navController = navController
+            )
+        }
+
+        // Pantalla de calendario de profesor con argumentos
+        composable(
+            route = "calendario_profesor/{profesorId}/{centroId}",
+            arguments = listOf(
+                navArgument("profesorId") { type = NavType.StringType },
+                navArgument("centroId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val profesorId = backStackEntry.arguments?.getString("profesorId") ?: ""
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            com.tfg.umeegunero.feature.profesor.screen.CalendarioProfesorScreen(
+                navController = navController,
+                profesorId = profesorId,
+                centroId = centroId
             )
         }
     }

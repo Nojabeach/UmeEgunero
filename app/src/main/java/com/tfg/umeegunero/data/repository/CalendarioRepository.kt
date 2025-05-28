@@ -326,4 +326,54 @@ class CalendarioRepository @Inject constructor(
             emptyList()
         }
     }
+
+    /**
+     * Obtiene todos los eventos relacionados con un usuario específico
+     * Este método busca eventos donde:
+     * 1. El usuario es el creador del evento
+     * 2. El usuario está en la lista de destinatarios
+     * 3. El evento es público para el centro al que pertenece el usuario
+     *
+     * @param usuarioId ID del usuario (DNI)
+     * @param centroId ID del centro educativo
+     * @return Lista de eventos relacionados con el usuario
+     */
+    suspend fun obtenerEventosParaUsuario(usuarioId: String, centroId: String): List<Evento> {
+        return try {
+            // Consulta 1: Eventos donde el usuario es el creador
+            val eventosCreador = eventosCollection
+                .whereEqualTo("creadorId", usuarioId)
+                .get()
+                .await()
+                .documents
+                .mapNotNull { it.toObject(Evento::class.java)?.copy(id = it.id) }
+            
+            // Consulta 2: Eventos donde el usuario está en destinatarios
+            val eventosDestinatario = eventosCollection
+                .whereArrayContains("destinatarios", usuarioId)
+                .get()
+                .await()
+                .documents
+                .mapNotNull { it.toObject(Evento::class.java)?.copy(id = it.id) }
+            
+            // Consulta 3: Eventos públicos del centro
+            val eventosPublicos = eventosCollection
+                .whereEqualTo("centroId", centroId)
+                .whereEqualTo("publico", true)
+                .get()
+                .await()
+                .documents
+                .mapNotNull { it.toObject(Evento::class.java)?.copy(id = it.id) }
+            
+            // Combinar resultados y eliminar duplicados usando un Set
+            val todosEventos = mutableSetOf<Evento>()
+            todosEventos.addAll(eventosCreador)
+            todosEventos.addAll(eventosDestinatario)
+            todosEventos.addAll(eventosPublicos)
+            
+            todosEventos.toList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 } 

@@ -64,46 +64,14 @@ class CalendarioViewModel @Inject constructor(
     private var profesorId: String? = null
     private var centroId: String? = null
 
+    fun inicializar(profesorId: String, centroId: String) {
+        this.profesorId = profesorId
+        this.centroId = centroId
+        cargarEventos()
+    }
+
     init {
-        // Obtener ID del usuario actual y su centro
-        viewModelScope.launch {
-            try {
-                usuarioRepository.getUsuarioActual().collectLatest<Result<Usuario>> { result ->
-                    when (result) {
-                        is Result.Success<*> -> {
-                            (result.data as? Usuario)?.let { user ->
-                                profesorId = user.dni
-                                // Buscar perfil de profesor
-                                user.perfiles.find { it.tipo == TipoUsuario.PROFESOR }?.let { perfil ->
-                                    centroId = perfil.centroId
-                                    cargarEventos()
-                                } 
-                                // Si no es profesor, verificar si es admin de centro
-                                ?: user.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }?.let { perfil ->
-                                    centroId = perfil.centroId
-                                    Timber.d("Usuario es administrador de centro ${perfil.centroId}")
-                                    cargarEventos()
-                                }
-                            }
-                        }
-                        is Result.Error -> {
-                            Timber.e(result.exception, "Error al obtener usuario actual")
-                            _uiState.update { 
-                                it.copy(error = "Error al cargar datos de usuario: ${result.exception?.message}")
-                            }
-                        }
-                        is Result.Loading<*> -> {
-                            // Esperando datos
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al obtener usuario actual")
-                _uiState.update { 
-                    it.copy(error = "Error al cargar datos de usuario: ${e.message}")
-                }
-            }
-        }
+        // Eliminar la lógica de usuarioRepository.getUsuarioActual()
     }
 
     /**
@@ -241,6 +209,12 @@ class CalendarioViewModel @Inject constructor(
             try {
                 // Obtener los IDs de los destinatarios (familiares o profesores según corresponda)
                 val destinatarios = obtenerFamiliaresDeAlumnos()
+
+                if (destinatarios.isEmpty()) {
+                    Timber.e("[CALENDARIO] No se encontraron destinatarios para el evento. Abortando creación.")
+                    _uiState.update { it.copy(isLoading = false, error = "No se encontraron familiares de tus alumnos. Verifica que tienes clases y alumnos asignados.") }
+                    return@launch
+                }
                 
                 Timber.d("DEBUG-EVENTOS: Creando evento con ${destinatarios.size} destinatarios")
                 Timber.d("DEBUG-EVENTOS: Lista de destinatarios: $destinatarios")
@@ -310,9 +284,16 @@ class CalendarioViewModel @Inject constructor(
         return try {
             val destinatarios = mutableSetOf<String>()
             
-            // Obtener el usuario actual
-            val usuarioActual = usuarioRepository.getUsuarioActual().first()
-            Timber.d("DEBUG-EVENTOS: Obteniendo destinatarios, usuario=${usuarioActual is Result.Success}")
+            // Verificar que tengamos profesorId y centroId
+            if (profesorId.isNullOrEmpty() || centroId.isNullOrEmpty()) {
+                Timber.e("DEBUG-EVENTOS: No se pudo obtener el usuario actual")
+                return emptyList()
+            }
+            
+            Timber.d("DEBUG-EVENTOS: Obteniendo destinatarios, profesorId=$profesorId, centroId=$centroId")
+            
+            // Obtener detalles del usuario actual usando el profesorId
+            val usuarioActual = usuarioRepository.getUsuarioById(profesorId!!)
             
             if (usuarioActual is Result.Success) {
                 val usuario = usuarioActual.data
@@ -326,29 +307,23 @@ class CalendarioViewModel @Inject constructor(
                 
                 if (esAdminCentro) {
                     Timber.d("DEBUG-EVENTOS: Usuario es administrador de centro, obteniendo profesores del centro")
-                    // Obtener ID del centro desde el perfil de administrador
-                    val perfilAdmin = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
-                    val centroDelAdmin = perfilAdmin?.centroId
+                    // Usar directamente el centroId que ya tenemos
                     
-                    Timber.d("DEBUG-EVENTOS: Admin del centro: $centroDelAdmin")
+                    Timber.d("DEBUG-EVENTOS: Admin del centro: $centroId")
                     
-                    if (!centroDelAdmin.isNullOrEmpty()) {
-                        // Obtener todos los profesores del centro
-                        val profesores = usuarioRepository.getProfesoresByCentroId(centroDelAdmin)
-                        Timber.d("DEBUG-EVENTOS: Resultado búsqueda profesores: ${profesores is Result.Success}")
-                        
-                        if (profesores is Result.Success) {
-                            profesores.data.forEach { profesor ->
-                                destinatarios.add(profesor.dni)
-                                Timber.d("DEBUG-EVENTOS: Añadido profesor ${profesor.nombre} (DNI: ${profesor.dni}) como destinatario")
-                            }
-                            
-                            Timber.d("DEBUG-EVENTOS: Total profesores añadidos como destinatarios: ${destinatarios.size}")
-                        } else {
-                            Timber.e("DEBUG-EVENTOS: Error al obtener profesores del centro: ${(profesores as? Result.Error)?.message}")
+                    // Obtener todos los profesores del centro
+                    val profesores = usuarioRepository.getProfesoresByCentroId(centroId!!)
+                    Timber.d("DEBUG-EVENTOS: Resultado búsqueda profesores: ${profesores is Result.Success}")
+                    
+                    if (profesores is Result.Success) {
+                        profesores.data.forEach { profesor ->
+                            destinatarios.add(profesor.dni)
+                            Timber.d("DEBUG-EVENTOS: Añadido profesor ${profesor.nombre} (DNI: ${profesor.dni}) como destinatario")
                         }
+                        
+                        Timber.d("DEBUG-EVENTOS: Total profesores añadidos como destinatarios: ${destinatarios.size}")
                     } else {
-                        Timber.e("DEBUG-EVENTOS: No se pudo obtener el ID del centro del admin")
+                        Timber.e("DEBUG-EVENTOS: Error al obtener profesores del centro: ${(profesores as? Result.Error)?.exception?.message}")
                     }
                 } else if (esProfesor) {
                     // Si es profesor, obtener las clases del profesor
@@ -373,33 +348,28 @@ class CalendarioViewModel @Inject constructor(
                             // Procesar cada clase para obtener sus alumnos y familiares
                             procesarClasesParaFamiliares(perfilProfesor.clasesIds, destinatarios)
                         } else {
-                            Timber.w("DEBUG-EVENTOS: El profesor no tiene clases asignadas.")
+                            Timber.e("DEBUG-EVENTOS: No se encontraron clases para el profesor ${usuario.dni}")
                         }
                     } else {
-                        // Procesar las clases obtenidas del documento
-                        Timber.d("DEBUG-EVENTOS: Procesando ${clasesIds.size} clases para obtener familiares")
+                        // Procesar cada clase para obtener sus alumnos y familiares
                         procesarClasesParaFamiliares(clasesIds, destinatarios)
                     }
-                } else {
-                    Timber.w("DEBUG-EVENTOS: El usuario no es ni profesor ni administrador de centro")
                 }
             } else {
-                Timber.e("DEBUG-EVENTOS: No se pudo obtener el usuario actual")
+                Timber.e("DEBUG-EVENTOS: Error al obtener usuario con ID $profesorId: ${(usuarioActual as? Result.Error)?.exception?.message}")
             }
             
-            // Log final de los destinatarios encontrados
             Timber.d("DEBUG-EVENTOS: Total de destinatarios encontrados: ${destinatarios.size}")
             Timber.d("DEBUG-EVENTOS: Lista de destinatarios: $destinatarios")
             
-            // Si no se encontraron destinatarios, registrar un error
             if (destinatarios.isEmpty()) {
                 Timber.w("DEBUG-EVENTOS: ¡ADVERTENCIA! No se encontraron destinatarios para el evento")
             }
             
             return destinatarios.toList()
         } catch (e: Exception) {
-            Timber.e(e, "DEBUG-EVENTOS: Error al obtener destinatarios para el evento")
-            emptyList()
+            Timber.e(e, "DEBUG-EVENTOS: Error al obtener destinatarios para el evento: ${e.message}")
+            return emptyList()
         }
     }
     

@@ -72,10 +72,17 @@ import androidx.compose.ui.geometry.Offset
 @Composable
 fun CalendarioProfesorScreen(
     navController: NavController,
+    profesorId: String,
+    centroId: String,
     viewModel: CalendarioViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Inicializar el ViewModel con los datos del usuario
+    LaunchedEffect(profesorId, centroId) {
+        viewModel.inicializar(profesorId, centroId)
+    }
     
     // Mostrar error si existe
     LaunchedEffect(uiState.error) {
@@ -1042,7 +1049,7 @@ fun TipoEventoChip(
 @Composable
 fun CalendarioScreenPreview() {
     UmeEguneroTheme {
-        CalendarioProfesorScreen(navController = rememberNavController())
+        CalendarioProfesorScreen(navController = rememberNavController(), profesorId = "", centroId = "")
     }
 }
 
@@ -1050,6 +1057,6 @@ fun CalendarioScreenPreview() {
 @Composable
 fun CalendarioScreenDarkPreview() {
     UmeEguneroTheme {
-        CalendarioProfesorScreen(navController = rememberNavController())
+        CalendarioProfesorScreen(navController = rememberNavController(), profesorId = "", centroId = "")
     }
 } 

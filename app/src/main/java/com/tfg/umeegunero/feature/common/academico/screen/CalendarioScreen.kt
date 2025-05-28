@@ -54,6 +54,8 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import androidx.navigation.compose.rememberNavController
 import com.tfg.umeegunero.navigation.NavItem
 import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.data.repository.AuthRepository
+import com.tfg.umeegunero.data.model.TipoUsuario
 
 /**
  * Pantalla de gestión del calendario escolar
