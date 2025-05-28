@@ -193,8 +193,10 @@ class ChatViewModel @Inject constructor(
         messagesListener?.remove()
         
         try {
+            Timber.d("Configurando listener para conversación: $conversacionId en collection unified_messages")
+            
             // Configurar listener en tiempo real para los mensajes
-            messagesListener = firestore.collection("unifiedMessages")
+            messagesListener = firestore.collection("unified_messages")
                 .whereEqualTo("conversationId", conversacionId)
                 .whereEqualTo("type", MessageType.CHAT.name)
                 .orderBy("timestamp", Query.Direction.ASCENDING)
@@ -224,9 +226,12 @@ class ChatViewModel @Inject constructor(
                     }
                     
                     if (snapshot != null) {
+                        Timber.d("Snapshot recibido para conversación $conversacionId. Documentos: ${snapshot.documents.size}")
+                        
                         val messages = snapshot.documents.mapNotNull { doc ->
                             try {
                                 val data = doc.data ?: return@mapNotNull null
+                                Timber.d("Procesando mensaje ${doc.id}: $data")
                                 UnifiedMessage.fromMap(doc.id, data)
                             } catch (e: Exception) {
                                 Timber.e(e, "Error al parsear mensaje: ${doc.id}")
@@ -246,6 +251,8 @@ class ChatViewModel @Inject constructor(
                         }
                         
                         Timber.d("Mensajes actualizados: ${messages.size} mensajes en la conversación")
+                    } else {
+                        Timber.d("Snapshot nulo recibido para conversación $conversacionId")
                     }
                 }
                 

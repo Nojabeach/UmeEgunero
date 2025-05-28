@@ -63,12 +63,14 @@ data class Evento(
         // Agregar log para verificar los destinatarios antes de incluirlos en el mapa
         Timber.d("DEBUG-EVENTO-MODEL: Destinatarios en objeto Evento: $destinatarios (tamaño: ${destinatarios.size})")
         
-        if (destinatarios.isNotEmpty()) {
-            map["destinatarios"] = ArrayList(destinatarios)
-            Timber.d("DEBUG-EVENTO-MODEL: Destinatarios añadidos al mapa: ${map["destinatarios"]}")
-        } else {
-            Timber.d("DEBUG-EVENTO-MODEL: No hay destinatarios para añadir al mapa")
-        }
+        // Siempre guardar la lista de destinatarios, incluso si está vacía
+        map["destinatarios"] = ArrayList(destinatarios)
+        
+        // También guardar como destinatariosIds para compatibilidad con otros sistemas
+        map["destinatariosIds"] = ArrayList(destinatarios)
+        
+        Timber.d("DEBUG-EVENTO-MODEL: Destinatarios añadidos al mapa: ${map["destinatarios"]}")
+        Timber.d("DEBUG-EVENTO-MODEL: DestinatatiosIds añadidos al mapa: ${map["destinatariosIds"]}")
         
         return map
     }

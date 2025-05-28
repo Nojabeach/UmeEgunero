@@ -203,20 +203,13 @@ class EventoRepository @Inject constructor(
             val eventoMap = evento.toMap().toMutableMap()
             eventoMap["creadorId"] = creadorId
             
-            // Log para verificar los destinatarios
-            val destinatarios = eventoMap["destinatarios"] as? List<*> ?: emptyList<String>()
-            Timber.d("DEBUG-EVENTOS-REPO: Guardando evento con ${destinatarios.size} destinatarios: $destinatarios")
+            // Asegurar que tanto destinatarios como destinatariosIds estén presentes en el mapa
+            val destinatarios = ArrayList(evento.destinatarios)
+            eventoMap["destinatarios"] = destinatarios
+            eventoMap["destinatariosIds"] = destinatarios
             
-            // Verificar si los destinatarios se están guardando correctamente
-            if (destinatarios.isEmpty() && evento.destinatarios.isNotEmpty()) {
-                Timber.w("DEBUG-EVENTOS-REPO: ¡ALERTA! Los destinatarios se perdieron en la conversión a Map")
-                Timber.w("DEBUG-EVENTOS-REPO: Original: ${evento.destinatarios}")
-                Timber.w("DEBUG-EVENTOS-REPO: En Map: $destinatarios")
-                
-                // Intentar forzar la actualización del mapa con los destinatarios originales
-                eventoMap["destinatarios"] = ArrayList(evento.destinatarios)
-                Timber.d("DEBUG-EVENTOS-REPO: Destinatarios forzados: ${eventoMap["destinatarios"]}")
-            }
+            Timber.d("DEBUG-EVENTOS-REPO: Guardando evento con ${destinatarios.size} destinatarios")
+            Timber.d("DEBUG-EVENTOS-REPO: Lista de destinatarios: $destinatarios")
             
             // Guardar el evento usando los datos del map actualizado
             nuevoEventoRef.set(eventoMap).await()
