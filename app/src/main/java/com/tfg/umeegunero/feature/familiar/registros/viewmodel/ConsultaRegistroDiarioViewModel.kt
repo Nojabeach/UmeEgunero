@@ -244,7 +244,9 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
     }
     
     /**
-     * Marca un registro como visto y leído por el familiar actual
+     * Marca un registro como visto por el familiar
+     * 
+     * @param registroId ID del registro a marcar
      */
     fun marcarComoVisto(registroId: String) {
         viewModelScope.launch {
@@ -259,6 +261,8 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                 val familiarId = familiarActual.dni
                 val nombreFamiliar = "${familiarActual.nombre} ${familiarActual.apellidos}".trim()
                 
+                Timber.d("Iniciando proceso para marcar registro $registroId como leído por familiar $familiarId ($nombreFamiliar)")
+                
                 // Marcar como leído por el familiar específico
                 val result = registroDiarioRepository.marcarRegistroComoLeidoPorFamiliar(
                     registroId = registroId,
@@ -267,6 +271,8 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                 )
                 
                 if (result is Result.Success) {
+                    Timber.d("Registro $registroId marcado como leído exitosamente en Firestore")
+                    
                     // Actualizar la lista de registros
                     _uiState.update { state ->
                         val registrosActualizados = state.registros.map { registro ->
@@ -314,7 +320,7 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                         )
                     }
                     
-                    Timber.d("Registro $registroId marcado como leído por $nombreFamiliar")
+                    Timber.d("Estado de UI actualizado - Registro $registroId marcado como leído por $nombreFamiliar")
                 } else if (result is Result.Error) {
                     Timber.e(result.exception, "Error al marcar registro como leído: $registroId")
                 }

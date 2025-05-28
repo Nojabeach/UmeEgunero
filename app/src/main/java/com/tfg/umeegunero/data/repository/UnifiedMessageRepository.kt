@@ -13,6 +13,7 @@ import com.tfg.umeegunero.data.model.MessageType
 import com.tfg.umeegunero.data.model.ParticipantDetail
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.UnifiedMessage
+import com.tfg.umeegunero.data.service.NotificationService
 import com.tfg.umeegunero.util.Result
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -34,7 +35,8 @@ import javax.inject.Singleton
 class UnifiedMessageRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val authRepositoryProvider: Provider<AuthRepository>,
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val notificationService: Provider<NotificationService>  // Usar Provider para evitar ciclos de dependencia
 ) {
     // Constantes para las colecciones
     companion object {
@@ -47,13 +49,17 @@ class UnifiedMessageRepository @Inject constructor(
     // Usar get() para obtener la instancia del Provider cuando sea necesario
     private val authRepository: AuthRepository
         get() = authRepositoryProvider.get()
+        
+    // Obtener la instancia de notificationService cuando sea necesario
+    private val notificationServiceInstance: NotificationService
+        get() = notificationService.get()
     
     /**
      * Envía un mensaje unificado
      */
     suspend fun sendMessage(message: UnifiedMessage): Result<String> {
         return try {
-            val messageId = UUID.randomUUID().toString()
+            val messageId = message.id.ifEmpty { UUID.randomUUID().toString() }
             val messageWithId = message.copy(id = messageId)
             
             // Guardar el mensaje en Firestore
@@ -61,6 +67,12 @@ class UnifiedMessageRepository @Inject constructor(
                 .document(messageId)
                 .set(messageWithId)
                 .await()
+            
+            // No es necesario enviar notificaciones push aquí.
+            // La Cloud Function "notifyOnNewUnifiedMessage" se activará automáticamente
+            // cuando se cree el documento en Firestore y enviará las notificaciones.
+            
+            Timber.d("Mensaje unificado guardado en Firestore con ID: $messageId. Tipo: ${message.type}")
             
             Result.Success(messageId)
         } catch (e: Exception) {

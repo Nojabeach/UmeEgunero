@@ -199,7 +199,12 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 
                 val alumnosResult = usuarioRepository.getAlumnosByClase(clase.id)
                 val alumnos = if (alumnosResult is Result.Success) alumnosResult.data else emptyList()
-                Timber.d("ListadoPreRegistroDiarioViewModel (cargarDatosPreRegistro): Alumnos recibidos: ${alumnos.joinToString { it.nombre + " (ID: " + it.id + ", DNI: " + it.dni + ", Presente: " + it.presente + ")" }}")
+                
+                // Registrar los valores de registroDiarioLeido para cada alumno
+                Timber.d("ListadoPreRegistroDiarioViewModel (cargarDatosPreRegistro): Alumnos recibidos: ${alumnos.joinToString { 
+                    it.nombre + " (ID: " + it.id + ", DNI: " + it.dni + ", Presente: " + it.presente + 
+                    ", RegistroLeido: " + it.registroDiarioLeido + ")" 
+                }}")
                 
                 // Obtener registros existentes para la fecha actual
                 val fechaActual = _uiState.value.fechaSeleccionada
@@ -210,6 +215,12 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 
                 // Crear set con IDs de alumnos que ya tienen registro
                 val alumnosConRegistro = registros.map { it.alumnoId }.toSet()
+                
+                // Marcar los registros leídos para depuración
+                val estadoLecturaRegistros = registros.joinToString("\n") { 
+                    "Registro: ${it.id}, AlumnoId: ${it.alumnoId}, Visto: ${it.vistoPorFamiliar}, Lecturas: ${it.lecturasPorFamiliar.keys}" 
+                }
+                Timber.d("Estado de lectura de registros:\n$estadoLecturaRegistros")
                 
                 Timber.d("cargarDatos - Fecha seleccionada: $fechaActual")
                 Timber.d("cargarDatos - Alumnos con registro: $alumnosConRegistro")

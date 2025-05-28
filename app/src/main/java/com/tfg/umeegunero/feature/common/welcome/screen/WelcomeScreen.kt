@@ -27,16 +27,19 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.R
 import com.tfg.umeegunero.ui.theme.*
 import com.tfg.umeegunero.ui.components.*
 import com.tfg.umeegunero.util.ThemeUtils
 import com.tfg.umeegunero.util.getUserColor
+import com.tfg.umeegunero.feature.common.welcome.viewmodel.WelcomeViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.sin
 import com.tfg.umeegunero.data.model.TipoUsuario
@@ -45,6 +48,7 @@ import com.tfg.umeegunero.ui.theme.GradientStart
 import com.tfg.umeegunero.ui.theme.GradientEnd
 import com.tfg.umeegunero.ui.theme.AcademicoColor
 import com.tfg.umeegunero.ui.theme.AcademicoColorDark
+import timber.log.Timber
 
 /**
  * Tipos de usuario disponibles para la selección en la pantalla de bienvenida.
@@ -63,9 +67,16 @@ fun WelcomeScreen(
     onCloseApp: () -> Unit,
     onNavigateToTechnicalSupport: () -> Unit = {},
     onNavigateToFAQ: () -> Unit = {},
-    onNavigateToTerminosCondiciones: () -> Unit = {}
+    onNavigateToTerminosCondiciones: () -> Unit = {},
+    viewModel: WelcomeViewModel = hiltViewModel()
 ) {
     val isLight = ThemeUtils.isLightTheme()
+    
+    // Iniciar sincronización cuando la pantalla esté visible
+    LaunchedEffect(Unit) {
+        Timber.d("WelcomeScreen visible, iniciando sincronización si es necesario")
+        viewModel.iniciarSincronizacionSiEsNecesario()
+    }
     
     // Definición de tonos pastel a partir de los colores principales
     val CentroColorPastel = CentroColor.copy(alpha = 0.25f)

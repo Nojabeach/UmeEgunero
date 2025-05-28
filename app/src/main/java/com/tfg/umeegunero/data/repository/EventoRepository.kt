@@ -179,19 +179,23 @@ class EventoRepository @Inject constructor(
             val nuevoEventoRef = firestore.collection(COLLECTION_EVENTOS).document()
             val eventoId = nuevoEventoRef.id
             
+            Timber.d("DEBUG-EVENTOS-REPO: Creando evento. Destinatarios: ${evento.destinatarios.size}")
+            
             // Comprobar si el creadorId es un UID de Firebase o un DNI
             val creadorId = if (evento.creadorId.length > 20) {
                 // Probablemente es un UID de Firebase, buscar el DNI correspondiente
                 val dni = getDniByFirebaseUid(evento.creadorId)
                 if (dni.isNullOrBlank()) {
                     // Si no se encontró el DNI, usamos el UID como fallback
-                    Timber.w("No se encontró DNI para UID: ${evento.creadorId}, usando UID como fallback")
+                    Timber.w("DEBUG-EVENTOS-REPO: No se encontró DNI para UID: ${evento.creadorId}, usando UID como fallback")
                     evento.creadorId
                 } else {
+                    Timber.d("DEBUG-EVENTOS-REPO: Convertido UID a DNI: $dni")
                     dni
                 }
             } else {
                 // Es probable que ya sea un DNI, lo usamos directamente
+                Timber.d("DEBUG-EVENTOS-REPO: Usando creadorId (DNI): ${evento.creadorId}")
                 evento.creadorId
             }
             
@@ -201,15 +205,26 @@ class EventoRepository @Inject constructor(
             
             // Log para verificar los destinatarios
             val destinatarios = eventoMap["destinatarios"] as? List<*> ?: emptyList<String>()
-            Timber.d("Guardando evento con ${destinatarios.size} destinatarios: $destinatarios")
+            Timber.d("DEBUG-EVENTOS-REPO: Guardando evento con ${destinatarios.size} destinatarios: $destinatarios")
+            
+            // Verificar si los destinatarios se están guardando correctamente
+            if (destinatarios.isEmpty() && evento.destinatarios.isNotEmpty()) {
+                Timber.w("DEBUG-EVENTOS-REPO: ¡ALERTA! Los destinatarios se perdieron en la conversión a Map")
+                Timber.w("DEBUG-EVENTOS-REPO: Original: ${evento.destinatarios}")
+                Timber.w("DEBUG-EVENTOS-REPO: En Map: $destinatarios")
+                
+                // Intentar forzar la actualización del mapa con los destinatarios originales
+                eventoMap["destinatarios"] = ArrayList(evento.destinatarios)
+                Timber.d("DEBUG-EVENTOS-REPO: Destinatarios forzados: ${eventoMap["destinatarios"]}")
+            }
             
             // Guardar el evento usando los datos del map actualizado
             nuevoEventoRef.set(eventoMap).await()
             
-            Timber.d("Evento creado con ID: $eventoId, creador (DNI): $creadorId, destinatarios: ${destinatarios.size}")
+            Timber.d("DEBUG-EVENTOS-REPO: Evento creado con ID: $eventoId, creador (DNI): $creadorId, destinatarios: ${destinatarios.size}")
             Result.Success(eventoId)
         } catch (e: Exception) {
-            Timber.e(e, "Error al crear evento")
+            Timber.e(e, "DEBUG-EVENTOS-REPO: Error al crear evento: ${e.message}")
             Result.Error(e)
         }
     }

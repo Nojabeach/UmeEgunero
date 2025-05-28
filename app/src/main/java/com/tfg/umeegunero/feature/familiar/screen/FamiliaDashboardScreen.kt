@@ -1291,15 +1291,15 @@ fun FamiliaDashboardScreen(
                             onClick = {
                                 try {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    // Seleccionar primer hijo o mostrar un selector si hay varios
-                                    val primerHijo = uiState.hijos.firstOrNull()
-                                    if (primerHijo != null) {
+                                    // Usar el hijo seleccionado actual
+                                    val hijoSeleccionado = uiState.hijoSeleccionado
+                                    if (hijoSeleccionado != null) {
                                         try {
                                             navController.navigate(AppScreens.ConsultaRegistroDiario.createRoute(
-                                                alumnoId = primerHijo.id,
-                                                alumnoNombre = primerHijo.nombre
+                                                alumnoId = hijoSeleccionado.dni,
+                                                alumnoNombre = hijoSeleccionado.nombre
                                             ))
-                                            Timber.d("Navegando a ConsultaRegistroDiario para alumno: ${primerHijo.id}, nombre: ${primerHijo.nombre}")
+                                            Timber.d("Navegando a ConsultaRegistroDiario para alumno: ${hijoSeleccionado.dni}, nombre: ${hijoSeleccionado.nombre}")
                                         } catch (e: Exception) {
                                             Timber.e(e, "Error al navegar a historial completo: ${e.message}")
                                             scope.launch {
@@ -1308,7 +1308,7 @@ fun FamiliaDashboardScreen(
                                         }
                                     } else {
                                         scope.launch {
-                                            snackbarHostState.showSnackbar("No hay hijos registrados para mostrar el historial.")
+                                            snackbarHostState.showSnackbar("Por favor, selecciona un hijo primero")
                                         }
                                     }
                                 } catch (e: Exception) {

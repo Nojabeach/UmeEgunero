@@ -65,7 +65,7 @@ class CalendarioViewModel @Inject constructor(
     private var centroId: String? = null
 
     init {
-        // Obtener ID del profesor actual
+        // Obtener ID del usuario actual y su centro
         viewModelScope.launch {
             try {
                 usuarioRepository.getUsuarioActual().collectLatest<Result<Usuario>> { result ->
@@ -73,8 +73,15 @@ class CalendarioViewModel @Inject constructor(
                         is Result.Success<*> -> {
                             (result.data as? Usuario)?.let { user ->
                                 profesorId = user.dni
+                                // Buscar perfil de profesor
                                 user.perfiles.find { it.tipo == TipoUsuario.PROFESOR }?.let { perfil ->
                                     centroId = perfil.centroId
+                                    cargarEventos()
+                                } 
+                                // Si no es profesor, verificar si es admin de centro
+                                ?: user.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }?.let { perfil ->
+                                    centroId = perfil.centroId
+                                    Timber.d("Usuario es administrador de centro ${perfil.centroId}")
                                     cargarEventos()
                                 }
                             }
@@ -231,10 +238,12 @@ class CalendarioViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true, mostrarDialogoEvento = false) }
                 
+                Timber.d("DEBUG-EVENTOS: Iniciando creación de evento como profesor ID=$profesorId, centro=$centroId")
+                
                 // Obtener los familiares de los alumnos del profesor
                 val destinatarios = obtenerFamiliaresDeAlumnos()
                 
-                Timber.d("Creando evento con ${destinatarios.size} destinatarios: $destinatarios")
+                Timber.d("DEBUG-EVENTOS: Creando evento con ${destinatarios.size} destinatarios: $destinatarios")
                 
                 // Crear objeto evento
                 val fechaHora = LocalDateTime.of(diaSeleccionado, LocalTime.of(8, 0))
@@ -251,7 +260,20 @@ class CalendarioViewModel @Inject constructor(
                     destinatarios = destinatarios
                 )
                 
-                eventoRepository.crearEvento(nuevoEvento)
+                Timber.d("DEBUG-EVENTOS: Enviando evento a repository con ${nuevoEvento.destinatarios.size} destinatarios")
+                val resultado = eventoRepository.crearEvento(nuevoEvento)
+                
+                when (resultado) {
+                    is Result.Success -> {
+                        Timber.d("DEBUG-EVENTOS: Evento creado con éxito, ID: ${resultado.data}")
+                    }
+                    is Result.Error -> {
+                        Timber.e("DEBUG-EVENTOS: Error al crear evento: ${resultado.exception?.message}")
+                    }
+                    else -> {
+                        Timber.d("DEBUG-EVENTOS: Respuesta inesperada del repository")
+                    }
+                }
                 
                 _uiState.update { 
                     it.copy(
@@ -262,7 +284,7 @@ class CalendarioViewModel @Inject constructor(
                 
                 cargarEventos()
             } catch (e: Exception) {
-                Timber.e(e, "Error al crear evento")
+                Timber.e(e, "DEBUG-EVENTOS: Error al crear evento: ${e.message}")
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -274,53 +296,87 @@ class CalendarioViewModel @Inject constructor(
     }
     
     /**
-     * Obtiene los IDs de los familiares de los alumnos del profesor
+     * Obtiene los IDs de los destinatarios para un evento según el tipo de usuario
+     * - Para profesor: los familiares de los alumnos del profesor
+     * - Para admin de centro: todos los profesores del centro
      */
     private suspend fun obtenerFamiliaresDeAlumnos(): List<String> {
         return try {
-            val familiaresIds = mutableSetOf<String>()
+            val destinatarios = mutableSetOf<String>()
             
-            // Obtener el usuario actual (profesor)
+            // Obtener el usuario actual
             val usuarioActual = usuarioRepository.getUsuarioActual().first()
+            Timber.d("DEBUG-EVENTOS: Obteniendo destinatarios, usuario=${usuarioActual is Result.Success}")
+            
             if (usuarioActual is Result.Success) {
-                val profesor = usuarioActual.data
+                val usuario = usuarioActual.data
+                Timber.d("DEBUG-EVENTOS: Usuario actual DNI=${usuario.dni}, nombre=${usuario.nombre}")
                 
-                // Obtener las clases del profesor directamente desde el documento en Firestore
-                // para asegurar que tenemos los datos más actualizados
-                val firestore = FirebaseFirestore.getInstance()
-                val profesorDoc = firestore.collection("usuarios")
-                    .document(profesor.dni)
-                    .get()
-                    .await()
+                // Verificar si el usuario es un administrador de centro
+                val esAdminCentro = usuario.perfiles.any { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                val esProfesor = usuario.perfiles.any { it.tipo == TipoUsuario.PROFESOR }
                 
-                // Obtenemos los IDs de las clases directamente del documento
-                val clasesIds = profesorDoc.get("clasesIds") as? List<String> ?: emptyList()
+                Timber.d("DEBUG-EVENTOS: Tipo de usuario - Admin:$esAdminCentro, Profesor:$esProfesor")
                 
-                Timber.d("Profesor ${profesor.nombre} (${profesor.dni}) tiene ${clasesIds.size} clases: $clasesIds")
-                
-                // Si no hay clases, intentamos obtenerlas del perfil del profesor
-                if (clasesIds.isEmpty()) {
-                    Timber.w("No se encontraron clasesIds en el documento del profesor. Intentando obtener del perfil...")
-                    val perfilProfesor = profesor.perfiles.find { it.tipo == TipoUsuario.PROFESOR }
-                    if (perfilProfesor != null && perfilProfesor.clasesIds.isNotEmpty()) {
-                        Timber.d("Usando clasesIds del perfil del profesor: ${perfilProfesor.clasesIds}")
-                        // Procesar cada clase para obtener sus alumnos y familiares
-                        procesarClasesParaFamiliares(perfilProfesor.clasesIds, familiaresIds)
-                    } else {
-                        Timber.w("El profesor no tiene clases asignadas.")
+                if (esAdminCentro) {
+                    Timber.d("DEBUG-EVENTOS: Usuario es administrador de centro, obteniendo profesores del centro")
+                    // Obtener ID del centro desde el perfil de administrador
+                    val perfilAdmin = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                    val centroDelAdmin = perfilAdmin?.centroId
+                    
+                    Timber.d("DEBUG-EVENTOS: Admin del centro: $centroDelAdmin")
+                    
+                    if (!centroDelAdmin.isNullOrEmpty()) {
+                        // Obtener todos los profesores del centro
+                        val profesores = usuarioRepository.getProfesoresByCentroId(centroDelAdmin)
+                        Timber.d("DEBUG-EVENTOS: Resultado búsqueda profesores: ${profesores is Result.Success}")
+                        
+                        if (profesores is Result.Success) {
+                            profesores.data.forEach { profesor ->
+                                destinatarios.add(profesor.dni)
+                                Timber.d("DEBUG-EVENTOS: Añadido profesor ${profesor.nombre} (DNI: ${profesor.dni}) como destinatario")
+                            }
+                        }
                     }
                 } else {
-                    // Procesar las clases obtenidas del documento
-                    procesarClasesParaFamiliares(clasesIds, familiaresIds)
+                    // Si es profesor, obtener las clases del profesor
+                    Timber.d("DEBUG-EVENTOS: Obteniendo clases del profesor ${usuario.dni}")
+                    val firestore = FirebaseFirestore.getInstance()
+                    val profesorDoc = firestore.collection("usuarios")
+                        .document(usuario.dni)
+                        .get()
+                        .await()
+                    
+                    // Obtenemos los IDs de las clases directamente del documento
+                    val clasesIds = profesorDoc.get("clasesIds") as? List<String> ?: emptyList()
+                    
+                    Timber.d("DEBUG-EVENTOS: Profesor ${usuario.nombre} (${usuario.dni}) tiene ${clasesIds.size} clases: $clasesIds")
+                    
+                    // Si no hay clases, intentamos obtenerlas del perfil del profesor
+                    if (clasesIds.isEmpty()) {
+                        Timber.w("DEBUG-EVENTOS: No se encontraron clasesIds en documento, buscando en perfil...")
+                        val perfilProfesor = usuario.perfiles.find { it.tipo == TipoUsuario.PROFESOR }
+                        if (perfilProfesor != null && perfilProfesor.clasesIds.isNotEmpty()) {
+                            Timber.d("DEBUG-EVENTOS: Usando clasesIds del perfil: ${perfilProfesor.clasesIds}")
+                            // Procesar cada clase para obtener sus alumnos y familiares
+                            procesarClasesParaFamiliares(perfilProfesor.clasesIds, destinatarios)
+                        } else {
+                            Timber.w("DEBUG-EVENTOS: El profesor no tiene clases asignadas.")
+                        }
+                    } else {
+                        // Procesar las clases obtenidas del documento
+                        Timber.d("DEBUG-EVENTOS: Procesando ${clasesIds.size} clases para obtener familiares")
+                        procesarClasesParaFamiliares(clasesIds, destinatarios)
+                    }
                 }
             } else {
-                Timber.e("No se pudo obtener el usuario actual")
+                Timber.e("DEBUG-EVENTOS: No se pudo obtener el usuario actual")
             }
             
-            Timber.d("Total de familiares encontrados: ${familiaresIds.size}, IDs: $familiaresIds")
-            familiaresIds.toList()
+            Timber.d("DEBUG-EVENTOS: Total de destinatarios encontrados: ${destinatarios.size}, IDs: $destinatarios")
+            destinatarios.toList()
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener familiares de alumnos")
+            Timber.e(e, "DEBUG-EVENTOS: Error al obtener destinatarios para el evento")
             emptyList()
         }
     }
@@ -329,38 +385,59 @@ class CalendarioViewModel @Inject constructor(
      * Procesa las clases para obtener los familiares de sus alumnos
      */
     private suspend fun procesarClasesParaFamiliares(clasesIds: List<String>, familiaresIds: MutableSet<String>) {
+        val firestore = FirebaseFirestore.getInstance()
+        
+        Timber.d("DEBUG-EVENTOS: Iniciando procesamiento de ${clasesIds.size} clases")
+        
         // Para cada clase, obtener los alumnos
         for (claseId in clasesIds) {
             try {
+                Timber.d("DEBUG-EVENTOS: Procesando clase $claseId")
                 val alumnosResult = usuarioRepository.getAlumnosByClase(claseId)
+                
                 if (alumnosResult is Result.Success) {
                     val alumnos = alumnosResult.data
                     
-                    Timber.d("Clase $claseId tiene ${alumnos.size} alumnos")
+                    Timber.d("DEBUG-EVENTOS: Clase $claseId tiene ${alumnos.size} alumnos")
                     
-                    // Para cada alumno, obtener sus familiares
+                    // Para cada alumno, buscar sus familiares en vinculaciones_familiar_alumno
                     for (alumno in alumnos) {
                         try {
-                            val familiaresResult = familiarRepository.getFamiliaresByAlumnoId(alumno.id)
-                            if (familiaresResult is Result.Success) {
-                                val familiares = familiaresResult.data
-                                familiaresIds.addAll(familiares.map { it.dni })
-                                
-                                Timber.d("Alumno ${alumno.nombre} (ID: ${alumno.id}) tiene ${familiares.size} familiares: ${familiares.map { it.dni }}")
-                            } else if (familiaresResult is Result.Error) {
-                                Timber.e(familiaresResult.exception, "Error al obtener familiares para alumno ${alumno.id}")
+                            Timber.d("DEBUG-EVENTOS: Buscando familiares de alumno ${alumno.nombre} (DNI: ${alumno.dni})")
+                            
+                            // Buscar en la colección vinculaciones_familiar_alumno usando el DNI del alumno
+                            val vinculacionesSnapshot = firestore.collection("vinculaciones_familiar_alumno")
+                                .whereEqualTo("alumnoId", alumno.dni)
+                                .get()
+                                .await()
+                            
+                            Timber.d("DEBUG-EVENTOS: Encontradas ${vinculacionesSnapshot.size()} vinculaciones para alumno ${alumno.dni}")
+                            
+                            for (vinculacionDoc in vinculacionesSnapshot.documents) {
+                                val familiarId = vinculacionDoc.getString("familiarId")
+                                if (!familiarId.isNullOrEmpty()) {
+                                    familiaresIds.add(familiarId)
+                                    Timber.d("DEBUG-EVENTOS: Añadido familiar ID: $familiarId para alumno ${alumno.nombre}")
+                                } else {
+                                    Timber.w("DEBUG-EVENTOS: Vinculación sin familiarId válido para alumno ${alumno.dni}")
+                                }
                             }
+                            
                         } catch (e: Exception) {
-                            Timber.e(e, "Error al procesar familiares del alumno ${alumno.id}")
+                            Timber.e(e, "DEBUG-EVENTOS: Error al procesar familiares del alumno ${alumno.dni}")
                         }
                     }
                 } else if (alumnosResult is Result.Error) {
-                    Timber.e(alumnosResult.exception, "Error al obtener alumnos para clase $claseId")
+                    Timber.e(alumnosResult.exception, "DEBUG-EVENTOS: Error al obtener alumnos para clase $claseId")
+                } else {
+                    Timber.d("DEBUG-EVENTOS: Resultado inesperado al obtener alumnos para clase $claseId")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al procesar la clase $claseId")
+                Timber.e(e, "DEBUG-EVENTOS: Error al procesar la clase $claseId")
             }
         }
+        
+        Timber.d("DEBUG-EVENTOS: Finalizado procesamiento de clases. Total familiares: ${familiaresIds.size}")
     }
 
     /**

@@ -284,6 +284,23 @@ fun ListadoPreRegistroDiarioScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
+            // Mostrar ausencias notificadas para la fecha seleccionada
+            val ausenciasFechaSeleccionada = uiState.ausenciasNotificadas.filter { ausencia ->
+                val fechaAusencia = ausencia.fechaAusencia.toDate().toInstant()
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
+                fechaAusencia == uiState.fechaSeleccionada
+            }
+            
+            if (ausenciasFechaSeleccionada.isNotEmpty()) {
+                AusenciasNotificadasCard(
+                    ausencias = ausenciasFechaSeleccionada,
+                    onVerDetalle = { ausencia -> viewModel.mostrarDetalleAusencia(ausencia) }
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
             // Información de la clase
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -381,14 +398,6 @@ fun ListadoPreRegistroDiarioScreen(
                         ausenciaJustificada = uiState.alumnosConAusenciaJustificada.contains(alumno.id)
                     )
                 }
-            }
-            
-            // Mostrar ausencias notificadas si hay alguna
-            if (uiState.ausenciasNotificadas.isNotEmpty()) {
-                AusenciasNotificadasCard(
-                    ausencias = uiState.ausenciasNotificadas,
-                    onVerDetalle = { ausencia -> viewModel.mostrarDetalleAusencia(ausencia) }
-                )
             }
         }
     }
@@ -568,6 +577,14 @@ fun AlumnoSelectionChip(
     val haptic = LocalHapticFeedback.current
     var showDeleteDialog by remember { mutableStateOf(false) }
     
+    // Log para depuración del estado de lectura
+    LaunchedEffect(alumno.id, tieneRegistro, alumno.registroDiarioLeido) {
+        Timber.d("AlumnoSelectionChip - Alumno: ${alumno.nombre}, ID: ${alumno.id}, Tiene Registro: $tieneRegistro, Registro Leído: ${alumno.registroDiarioLeido}")
+    }
+    
+    // Si tiene ausencia justificada y no tiene registro, no puede ser seleccionado
+    val puedeSerSeleccionado = !ausenciaJustificada || tieneRegistro
+    
     // Diálogo de confirmación para eliminar registro
     if (showDeleteDialog) {
         AlertDialog(
@@ -599,13 +616,16 @@ fun AlumnoSelectionChip(
             .fillMaxWidth()
             .heightIn(min = 56.dp, max = 72.dp)
             .padding(horizontal = 8.dp, vertical = 4.dp)
-            .clickable {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onSelectionChanged(!isSelected)
+            .clickable(enabled = puedeSerSeleccionado) {
+                if (puedeSerSeleccionado) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onSelectionChanged(!isSelected)
+                }
             },
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
+                ausenciaJustificada && !tieneRegistro -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
                 tieneRegistro && isSelected -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
                 tieneRegistro -> MaterialTheme.colorScheme.secondaryContainer
                 isSelected -> ProfesorColor.copy(alpha = 0.1f)
@@ -613,6 +633,7 @@ fun AlumnoSelectionChip(
             }
         ),
         border = when {
+            ausenciaJustificada && !tieneRegistro -> BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f))
             tieneRegistro && isSelected -> BorderStroke(1.dp, MaterialTheme.colorScheme.error)
             tieneRegistro -> BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
             isSelected -> BorderStroke(1.dp, ProfesorColor)
@@ -632,6 +653,14 @@ fun AlumnoSelectionChip(
                 contentAlignment = Alignment.Center
             ) {
                 when {
+                    ausenciaJustificada && !tieneRegistro -> {
+                        Icon(
+                            imageVector = Icons.Default.Sick,
+                            contentDescription = "Ausencia justificada",
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                     tieneRegistro -> {
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
@@ -674,7 +703,11 @@ fun AlumnoSelectionChip(
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (ausenciaJustificada && !tieneRegistro) 
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    else 
+                        MaterialTheme.colorScheme.onSurface
                 )
                 
                 if (tieneRegistro) {
@@ -699,6 +732,13 @@ fun AlumnoSelectionChip(
                             modifier = Modifier.size(14.dp)
                         )
                     }
+                } else if (ausenciaJustificada) {
+                    Text(
+                        text = "Ausencia justificada - No requiere registro",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
                 }
             }
             
@@ -726,7 +766,7 @@ fun AlumnoSelectionChip(
                 ) {
                     Text(
                         text = when {
-                            ausenciaJustificada -> "Ausente Justificado"
+                            ausenciaJustificada -> "Justificado"
                             alumno.presente -> "Presente"
                             else -> "Ausente"
                         },
@@ -1589,207 +1629,6 @@ fun AusenciasNotificadasCard(
                             }
                         }
                     }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Componente que muestra un alumno en la lista con su estado de asistencia
- * 
- * Este componente muestra la información básica del alumno y su estado actual,
- * permitiendo seleccionarlo para crear un registro diario o eliminar un registro existente.
- * 
- * @param alumno Datos del alumno a mostrar
- * @param isSelected Indica si el alumno está seleccionado para crear registro
- * @param tieneRegistro Indica si el alumno ya tiene un registro para la fecha actual
- * @param onToggleSelection Callback para cambiar el estado de selección
- * @param onEliminarRegistro Callback para eliminar el registro existente
- * @param ausenciaJustificada Indica si el alumno tiene una ausencia justificada
- */
-@Composable
-fun AlumnoItem(
-    alumno: Alumno,
-    isSelected: Boolean,
-    tieneRegistro: Boolean,
-    onToggleSelection: () -> Unit,
-    onEliminarRegistro: () -> Unit,
-    ausenciaJustificada: Boolean = false
-) {
-    val haptic = LocalHapticFeedback.current
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    
-    // Diálogo de confirmación para eliminar registro
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Eliminar registro") },
-            text = { 
-                Text("¿Estás seguro de que quieres eliminar el registro de ${alumno.nombre} para hoy?") 
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteDialog = false
-                        onEliminarRegistro()
-                    }
-                ) {
-                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
-    
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp, max = 72.dp)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-            .clickable {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onToggleSelection()
-            },
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = when {
-                tieneRegistro && isSelected -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                tieneRegistro -> MaterialTheme.colorScheme.secondaryContainer
-                isSelected -> ProfesorColor.copy(alpha = 0.1f)
-                else -> MaterialTheme.colorScheme.surface
-            }
-        ),
-        border = when {
-            tieneRegistro && isSelected -> BorderStroke(1.dp, MaterialTheme.colorScheme.error)
-            tieneRegistro -> BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
-            isSelected -> BorderStroke(1.dp, ProfesorColor)
-            else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-        }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Checkbox o indicador de estado
-            Box(
-                modifier = Modifier.size(20.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                when {
-                    tieneRegistro -> {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Registro completado",
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    isSelected -> {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Seleccionado",
-                            tint = ProfesorColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    else -> {
-                        Box(
-                            modifier = Modifier
-                                .size(18.dp)
-                                .border(
-                                    width = 1.5.dp,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    shape = CircleShape
-                                )
-                        )
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            // Información del alumno (limitada para mostrar lo esencial)
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "${alumno.nombre} ${alumno.apellidos}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                
-                if (tieneRegistro) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = "Registrado",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        
-                        // Indicador compacto de estado de lectura
-                        Icon(
-                            imageVector = if (alumno.registroDiarioLeido == true) 
-                                Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = if (alumno.registroDiarioLeido == true) 
-                                "Visto" else "No visto",
-                            tint = if (alumno.registroDiarioLeido == true) 
-                                MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-                }
-            }
-            
-            // Indicador de estado o botón de eliminar (más compacto)
-            if (tieneRegistro) {
-                IconButton(
-                    onClick = { showDeleteDialog = true },
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar registro",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            } else {
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = when {
-                        ausenciaJustificada -> MaterialTheme.colorScheme.tertiaryContainer
-                        alumno.presente -> MaterialTheme.colorScheme.primaryContainer
-                        else -> MaterialTheme.colorScheme.errorContainer
-                    }
-                ) {
-                    Text(
-                        text = when {
-                            ausenciaJustificada -> "Ausente Justificado"
-                            alumno.presente -> "Presente"
-                            else -> "Ausente"
-                        },
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = when {
-                            ausenciaJustificada -> MaterialTheme.colorScheme.onTertiaryContainer
-                            alumno.presente -> MaterialTheme.colorScheme.onPrimaryContainer
-                            else -> MaterialTheme.colorScheme.onErrorContainer
-                        }
-                    )
                 }
             }
         }

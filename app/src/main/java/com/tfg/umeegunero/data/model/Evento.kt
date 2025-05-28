@@ -3,6 +3,7 @@ package com.tfg.umeegunero.data.model
 import com.google.firebase.Timestamp
 import java.io.Serializable
 import java.util.Date
+import timber.log.Timber
 
 /**
  * Modelo de datos para eventos del calendario
@@ -59,8 +60,14 @@ data class Evento(
             map["ubicacion"] = ubicacion
         }
         
+        // Agregar log para verificar los destinatarios antes de incluirlos en el mapa
+        Timber.d("DEBUG-EVENTO-MODEL: Destinatarios en objeto Evento: $destinatarios (tamaño: ${destinatarios.size})")
+        
         if (destinatarios.isNotEmpty()) {
             map["destinatarios"] = ArrayList(destinatarios)
+            Timber.d("DEBUG-EVENTO-MODEL: Destinatarios añadidos al mapa: ${map["destinatarios"]}")
+        } else {
+            Timber.d("DEBUG-EVENTO-MODEL: No hay destinatarios para añadir al mapa")
         }
         
         return map

@@ -86,6 +86,7 @@ object RepositoryModule {
      * @param firestore Instancia de FirebaseFirestore
      * @param authRepositoryProvider Repositorio de autenticación
      * @param usuarioRepository Repositorio de usuarios
+     * @param notificationService Servicio de notificación
      * @return Instancia de UnifiedMessageRepository
      */
     @Provides
@@ -93,9 +94,10 @@ object RepositoryModule {
     fun provideUnifiedMessageRepository(
         firestore: FirebaseFirestore,
         authRepositoryProvider: Provider<AuthRepository>,
-        usuarioRepository: UsuarioRepository
+        usuarioRepository: UsuarioRepository,
+        notificationService: Provider<NotificationService>
     ): UnifiedMessageRepository {
-        return UnifiedMessageRepository(firestore, authRepositoryProvider, usuarioRepository)
+        return UnifiedMessageRepository(firestore, authRepositoryProvider, usuarioRepository, notificationService)
     }
     
     /**

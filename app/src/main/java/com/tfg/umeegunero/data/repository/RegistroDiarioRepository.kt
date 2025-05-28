@@ -583,6 +583,23 @@ class RegistroDiarioRepository @Inject constructor(
                         .update(updateData)
                         .await()
                     
+                    // También actualizar el campo registroDiarioLeido en el documento del alumno
+                    try {
+                        // Obtener el ID del alumno del registro
+                        val alumnoId = registro.alumnoId
+                        if (alumnoId.isNotEmpty()) {
+                            Timber.d("Actualizando registroDiarioLeido para alumno: $alumnoId")
+                            val alumnosCollection = FirebaseFirestore.getInstance().collection("alumnos")
+                            alumnosCollection.document(alumnoId)
+                                .update("registroDiarioLeido", true)
+                                .await()
+                            Timber.d("Campo registroDiarioLeido actualizado para alumno: $alumnoId")
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al actualizar registroDiarioLeido en alumno: ${registro.alumnoId}")
+                        // No interrumpimos el flujo si falla esta actualización
+                    }
+                    
                     // Actualizamos en local
                     localRegistroRepository.updateRegistroActividad(registroActualizado, true)
                     return@withContext Result.Success(Unit)
