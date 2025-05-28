@@ -31,6 +31,7 @@ import com.tfg.umeegunero.ui.theme.FamiliarColor
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.feature.familiar.viewmodel.CalendarioFamiliaViewModel
+import com.google.firebase.Timestamp
 
 // Modelo de datos para un evento con características visuales
 enum class TipoEvento(val color: Color, val icon: ImageVector) {
@@ -92,29 +93,43 @@ fun CalendarioFamiliaScreen(
     // Filtrado de eventos para el día seleccionado
     val eventosDiaSeleccionado = remember(uiState.eventos, uiState.fechaSeleccionada) {
         uiState.eventos.filter { evento ->
-            val fechaEvento = Calendar.getInstance().apply { 
-                // Convertir Timestamp a milisegundos para usar con Calendar
-                timeInMillis = if (evento.fecha is com.google.firebase.Timestamp) {
-                    (evento.fecha as com.google.firebase.Timestamp).seconds * 1000
-                } else {
-                    // Asumir que ya está en formato Long
-                    evento.fecha as Long
+            try {
+                val fechaEvento = Calendar.getInstance()
+                // Usar el método toDate() para convertir Timestamp a Date
+                fechaEvento.timeInMillis = when (val fecha = evento.fecha) {
+                    is Timestamp -> fecha.toDate().time
+                    else -> {
+                        Timber.w("Tipo de fecha desconocido: ${evento.fecha.javaClass.name}")
+                        return@filter false
+                    }
                 }
+                
+                // Extraer componentes de fecha para mejor depuración
+                val eventoYear = fechaEvento.get(Calendar.YEAR)
+                val eventoMonth = fechaEvento.get(Calendar.MONTH)
+                val eventoDay = fechaEvento.get(Calendar.DAY_OF_MONTH)
+                
+                val selectedYear = uiState.fechaSeleccionada.get(Calendar.YEAR)
+                val selectedMonth = uiState.fechaSeleccionada.get(Calendar.MONTH)
+                val selectedDay = uiState.fechaSeleccionada.get(Calendar.DAY_OF_MONTH)
+                
+                val fechaEventoStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(fechaEvento.time)
+                val fechaSeleccionadaStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(uiState.fechaSeleccionada.time)
+                
+                val mismaFecha = eventoYear == selectedYear && 
+                                eventoMonth == selectedMonth && 
+                                eventoDay == selectedDay
+                
+                if (mismaFecha) {
+                    Timber.d("Evento coincide con fecha seleccionada: ${evento.titulo} (${fechaEventoStr})")
+                    Timber.d("Detalles evento: ID=${evento.id}, Creador=${evento.creadorId}, Destinatarios=${evento.destinatarios}")
+                }
+                
+                mismaFecha
+            } catch (e: Exception) {
+                Timber.e(e, "Error al comparar fechas para evento ${evento.id}")
+                false
             }
-            
-            // Comparar año, mes y día
-            val mismoAnio = fechaEvento.get(Calendar.YEAR) == uiState.fechaSeleccionada.get(Calendar.YEAR)
-            val mismoMes = fechaEvento.get(Calendar.MONTH) == uiState.fechaSeleccionada.get(Calendar.MONTH)
-            val mismoDia = fechaEvento.get(Calendar.DAY_OF_MONTH) == uiState.fechaSeleccionada.get(Calendar.DAY_OF_MONTH)
-            
-            val coincide = mismoAnio && mismoMes && mismoDia
-            
-            // Registrar para depuración
-            if (coincide) {
-                Timber.d("Evento coincide con fecha seleccionada: ${evento.titulo} (${evento.fecha})")
-            }
-            
-            coincide
         }
     }
     
@@ -331,19 +346,26 @@ fun CalendarioGrid(
     // Determinar los días con eventos
     val diasConEventos = remember(fechaSeleccionada.get(Calendar.YEAR), fechaSeleccionada.get(Calendar.MONTH), eventos) {
         eventos.mapNotNull { evento ->
-            val eventoCalendar = Calendar.getInstance().apply { 
-                // Convertir Timestamp a milisegundos para usar con Calendar
-                timeInMillis = if (evento.fecha is com.google.firebase.Timestamp) {
-                    (evento.fecha as com.google.firebase.Timestamp).seconds * 1000
-                } else {
-                    // Asumir que ya está en formato Long
-                    evento.fecha as Long
+            try {
+                val eventoCalendar = Calendar.getInstance().apply { 
+                    // Convertir Timestamp a milisegundos
+                    timeInMillis = when (val fecha = evento.fecha) {
+                        is Timestamp -> fecha.toDate().time
+                        else -> {
+                            Timber.w("Tipo de fecha no compatible en evento ${evento.id}: ${evento.fecha.javaClass.name}")
+                            return@mapNotNull null
+                        }
+                    }
                 }
+                
+                if (eventoCalendar.get(Calendar.YEAR) == fechaSeleccionada.get(Calendar.YEAR) &&
+                    eventoCalendar.get(Calendar.MONTH) == fechaSeleccionada.get(Calendar.MONTH)) {
+                    eventoCalendar.get(Calendar.DAY_OF_MONTH)
+                } else null
+            } catch (e: Exception) {
+                Timber.e(e, "Error al procesar fecha de evento ${evento.id}")
+                null
             }
-            if (eventoCalendar.get(Calendar.YEAR) == fechaSeleccionada.get(Calendar.YEAR) &&
-                eventoCalendar.get(Calendar.MONTH) == fechaSeleccionada.get(Calendar.MONTH)) {
-                eventoCalendar.get(Calendar.DAY_OF_MONTH)
-            } else null
         }.toSet()
     }
     
@@ -518,15 +540,10 @@ fun EventoItem(
                 )
                 
                 val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-                val timestamp = if (evento.fecha is com.google.firebase.Timestamp) {
-                    (evento.fecha as com.google.firebase.Timestamp).toDate()
-                } else {
-                    // Asumir que está en formato Long (milisegundos)
-                    Date(evento.fecha as Long)
-                }
+                val fechaEvento = evento.fecha.toDate()
                 
                 Text(
-                    text = timeFormat.format(timestamp),
+                    text = timeFormat.format(fechaEvento),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

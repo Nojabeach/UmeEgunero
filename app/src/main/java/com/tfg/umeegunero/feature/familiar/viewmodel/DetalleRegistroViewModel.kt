@@ -270,15 +270,27 @@ class DetalleRegistroViewModel @Inject constructor(
      * Maneja la selección de una fecha para cargar el registro correspondiente
      */
     fun seleccionarFecha(fecha: Date) {
-        val currentAlumnoId = _uiState.value.alumnoId ?: return
-        val currentAlumnoNombre = _uiState.value.alumnoNombre ?: return
+        Timber.d("[DetalleRegistroViewModel] seleccionFecha llamada con fecha: $fecha")
+        // Intentar obtener alumnoId y alumnoNombre del estado o del registro actual
+        val currentAlumnoId = _uiState.value.alumnoId
+            ?: _uiState.value.registro?.alumnoId
+            ?: run {
+                Timber.e("No se pudo obtener alumnoId para la recarga por fecha")
+                return
+            }
+        val currentAlumnoNombre = _uiState.value.alumnoNombre
+            ?: _uiState.value.registro?.alumnoNombre
+            ?: ""
         
         _uiState.update { it.copy(
             fechaSeleccionada = fecha,
             mostrarSelectorFecha = false
         )}
         
+        // Recargar el registro para la nueva fecha
         cargarRegistroPorFecha(currentAlumnoId, fecha, currentAlumnoNombre)
+        // Actualizar la ausencia notificada para la nueva fecha
+        verificarAusenciaParaFecha(fecha)
     }
 
     /**

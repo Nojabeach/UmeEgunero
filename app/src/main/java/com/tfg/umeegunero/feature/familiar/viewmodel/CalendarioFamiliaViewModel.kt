@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.Calendar
 import javax.inject.Inject
+import com.google.firebase.Timestamp
 
 /**
  * Información del usuario actual
@@ -77,44 +78,98 @@ class CalendarioFamiliaViewModel @Inject constructor(
                     return@launch
                 }
                 
-                // Obtener el centro del familiar desde el primer perfil
-                val perfil = usuario.perfiles.firstOrNull()
-                val centroId = perfil?.centroId ?: ""
+                // Obtener el ID del familiar directamente
                 val familiarId = usuario.dni
+                Timber.d("CalendarioFamiliaViewModel: Cargando eventos para familiar $familiarId")
                 
-                Timber.d("CalendarioFamiliaViewModel: Cargando eventos para familiar $familiarId en centro $centroId")
-                
-                // Usar el nuevo método para obtener eventos específicos para el usuario
-                val eventos = if (centroId.isNotEmpty() && familiarId.isNotEmpty()) {
-                    // Obtener eventos donde el familiar es destinatario o son públicos
-                    val eventosUsuario = eventoRepository.obtenerEventosParaUsuario(familiarId, centroId)
-                    Timber.d("CalendarioFamiliaViewModel: Encontrados ${eventosUsuario.size} eventos para el familiar $familiarId")
+                try {
+                    // Cargar eventos destinados directamente al familiar
+                    val eventosDestinatario = eventoRepository.obtenerEventosDestinadosAUsuario(familiarId)
+                    Timber.d("CalendarioFamiliaViewModel: Encontrados ${eventosDestinatario.size} eventos destinados al familiar $familiarId")
+                    
+                    // Obtener eventos públicos que puedan ser relevantes para el familiar
+                    val eventosPublicos = eventoRepository.obtenerEventosPublicos()
+                    Timber.d("CalendarioFamiliaViewModel: Encontrados ${eventosPublicos.size} eventos públicos")
+                    
+                    // Combinar todos los eventos
+                    val todosEventos = (eventosDestinatario + eventosPublicos).distinctBy { it.id }
                     
                     // Registrar información sobre los eventos cargados
-                    eventosUsuario.forEach { evento ->
+                    todosEventos.forEach { evento ->
+                        val fechaStr = evento.fecha.toDate().let { date ->
+                            java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(date)
+                        }
+                        
                         Timber.d("CalendarioFamiliaViewModel: Evento ID: ${evento.id}, Título: ${evento.titulo}")
                         Timber.d("CalendarioFamiliaViewModel: - Creador: ${evento.creadorId}")
                         Timber.d("CalendarioFamiliaViewModel: - Destinatarios: ${evento.destinatarios}")
                         Timber.d("CalendarioFamiliaViewModel: - Público: ${evento.publico}")
-                        Timber.d("CalendarioFamiliaViewModel: - Fecha: ${evento.fecha}")
+                        Timber.d("CalendarioFamiliaViewModel: - Fecha: $fechaStr")
                     }
                     
-                    eventosUsuario
-                } else {
-                    Timber.w("CalendarioFamiliaViewModel: No se pudo obtener centroId o familiarId")
-                    emptyList()
+                    _uiState.update { it.copy(
+                        eventos = todosEventos,
+                        isLoading = false
+                    ) }
+                    
+                    // Si aún no hay eventos, intentar cargar eventos para los hijos del familiar
+                    if (todosEventos.isEmpty()) {
+                        Timber.d("CalendarioFamiliaViewModel: No se encontraron eventos directos. Cargando eventos para hijos...")
+                        loadEventosByHijos()
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al cargar eventos para el familiar: ${e.message}")
+                    _uiState.update { it.copy(
+                        error = "Error al cargar eventos: ${e.message}",
+                        isLoading = false
+                    ) }
                 }
                 
-                _uiState.update { it.copy(
-                    eventos = eventos,
-                    isLoading = false
-                ) }
+                // Verificar eventos para la fecha seleccionada actual
+                verificarEventosParaFechaSeleccionada()
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar eventos: ${e.message}")
                 _uiState.update { it.copy(
                     error = "Error: ${e.message}",
                     isLoading = false
                 ) }
+            }
+        }
+    }
+    
+    /**
+     * Verifica qué eventos hay para la fecha seleccionada actualmente
+     */
+    private fun verificarEventosParaFechaSeleccionada() {
+        viewModelScope.launch {
+            val fecha = _uiState.value.fechaSeleccionada
+            val fechaFormateada = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(fecha.time)
+            Timber.d("CalendarioFamiliaViewModel: Verificando eventos para fecha actual: $fechaFormateada")
+            
+            val eventosEnFecha = _uiState.value.eventos.filter { evento ->
+                try {
+                    val fechaEvento = Calendar.getInstance()
+                    fechaEvento.timeInMillis = evento.fecha.toDate().time
+                    
+                    val eventoYear = fechaEvento.get(Calendar.YEAR)
+                    val eventoMonth = fechaEvento.get(Calendar.MONTH)
+                    val eventoDay = fechaEvento.get(Calendar.DAY_OF_MONTH)
+                    val selectedYear = fecha.get(Calendar.YEAR)
+                    val selectedMonth = fecha.get(Calendar.MONTH)
+                    val selectedDay = fecha.get(Calendar.DAY_OF_MONTH)
+                    val mismaFecha = eventoYear == selectedYear && eventoMonth == selectedMonth && eventoDay == selectedDay
+                    Timber.d("CalendarioFamiliaViewModel: Comparando evento '${evento.titulo}' - Fecha: $fechaFormateada")
+                    Timber.d("CalendarioFamiliaViewModel: Evento (Y/M/D): $eventoYear/$eventoMonth/$eventoDay - Seleccionada: $selectedYear/$selectedMonth/$selectedDay - ¿Coincide? $mismaFecha")
+                    mismaFecha
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al comparar fechas para evento ${evento.id}")
+                    false
+                }
+            }
+            
+            Timber.d("CalendarioFamiliaViewModel: Total de eventos para la fecha $fechaFormateada: ${eventosEnFecha.size}")
+            eventosEnFecha.forEach { evento ->
+                Timber.d("CalendarioFamiliaViewModel: Evento en fecha $fechaFormateada: ${evento.titulo}")
             }
         }
     }
@@ -176,43 +231,48 @@ class CalendarioFamiliaViewModel @Inject constructor(
     }
     
     /**
-     * Carga eventos específicos para los hijos de un familiar
-     * Útil para mostrar eventos específicos de los alumnos del familiar
+     * Carga eventos destinados a los hijos del familiar actual
      */
-    fun loadEventosByHijos() {
+    private fun loadEventosByHijos() {
         viewModelScope.launch {
             try {
-                // Obtener IDs de los hijos del familiar actual
-                val usuario = authRepository.getCurrentUser()
-                if (usuario == null) {
-                    Timber.d("Usuario no encontrado")
-                    return@launch
-                }
-                
-                // Comprobar si el usuario tiene un perfil de tipo FAMILIAR
-                val perfilFamiliar = usuario.perfiles.find { it.tipo == TipoUsuario.FAMILIAR }
-                if (perfilFamiliar == null) {
-                    Timber.d("No se encontró un perfil de tipo FAMILIAR")
-                    return@launch
-                }
-                
+                val usuario = authRepository.getCurrentUser() ?: return@launch
                 val familiarId = usuario.dni
-                if (familiarId.isEmpty()) {
-                    Timber.e("ID del familiar está vacío")
+                
+                // Obtener los hijos asociados a este familiar
+                val hijos = usuarioRepository.obtenerHijosDeFamiliar(familiarId)
+                
+                if (hijos.isEmpty()) {
+                    Timber.d("CalendarioFamiliaViewModel: No se encontraron hijos para el familiar $familiarId")
                     return@launch
                 }
                 
-                try {
-                    val hijos = usuarioRepository.getHijosByFamiliarId(familiarId)
+                Timber.d("CalendarioFamiliaViewModel: Encontrados ${hijos.size} hijos para el familiar $familiarId")
+                
+                // Para cada hijo, cargar eventos destinados a él
+                val eventosHijos = mutableListOf<Evento>()
+                
+                for (hijo in hijos) {
+                    Timber.d("CalendarioFamiliaViewModel: Cargando eventos para el hijo ${hijo.nombre} (${hijo.dni})")
                     
-                    // Para cada hijo, cargar sus eventos específicos
-                    for (hijo in hijos) {
-                        val eventosHijo = calendarioRepository.getEventosByAlumnoId(hijo.id)
-                        _uiState.update { it.copy(eventos = it.eventos + eventosHijo) }
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al obtener hijos del familiar: ${e.message}")
+                    val eventosHijo = eventoRepository.obtenerEventosDestinadosAUsuario(hijo.dni)
+                    Timber.d("CalendarioFamiliaViewModel: Encontrados ${eventosHijo.size} eventos para el hijo ${hijo.nombre}")
+                    
+                    eventosHijos.addAll(eventosHijo)
                 }
+                
+                // Actualizar el estado con los eventos de los hijos, combinándolos con los eventos actuales
+                val eventosActuales = _uiState.value.eventos
+                val todosEventos = (eventosActuales + eventosHijos).distinctBy { it.id }
+                
+                Timber.d("CalendarioFamiliaViewModel: Total de eventos después de agregar eventos de hijos: ${todosEventos.size}")
+                
+                _uiState.update { it.copy(
+                    eventos = todosEventos
+                ) }
+                
+                // Verificar eventos para la fecha seleccionada con los nuevos eventos añadidos
+                verificarEventosParaFechaSeleccionada()
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar eventos de los hijos: ${e.message}")
             }
@@ -276,33 +336,8 @@ class CalendarioFamiliaViewModel @Inject constructor(
         Timber.d("CalendarioFamiliaViewModel: Seleccionada nueva fecha: ${fecha.time}")
         _uiState.update { it.copy(fechaSeleccionada = fecha) }
         
-        // Al seleccionar un nuevo día, verificamos si hay eventos para esta fecha
-        viewModelScope.launch {
-            val fechaFormateada = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(fecha.time)
-            Timber.d("CalendarioFamiliaViewModel: Verificando eventos para la fecha: $fechaFormateada")
-            
-            val eventosEnFecha = _uiState.value.eventos.filter { evento ->
-                val fechaEvento = Calendar.getInstance().apply { 
-                    timeInMillis = if (evento.fecha is com.google.firebase.Timestamp) {
-                        (evento.fecha as com.google.firebase.Timestamp).seconds * 1000
-                    } else {
-                        evento.fecha as Long
-                    }
-                }
-                
-                val mismaFecha = fechaEvento.get(Calendar.YEAR) == fecha.get(Calendar.YEAR) &&
-                                fechaEvento.get(Calendar.MONTH) == fecha.get(Calendar.MONTH) &&
-                                fechaEvento.get(Calendar.DAY_OF_MONTH) == fecha.get(Calendar.DAY_OF_MONTH)
-                
-                if (mismaFecha) {
-                    Timber.d("CalendarioFamiliaViewModel: Evento encontrado para la fecha $fechaFormateada: ${evento.titulo}")
-                }
-                
-                mismaFecha
-            }
-            
-            Timber.d("CalendarioFamiliaViewModel: Total de eventos para la fecha $fechaFormateada: ${eventosEnFecha.size}")
-        }
+        // Al seleccionar un nuevo día, verificamos los eventos para esa fecha
+        verificarEventosParaFechaSeleccionada()
     }
     
     /**

@@ -346,6 +346,8 @@ class EventoRepository @Inject constructor(
      */
     suspend fun obtenerEventosParaUsuario(usuarioId: String, centroId: String): List<Evento> {
         return try {
+            Timber.d("EventoRepository: Obteniendo eventos para usuario $usuarioId en centro $centroId")
+            
             // Obtener todos los eventos del centro
             val eventosSnapshot = firestore.collection(COLLECTION_EVENTOS)
                 .whereEqualTo("centroId", centroId)
@@ -358,21 +360,119 @@ class EventoRepository @Inject constructor(
                 val data = doc.data ?: continue
                 val evento = Evento.fromMap(data, doc.id) ?: continue
                 
+                // Extraer y registrar la fecha del evento para depuración
+                val fechaStr = if (evento.fecha is com.google.firebase.Timestamp) {
+                    val ts = evento.fecha as com.google.firebase.Timestamp
+                    val date = java.util.Date(ts.seconds * 1000)
+                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(date)
+                } else {
+                    "Formato desconocido: ${evento.fecha}"
+                }
+                
+                // Verificar si el usuario es destinatario
+                val esDestinatario = evento.destinatarios.contains(usuarioId)
+                
                 // Incluir el evento si:
                 // 1. Es público
                 // 2. El usuario es destinatario
                 // 3. El usuario es el creador
-                if (evento.publico || 
-                    evento.destinatarios.contains(usuarioId) || 
-                    evento.creadorId == usuarioId) {
+                val incluir = evento.publico || esDestinatario || evento.creadorId == usuarioId
+                
+                Timber.d("EventoRepository: Evento ID=${evento.id}, Título=${evento.titulo}, Fecha=$fechaStr")
+                Timber.d("EventoRepository: - Público=${evento.publico}, Usuario es destinatario=$esDestinatario, Usuario es creador=${evento.creadorId == usuarioId}")
+                Timber.d("EventoRepository: - Destinatarios=${evento.destinatarios}")
+                Timber.d("EventoRepository: - ¿Incluir? $incluir")
+                
+                if (incluir) {
                     eventos.add(evento)
                 }
             }
+            
+            Timber.d("EventoRepository: Recuperados ${eventos.size} eventos para usuario $usuarioId")
             
             // Ordenar eventos por fecha
             eventos.sortedBy { it.fecha.seconds }
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener eventos para usuario $usuarioId en centro $centroId")
+            emptyList()
+        }
+    }
+
+    /**
+     * Obtiene todos los eventos destinados a un usuario específico sin necesidad de centroId
+     * @param usuarioId ID del usuario (DNI)
+     * @return Lista de eventos destinados al usuario
+     */
+    suspend fun obtenerEventosDestinadosAUsuario(usuarioId: String): List<Evento> {
+        return try {
+            Timber.d("EventoRepository: Obteniendo eventos destinados al usuario $usuarioId")
+            
+            // Buscar eventos donde el usuario está en la lista de destinatarios
+            val eventosSnapshot = firestore.collection(COLLECTION_EVENTOS)
+                .whereArrayContains("destinatarios", usuarioId)
+                .get()
+                .await()
+            
+            val eventos = eventosSnapshot.documents.mapNotNull { doc ->
+                val data = doc.data ?: return@mapNotNull null
+                val evento = Evento.fromMap(data, doc.id) ?: return@mapNotNull null
+                
+                // Para depuración, mostrar información del evento
+                val fechaStr = if (evento.fecha is com.google.firebase.Timestamp) {
+                    val ts = evento.fecha as com.google.firebase.Timestamp
+                    val date = java.util.Date(ts.seconds * 1000)
+                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(date)
+                } else {
+                    "Formato desconocido: ${evento.fecha}"
+                }
+                
+                Timber.d("EventoRepository: Evento destinado al usuario - ID=${evento.id}, Título=${evento.titulo}, Fecha=$fechaStr")
+                evento
+            }
+            
+            Timber.d("EventoRepository: Recuperados ${eventos.size} eventos destinados al usuario $usuarioId")
+            eventos.sortedBy { it.fecha.seconds }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener eventos destinados al usuario $usuarioId: ${e.message}")
+            emptyList()
+        }
+    }
+    
+    /**
+     * Obtiene todos los eventos públicos
+     * @return Lista de eventos públicos
+     */
+    suspend fun obtenerEventosPublicos(): List<Evento> {
+        return try {
+            Timber.d("EventoRepository: Obteniendo eventos públicos")
+            
+            // Buscar eventos públicos
+            val eventosSnapshot = firestore.collection(COLLECTION_EVENTOS)
+                .whereEqualTo("publico", true)
+                .get()
+                .await()
+            
+            val eventos = eventosSnapshot.documents.mapNotNull { doc ->
+                val data = doc.data ?: return@mapNotNull null
+                val evento = Evento.fromMap(data, doc.id) ?: return@mapNotNull null
+                
+                // Para depuración, mostrar información del evento
+                val fechaStr = if (evento.fecha is com.google.firebase.Timestamp) {
+                    val ts = evento.fecha as com.google.firebase.Timestamp
+                    val date = java.util.Date(ts.seconds * 1000)
+                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(date)
+                } else {
+                    "Formato desconocido: ${evento.fecha}"
+                }
+                
+                Timber.d("EventoRepository: Evento público - ID=${evento.id}, Título=${evento.titulo}, Fecha=$fechaStr")
+                evento
+            }
+            
+            Timber.d("EventoRepository: Recuperados ${eventos.size} eventos públicos")
+            eventos.sortedBy { it.fecha.seconds }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener eventos públicos: ${e.message}")
             emptyList()
         }
     }

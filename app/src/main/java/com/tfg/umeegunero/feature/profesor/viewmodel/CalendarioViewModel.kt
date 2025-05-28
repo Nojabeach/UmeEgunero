@@ -258,7 +258,8 @@ class CalendarioViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        mensaje = "Evento creado correctamente"
+                        mensaje = "Evento creado correctamente",
+                        mostrarDialogoEvento = false // Cerramos el diálogo después de crear el evento
                     )
                 }
                 

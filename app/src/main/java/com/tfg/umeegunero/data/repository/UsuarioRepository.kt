@@ -3277,6 +3277,13 @@ open class UsuarioRepository @Inject constructor(
     }
 
     /**
+     * Alias para getHijosByFamiliarId que mantiene consistencia con la nomenclatura en español
+     * @param familiarId ID del familiar
+     * @return Lista de alumnos
+     */
+    suspend fun obtenerHijosDeFamiliar(familiarId: String): List<Alumno> = getHijosByFamiliarId(familiarId)
+
+    /**
      * Obtiene todos los profesores de un centro
      * @param centroId ID del centro educativo
      * @return Resultado con la lista de profesores asociados al centro

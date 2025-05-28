@@ -453,9 +453,13 @@ class RegistroDiarioViewModel @Inject constructor(
                 // Para evitar problemas con registros duplicados, verificamos si ya existe
                 val registroExistente = _uiState.value.registro
                 val registro = if (registroExistente.id.isEmpty()) {
+                    // Crear un nuevo registro con el formato correcto de ID
+                    val fechaStr = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(_uiState.value.fechaSeleccionada)
+                    val registroId = "registro_${fechaStr}_$alumnoId"
+                    
                     // Crear un nuevo registro
                     val nuevoRegistro = RegistroActividad(
-                        id = UUID.randomUUID().toString(),
+                        id = registroId,
                         alumnoId = alumnoId,
                         claseId = _uiState.value.claseId,
                         profesorId = profesorIdActual,
