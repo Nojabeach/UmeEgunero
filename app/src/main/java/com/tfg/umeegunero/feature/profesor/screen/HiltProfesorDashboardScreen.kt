@@ -111,7 +111,7 @@ fun HiltProfesorDashboardScreen(
                         }
                     ) {
                         IconButton(onClick = {
-                            navController.navigate(AppScreens.ConversacionesProfesor.route)
+                            navController.navigate(AppScreens.UnifiedInbox.route)
                         }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Chat,
@@ -314,7 +314,7 @@ fun ProfesorDashboardContent(
                 text = "Enviar Mensaje a Padres",
                 icon = Icons.AutoMirrored.Filled.Chat,
                 onClick = {
-                    navController.navigate(AppScreens.ConversacionesProfesor.route)
+                    navController.navigate(AppScreens.UnifiedInbox.route)
                 }
             )
             

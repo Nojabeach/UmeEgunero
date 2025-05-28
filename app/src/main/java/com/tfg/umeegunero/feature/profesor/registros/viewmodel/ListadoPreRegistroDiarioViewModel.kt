@@ -5,13 +5,18 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Alumno
+import com.tfg.umeegunero.data.model.Clase
 import com.tfg.umeegunero.data.model.EstadoAsistencia
+import com.tfg.umeegunero.data.model.EstadoNotificacionAusencia
+import com.tfg.umeegunero.data.model.NotificacionAusencia
+import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.RegistroDiario
 import com.tfg.umeegunero.data.repository.AlumnoRepository
 import com.tfg.umeegunero.data.repository.AsistenciaRepository
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CalendarioRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
+import com.tfg.umeegunero.data.repository.NotificacionAusenciaRepository
 import com.tfg.umeegunero.data.repository.ProfesorRepository
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
@@ -23,19 +28,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.TextStyle
+import java.util.Calendar
 import java.util.Date
 import javax.inject.Inject
-import com.tfg.umeegunero.data.model.RegistroActividad
-import com.tfg.umeegunero.data.model.TipoUsuario
-import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.time.format.DateTimeFormatter
-import com.tfg.umeegunero.data.model.NotificacionAusencia
-import com.tfg.umeegunero.data.repository.NotificacionAusenciaRepository
-import com.tfg.umeegunero.data.model.EstadoNotificacionAusencia
 
 /**
  * Extensión para convertir LocalDate a Date
@@ -74,6 +76,7 @@ data class InformeAsistencia(
  * @property alumnosFiltrados Lista de alumnos filtrados según criterios actuales
  * @property alumnosSeleccionados Lista de alumnos seleccionados para registro
  * @property alumnosConRegistro IDs de alumnos que ya tienen registro para la fecha seleccionada
+ * @property alumnosConAusenciaJustificada IDs de alumnos con ausencia justificada para la fecha seleccionada
  * @property fechaSeleccionada Fecha seleccionada para el registro
  * @property esFestivo Indica si la fecha seleccionada es festiva
  * @property nombreClase Nombre de la clase actual
@@ -97,6 +100,7 @@ data class ListadoPreRegistroDiarioUiState(
     val alumnosFiltrados: List<Alumno> = emptyList(),
     val alumnosSeleccionados: List<Alumno> = emptyList(),
     val alumnosConRegistro: Set<String> = emptySet(),
+    val alumnosConAusenciaJustificada: Set<String> = emptySet(),
     val fechaSeleccionada: LocalDate = LocalDate.now(),
     val esFestivo: Boolean = false,
     val nombreClase: String = "",
@@ -705,7 +709,7 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
     private suspend fun getRegistrosDiariosPorFechaYClase(
         fecha: String,
         claseId: String
-    ): List<RegistroDiario> {
+    ): List<RegistroActividad> {
         return try {
             // Convertir el string de fecha a objeto Date
             val fechaCalendar = Calendar.getInstance()
@@ -723,27 +727,13 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 fechaCalendar.time
             )
             
-            val registros = mutableListOf<RegistroDiario>()
+            val registros = mutableListOf<RegistroActividad>()
             
             // Procesar los registros de la colección registrosActividad
             if (resultActividad is Result.Success) {
-                // Convertir RegistroActividad a RegistroDiario y filtrar los no eliminados
+                // Filtrar los registros no eliminados
                 val registrosActividadNoEliminados = resultActividad.data
                     .filter { !it.eliminado }
-                    .map { registro ->
-                        RegistroDiario(
-                            id = registro.id,
-                            alumnoId = registro.alumnoId,
-                            alumnoNombre = registro.alumnoNombre,
-                            claseId = registro.claseId,
-                            fecha = registro.fecha,
-                            presente = true, // Por defecto true para registros de actividad
-                            observaciones = registro.observacionesGenerales ?: "",
-                            profesorId = registro.profesorId ?: "",
-                            modificadoPor = registro.modificadoPor ?: "",
-                            eliminado = registro.eliminado
-                        )
-                    }
                 
                 registros.addAll(registrosActividadNoEliminados)
                 
@@ -1141,10 +1131,25 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     val resultado = notificacionAusenciaRepository.obtenerAusenciasPendientesPorClase(claseActual)
                     
                     if (resultado is Result.Success) {
+                        val ausencias = resultado.data
+                        
+                        // Filtrar las ausencias aceptadas para la fecha seleccionada
+                        val fechaSeleccionada = _uiState.value.fechaSeleccionada
+                        val alumnosConAusenciaJustificada = ausencias
+                            .filter { ausencia ->
+                                ausencia.estado == EstadoNotificacionAusencia.ACEPTADA.name &&
+                                ausencia.fechaAusencia.toDate().toInstant()
+                                    .atZone(java.time.ZoneId.systemDefault())
+                                    .toLocalDate() == fechaSeleccionada
+                            }
+                            .map { it.alumnoId }
+                            .toSet()
+                        
                         _uiState.update { it.copy(
-                            ausenciasNotificadas = resultado.data
+                            ausenciasNotificadas = ausencias,
+                            alumnosConAusenciaJustificada = alumnosConAusenciaJustificada
                         ) }
-                        Timber.d("Ausencias cargadas: ${resultado.data.size}")
+                        Timber.d("Ausencias cargadas: ${ausencias.size}, justificadas para hoy: ${alumnosConAusenciaJustificada.size}")
                     } else {
                         Timber.d("No se pudieron cargar ausencias para la clase")
                     }
@@ -1218,6 +1223,47 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                         val alumno = _uiState.value.alumnos.find { it.id == ausencia.alumnoId }
                         
                         if (alumno != null) {
+                            // Actualizar en el repositorio de asistencia
+                            viewModelScope.launch {
+                                try {
+                                    // Obtener el registro de asistencia actual o crear uno nuevo
+                                    val registroExistente = asistenciaRepository.obtenerRegistroAsistencia(
+                                        _uiState.value.claseId,
+                                        java.util.Date.from(_uiState.value.fechaSeleccionada.atStartOfDay().atZone(java.time.ZoneId.systemDefault()).toInstant())
+                                    )
+                                    
+                                    val estadosActualizados = if (registroExistente != null) {
+                                        // Actualizar el estado existente
+                                        registroExistente.estadosAsistencia.toMutableMap().apply {
+                                            this[alumno.id] = EstadoAsistencia.AUSENTE_JUSTIFICADO
+                                        }
+                                    } else {
+                                        // Crear nuevo mapa con el estado
+                                        mutableMapOf(alumno.id to EstadoAsistencia.AUSENTE_JUSTIFICADO)
+                                    }
+                                    
+                                    // Crear o actualizar el registro
+                                    val registroAsistencia = com.tfg.umeegunero.data.model.RegistroAsistencia(
+                                        id = registroExistente?.id ?: "",
+                                        claseId = _uiState.value.claseId,
+                                        profesorId = registroExistente?.profesorId ?: profesorId,
+                                        fecha = com.google.firebase.Timestamp(java.util.Date.from(_uiState.value.fechaSeleccionada.atStartOfDay().atZone(java.time.ZoneId.systemDefault()).toInstant())),
+                                        estadosAsistencia = estadosActualizados,
+                                        observaciones = registroExistente?.observaciones ?: ""
+                                    )
+                                    
+                                    val resultado = asistenciaRepository.guardarRegistroAsistencia(registroAsistencia)
+                                    
+                                    if (resultado) {
+                                        Timber.d("Estado de asistencia actualizado a AUSENTE_JUSTIFICADO para alumno ${alumno.id}")
+                                    } else {
+                                        Timber.e("Error al actualizar estado de asistencia")
+                                    }
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al actualizar estado de asistencia")
+                                }
+                            }
+                            
                             // Marcar como ausente en los datos de UI (para actualizar la vista)
                             val alumnosActualizados = _uiState.value.alumnos.map {
                                 if (it.id == alumno.id) it.copy(presente = false) else it
@@ -1225,7 +1271,8 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                             
                             _uiState.update { it.copy(
                                 alumnos = alumnosActualizados,
-                                alumnosPresentes = alumnosActualizados.count { alumno -> alumno.presente }
+                                alumnosPresentes = alumnosActualizados.count { alumno -> alumno.presente },
+                                alumnosConAusenciaJustificada = it.alumnosConAusenciaJustificada + ausencia.alumnoId
                             ) }
                         }
                     }

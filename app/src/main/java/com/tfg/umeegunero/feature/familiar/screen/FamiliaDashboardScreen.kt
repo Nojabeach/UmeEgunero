@@ -1270,6 +1270,29 @@ fun FamiliaDashboardScreen(
                         )
                     }
                     
+                    // Notificar Ausencia
+                    item {
+                        OpcionDashboardCard(
+                            titulo = "Notificar Ausencia",
+                            descripcion = "Informa al centro que tu hijo/a no asistirá",
+                            icono = Icons.Default.Sick,
+                            onClick = {
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    if (uiState.hijoSeleccionado != null) {
+                                        showNotificarAusenciaDialog = true
+                                    } else {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Por favor, selecciona un hijo primero")
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al abrir diálogo de ausencia: ${e.message}")
+                                }
+                            }
+                        )
+                    }
+                    
                     // Historial Completo
                     item {
                         OpcionDashboardCard(

@@ -29,8 +29,6 @@ import com.tfg.umeegunero.feature.common.academico.screen.DetalleClaseScreen
 import com.tfg.umeegunero.feature.common.academico.viewmodel.CalendarioViewModel
 import com.tfg.umeegunero.feature.admin.screen.AdminDashboardScreen
 import com.tfg.umeegunero.feature.common.academico.screen.detallediaevento.DetalleDiaEventoScreen
-import com.tfg.umeegunero.feature.common.comunicacion.screen.BandejaEntradaScreen
-import com.tfg.umeegunero.feature.common.comunicacion.screen.ComponerMensajeScreen
 import com.tfg.umeegunero.feature.familiar.screen.ComunicadosFamiliaScreen
 import com.tfg.umeegunero.feature.common.legal.screen.TerminosCondicionesScreen
 import java.time.LocalDate
@@ -619,10 +617,18 @@ fun Navigation(
         
         // PANTALLAS DE COMUNICACIÓN
         
-        // Pantalla de bandeja de entrada
+        // Pantalla de bandeja de entrada - Redirigir a UnifiedInbox
         composable(route = AppScreens.BandejaEntrada.route) {
-            BandejaEntradaScreen(
-                navController = navController
+            UnifiedInboxScreen(
+                onNavigateToMessage = { messageId ->
+                    navController.navigate(AppScreens.MessageDetail.createRoute(messageId))
+                },
+                onNavigateToNewMessage = {
+                    navController.navigate(AppScreens.NewMessage.createRoute())
+                },
+                onBack = {
+                    navController.popBackStack()
+                }
             )
         }
         
@@ -634,7 +640,7 @@ fun Navigation(
             )
         }
         
-        // Pantalla para componer mensaje
+        // Pantalla para componer mensaje - Redirigir a NewMessage
         composable(
             route = AppScreens.ComponerMensaje.route,
             arguments = listOf(
@@ -647,9 +653,12 @@ fun Navigation(
         ) { backStackEntry ->
             val destinatarioId = backStackEntry.arguments?.getString("destinatarioId")
             
-            ComponerMensajeScreen(
-                navController = navController,
-                receiverId = destinatarioId
+            com.tfg.umeegunero.feature.common.comunicacion.screen.NewMessageScreen(
+                receiverId = destinatarioId,
+                messageType = null,
+                onBack = { navController.popBackStack() },
+                onMessageSent = { navController.popBackStack() },
+                viewModel = hiltViewModel()
             )
         }
 
