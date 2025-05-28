@@ -42,7 +42,7 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
     /**
      * Carga los registros de un alumno
      */
-    fun cargarRegistros(alumnoId: String, limit: Long = 30) {
+    fun cargarRegistros(alumnoId: String) {
         _uiState.update { it.copy(isLoading = true, error = null, alumnoId = alumnoId) }
         
         // Cargar datos del alumno
@@ -187,6 +187,8 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
     fun cargarRegistroPorId(registroId: String) {
         _uiState.update { it.copy(isLoading = true, error = null) }
         
+        Timber.d("Iniciando carga de registro por ID: $registroId")
+        
         viewModelScope.launch {
             try {
                 val result = registroDiarioRepository.obtenerRegistroPorId(registroId)
@@ -194,15 +196,22 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                 when (result) {
                     is Result.Success -> {
                         val registro = result.data
+                        Timber.d("Registro cargado con éxito: $registroId (alumnoId: ${registro.alumnoId}, fecha: ${registro.fecha})")
+                        
+                        // Guardar el registro en el estado y también actualizar datos del alumno
                         _uiState.update { 
                             it.copy(
                                 isLoading = false, 
                                 registroSeleccionado = registro,
                                 alumnoId = registro.alumnoId,
-                                alumnoNombre = registro.alumnoNombre
+                                alumnoNombre = registro.alumnoNombre.ifEmpty { "Alumno" }
                             ) 
                         }
-                        Timber.d("Registro cargado: $registroId para alumno ${registro.alumnoNombre}")
+                        
+                        // También cargamos los datos del alumno para asegurar que tenemos la información completa
+                        if (registro.alumnoId.isNotEmpty()) {
+                            cargarDatosAlumno(registro.alumnoId)
+                        }
                         
                         // Marcar automáticamente como visto si no lo está ya
                         if (!registro.vistoPorFamiliar) {
@@ -210,7 +219,7 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                         }
                     }
                     is Result.Error -> {
-                        Timber.e(result.exception, "Error al obtener registro $registroId")
+                        Timber.e(result.exception, "Error al obtener registro $registroId: ${result.exception?.message}")
                         _uiState.update { 
                             it.copy(
                                 isLoading = false, 
@@ -223,7 +232,7 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar registro $registroId")
+                Timber.e(e, "Excepción al cargar registro $registroId: ${e.message}")
                 _uiState.update { 
                     it.copy(
                         isLoading = false, 

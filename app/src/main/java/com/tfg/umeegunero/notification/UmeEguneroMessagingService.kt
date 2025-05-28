@@ -399,11 +399,15 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
     }
     
     /**
-     * Procesa notificaciones del sistema de comunicación unificado
+     * Procesa notificaciones del sistema de mensajería unificado
      */
     private fun procesarNotificacionUnificada(data: Map<String, String>) {
         val messageId = data["messageId"] ?: return
         val messageType = data["messageType"] ?: "SYSTEM"
+        val senderId = data["senderId"] ?: ""
+        val senderName = data["senderName"] ?: ""
+        
+        Timber.d("Procesando notificación unificada: messageId=$messageId, messageType=$messageType, senderId=$senderId, senderName=$senderName")
         
         // Obtener los datos básicos de la notificación
         val titulo = data["title"] ?: data["titulo"] ?: "Nuevo mensaje"
@@ -423,12 +427,28 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
             else -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
         }
         
+        // Verificar específicamente si es de admin-centro a profesor
+        val esAdminCentroAProfesor = senderId.isNotEmpty() && 
+            data["senderRole"] == "ADMIN_CENTRO" && 
+            data["receiverRole"] == "PROFESOR"
+        
+        if (esAdminCentroAProfesor) {
+            Timber.d("Notificación de admin-centro a profesor detectada: $messageId")
+        }
+        
         // Crear el intent para cuando se toca la notificación
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("messageId", messageId)
             putExtra("messageType", messageType)
             putExtra("conversationId", conversacionId)
+            putExtra("navigate_to", "unified_inbox")
+            
+            // Añadir información específica para navegación si es admin-centro a profesor
+            if (esAdminCentroAProfesor) {
+                putExtra("esAdminCentroAProfesor", true)
+                putExtra("senderId", senderId)
+            }
         }
         
         val pendingIntent = PendingIntent.getActivity(
@@ -438,25 +458,49 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
+        // Configurar prioridad alta para mensajes de admin-centro a profesor
+        val priority = if (esAdminCentroAProfesor) {
+            NotificationCompat.PRIORITY_HIGH
+        } else {
+            NotificationCompat.PRIORITY_DEFAULT
+        }
+        
         // Crear la notificación con el PendingIntent específico
         val notification = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(titulo)
             .setContentText(mensaje)
             .setStyle(NotificationCompat.BigTextStyle().bigText(mensaje))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(priority)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
-            .build()
+            
+        // Si es de admin-centro a profesor, añadir elementos adicionales
+        if (esAdminCentroAProfesor) {
+            notification.setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+        }
+            
+        val finalNotification = notification.build()
         
-        NotificationManagerCompat.from(this).notify(notificationId, notification)
+        // Registrar datos de notificación en logs
+        Timber.i("Mostrando notificación: id=$notificationId, canal=$channelId, título=$titulo")
+        
+        try {
+            NotificationManagerCompat.from(this).notify(notificationId, finalNotification)
+            Timber.d("Notificación mostrada correctamente: $notificationId")
+        } catch (e: Exception) {
+            Timber.e(e, "Error al mostrar notificación: $notificationId")
+        }
         
         // Enviar broadcast para actualizar la UI si la app está abierta
         sendBroadcast(Intent(ACTION_NUEVO_MENSAJE_UNIFICADO).apply {
             putExtra("messageId", messageId)
             putExtra("messageType", messageType)
             putExtra("conversationId", conversacionId)
+            putExtra("senderId", senderId)
+            putExtra("receiverRole", data["receiverRole"])
         })
     }
     

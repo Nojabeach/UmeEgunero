@@ -70,6 +70,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import androidx.compose.material3.HorizontalDivider
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,6 +85,46 @@ fun ConsultaRegistroDiarioScreen(
     val uiState by viewModel.uiState.collectAsState()
     var fechaSeleccionada by remember { mutableStateOf<Date?>(null) }
     var mostrarSelectorFecha by remember { mutableStateOf(false) }
+    
+    // Efecto para cargar datos al iniciar la pantalla
+    LaunchedEffect(alumnoId, registroId, fechaSeleccionada) {
+        Timber.d("LaunchedEffect en ConsultaRegistroDiarioScreen: alumnoId=$alumnoId, registroId=$registroId, fechaSeleccionada=$fechaSeleccionada")
+        
+        if (registroId != null) {
+            // Si tenemos un ID específico, cargamos ese registro
+            Timber.d("Cargando registro específico con ID: $registroId")
+            viewModel.cargarRegistroPorId(registroId)
+        } else if (fechaSeleccionada != null) {
+            // Si tenemos fecha seleccionada, cargamos registros de esa fecha
+            Timber.d("Cargando registros por fecha: $fechaSeleccionada para alumno: $alumnoId")
+            viewModel.cargarRegistrosPorFecha(alumnoId, fechaSeleccionada!!)
+        } else {
+            // Si no, cargamos todos los registros del alumno
+            Timber.d("Cargando todos los registros del alumno: $alumnoId")
+            viewModel.cargarRegistros(alumnoId)
+        }
+    }
+    
+    // Diálogo para seleccionar fecha
+    if (mostrarSelectorFecha) {
+        DatePickerDialog(
+            onDismissRequest = { mostrarSelectorFecha = false },
+            onDateSelected = { fecha ->
+                fechaSeleccionada = fecha
+                mostrarSelectorFecha = false
+                // Cargar registros por la fecha seleccionada
+                viewModel.cargarRegistrosPorFecha(alumnoId, fecha)
+            },
+            fechaActual = fechaSeleccionada ?: Date()
+        )
+    }
+    
+    // Determinar el nombre a mostrar (del estado o del parámetro)
+    val nombreMostrado = if (uiState.alumnoNombre.isNotEmpty()) {
+        uiState.alumnoNombre
+    } else {
+        alumnoNombre
+    }
     
     // Filtrar registros por fecha si hay una fecha seleccionada
     val registrosFiltrados = remember(uiState.registros, fechaSeleccionada) {
@@ -112,42 +153,7 @@ fun ConsultaRegistroDiarioScreen(
             uiState.registros
         }
     }
-    
-    // Efecto para cargar datos al iniciar la pantalla
-    LaunchedEffect(alumnoId, registroId, fechaSeleccionada) {
-        if (registroId != null) {
-            // Si tenemos un ID específico, cargamos ese registro
-            viewModel.cargarRegistroPorId(registroId)
-        } else if (fechaSeleccionada != null) {
-            // Si tenemos fecha seleccionada, cargamos registros de esa fecha
-            viewModel.cargarRegistrosPorFecha(alumnoId, fechaSeleccionada!!)
-        } else {
-            // Si no, cargamos todos los registros del alumno
-            viewModel.cargarRegistros(alumnoId)
-        }
-    }
-    
-    // Diálogo para seleccionar fecha
-    if (mostrarSelectorFecha) {
-        DatePickerDialog(
-            onDismissRequest = { mostrarSelectorFecha = false },
-            onDateSelected = { fecha ->
-                fechaSeleccionada = fecha
-                mostrarSelectorFecha = false
-                // Cargar registros por la fecha seleccionada
-                viewModel.cargarRegistrosPorFecha(alumnoId, fecha)
-            },
-            fechaActual = fechaSeleccionada ?: Date()
-        )
-    }
-    
-    // Determinar el nombre a mostrar (del estado o del parámetro)
-    val nombreMostrado = if (uiState.alumnoNombre.isNotEmpty()) {
-        uiState.alumnoNombre
-    } else {
-        alumnoNombre
-    }
-    
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -214,6 +220,7 @@ fun ConsultaRegistroDiarioScreen(
             
             // Si tenemos un registro específico cargado, mostrarlo
             if (uiState.registroSeleccionado != null && registroId != null) {
+                Timber.d("Mostrando registro específico: ${uiState.registroSeleccionado?.id}")
                 LazyColumn(
                     modifier = modifier
                         .fillMaxSize()
@@ -237,7 +244,21 @@ fun ConsultaRegistroDiarioScreen(
                 }
             } else if (uiState.error != null && uiState.registros.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "Error: ${uiState.error}")
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "Error: ${uiState.error}")
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = {
+                            if (registroId != null) {
+                                viewModel.cargarRegistroPorId(registroId)
+                            } else if (fechaSeleccionada != null) {
+                                viewModel.cargarRegistrosPorFecha(alumnoId, fechaSeleccionada!!)
+                            } else {
+                                viewModel.cargarRegistros(alumnoId)
+                            }
+                        }) {
+                            Text("Reintentar")
+                        }
+                    }
                 }
             } else if (registrosFiltrados.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -362,7 +383,7 @@ fun RegistroDiarioCard(
                 }
             }
             
-            val createdByText = registro.creadoPor?.let { "Por: $it" } ?: ""
+            val createdByText = if (registro.creadoPor != null) "Por: ${registro.creadoPor}" else ""
             if (createdByText.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -499,7 +520,7 @@ fun RegistroDiarioCard(
                     title = "Observaciones generales",
                     content = {
                         Text(
-                            text = registro.observacionesGenerales ?: "",
+                            text = registro.observacionesGenerales,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
