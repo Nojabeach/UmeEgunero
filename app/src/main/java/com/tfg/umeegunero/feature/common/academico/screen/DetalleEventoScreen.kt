@@ -30,6 +30,7 @@ import com.tfg.umeegunero.ui.components.LoadingIndicator
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import java.text.SimpleDateFormat
 import java.util.*
+import timber.log.Timber
 
 /**
  * Pantalla para ver los detalles de un evento
@@ -311,6 +312,8 @@ fun DetalleEventoScreen(
                     Button(
                         onClick = { 
                             dialogoConfirmacionVisible.value = false
+                            Timber.d("Eliminando evento con ID: ${uiState.evento?.id}")
+                            // Primero ocultamos el diálogo y luego eliminamos el evento
                             viewModel.eliminarEvento()
                         },
                         colors = ButtonDefaults.buttonColors(

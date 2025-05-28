@@ -55,6 +55,19 @@ import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Note
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * Pantalla de detalle de un alumno para profesores
@@ -76,6 +89,9 @@ fun DetalleAlumnoProfesorScreen(
     viewModel: DetalleAlumnoProfesorViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var showProgramarReunionDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(alumnoId) {
         viewModel.loadAlumno(alumnoId)
@@ -99,7 +115,8 @@ fun DetalleAlumnoProfesorScreen(
                     navigationIconContentColor = Color.White
                 )
             )
-        }
+        },
+        snackbarHost = { snackbarHostState }
     ) { padding ->
         Box(
             modifier = Modifier
@@ -130,10 +147,133 @@ fun DetalleAlumnoProfesorScreen(
                 uiState.alumno != null -> {
                     DetalleAlumnoContent(
                         alumno = uiState.alumno!!,
-                        navController = navController
+                        navController = navController,
+                        showProgramarReunionDialog = showProgramarReunionDialog,
+                        scope = scope,
+                        snackbarHostState = snackbarHostState,
+                        viewModel = viewModel
                     )
                 }
             }
+        }
+
+        // Diálogo para crear reunión con el familiar
+        if (showProgramarReunionDialog) {
+            val now = LocalDateTime.now()
+            val initialDate = now.plusDays(1).withHour(10).withMinute(0)
+            var selectedDate by remember { mutableStateOf(initialDate) }
+            var duracion by remember { mutableStateOf(30) } // En minutos
+            var tipoReunion by remember { mutableStateOf("Tutoría") }
+            var notas by remember { mutableStateOf("") }
+            
+            AlertDialog(
+                onDismissRequest = { showProgramarReunionDialog = false },
+                title = { Text("Programar reunión") },
+                text = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Selector de fecha y hora
+                        OutlinedButton(
+                            onClick = {
+                                // Abrir DatePicker
+                                viewModel.showDatePicker(selectedDate) { newDate ->
+                                    selectedDate = newDate
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarMonth,
+                                contentDescription = "Seleccionar fecha",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Fecha: ${selectedDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        
+                        // Selector de duración
+                        Text(
+                            text = "Duración: $duracion minutos",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Slider(
+                            value = duracion.toFloat(),
+                            onValueChange = { duracion = it.toInt() },
+                            valueRange = 15f..60f,
+                            steps = 3,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        // Selector de tipo de reunión
+                        OutlinedTextField(
+                            value = tipoReunion,
+                            onValueChange = { tipoReunion = it },
+                            label = { Text("Tipo de reunión") },
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Category,
+                                    contentDescription = "Tipo de reunión"
+                                )
+                            },
+                            singleLine = true
+                        )
+                        
+                        // Notas
+                        OutlinedTextField(
+                            value = notas,
+                            onValueChange = { notas = it },
+                            label = { Text("Notas adicionales") },
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Note,
+                                    contentDescription = "Notas"
+                                )
+                            },
+                            minLines = 3
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            // Programar la reunión
+                            viewModel.programarReunion(
+                                fecha = selectedDate,
+                                duracionMinutos = duracion,
+                                tipo = tipoReunion,
+                                notas = notas,
+                                alumnoId = alumnoId,
+                                alumnoNombre = uiState.alumno?.nombreCompleto ?: ""
+                            )
+                            showProgramarReunionDialog = false
+                            // Mostrar mensaje de confirmación
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    "Reunión programada correctamente"
+                                )
+                            }
+                        }
+                    ) {
+                        Text("Programar")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(
+                        onClick = { showProgramarReunionDialog = false }
+                    ) {
+                        Text("Cancelar")
+                    }
+                }
+            )
         }
     }
 }
@@ -161,7 +301,11 @@ fun DetalleAlumnoProfesorScreenPreview() {
 @Composable
 private fun DetalleAlumnoContent(
     alumno: Alumno,
-    navController: NavController
+    navController: NavController,
+    showProgramarReunionDialog: Boolean,
+    scope: CoroutineScope,
+    snackbarHostState: SnackbarHostState,
+    viewModel: DetalleAlumnoProfesorViewModel
 ) {
     // Formateador para YYYY-MM-DD
     val inputDateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
@@ -389,7 +533,11 @@ fun DetalleAlumnoProfesorScreenSuccessPreview() {
              Box(modifier = Modifier.padding(padding).padding(horizontal = 16.dp)) {
                  DetalleAlumnoContent(
                     alumno = previewAlumno,
-                    navController = rememberNavController() 
+                    navController = rememberNavController(),
+                    showProgramarReunionDialog = false,
+                    scope = rememberCoroutineScope(),
+                    snackbarHostState = SnackbarHostState(),
+                    viewModel = hiltViewModel()
                  )
             }
         }

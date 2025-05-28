@@ -3215,4 +3215,64 @@ open class UsuarioRepository @Inject constructor(
             Timber.e(e, "💥 Error al limpiar referencias del alumno $alumnoDni en clases")
         }
     }
+
+    /**
+     * Obtiene la lista de alumnos (hijos) asociados a un familiar por su ID
+     * @param familiarId ID del familiar
+     * @return Lista de alumnos
+     */
+    suspend fun getHijosByFamiliarId(familiarId: String): List<Alumno> = withContext(Dispatchers.IO) {
+        try {
+            // Buscar el usuario familiar
+            val usuarioDoc = usuariosCollection.document(familiarId).get().await()
+            if (!usuarioDoc.exists()) {
+                Timber.e("No se encontró el usuario familiar con ID: $familiarId")
+                return@withContext emptyList<Alumno>()
+            }
+            
+            val usuario = usuarioDoc.toObject(Usuario::class.java)
+            if (usuario == null) {
+                Timber.e("Error al convertir documento a Usuario para ID: $familiarId")
+                return@withContext emptyList<Alumno>()
+            }
+            
+            // Buscar los perfiles de tipo FAMILIAR
+            val perfilesFamiliar = usuario.perfiles.filter { it.tipo == TipoUsuario.FAMILIAR }
+            if (perfilesFamiliar.isEmpty()) {
+                Timber.d("El usuario $familiarId no tiene perfiles de tipo FAMILIAR")
+                return@withContext emptyList<Alumno>()
+            }
+            
+            // Obtener todos los IDs de alumnos de todos los perfiles
+            val alumnosIds = perfilesFamiliar.flatMap { it.alumnos }.distinct()
+            
+            if (alumnosIds.isEmpty()) {
+                Timber.d("El familiar $familiarId no tiene alumnos asociados")
+                return@withContext emptyList<Alumno>()
+            }
+            
+            // Buscar los documentos de los alumnos
+            val alumnos = mutableListOf<Alumno>()
+            for (alumnoId in alumnosIds) {
+                try {
+                    val alumnoDoc = alumnosCollection.document(alumnoId).get().await()
+                    if (alumnoDoc.exists()) {
+                        val alumno = alumnoDoc.toObject(Alumno::class.java)
+                        if (alumno != null) {
+                            alumnos.add(alumno)
+                        }
+                    } else {
+                        Timber.w("No se encontró el alumno con ID: $alumnoId")
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener alumno con ID: $alumnoId")
+                }
+            }
+            
+            return@withContext alumnos
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener hijos del familiar: $familiarId")
+            return@withContext emptyList<Alumno>()
+        }
+    }
 }

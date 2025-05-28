@@ -32,7 +32,10 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.ChildCare
-import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Festival
 import androidx.compose.material.icons.filled.Grading
@@ -537,28 +540,25 @@ private fun ProfesorDashboardTopBar(
     CenterAlignedTopAppBar(
         title = { Text("Dashboard Profesor") },
         actions = {
-            // Icono de mensajes/chat con badge si hay mensajes no leídos
-            BadgedBox(
-                badge = {
-                    if (unreadMessageCount > 0) {
-                        Badge { 
-                            Text(
-                                text = if (unreadMessageCount > 99) "99+" else unreadMessageCount.toString(),
-                                style = MaterialTheme.typography.labelSmall
-                            ) 
-                        }
-                    }
+            // Mensajes con indicador de no leídos
+            IconButton(
+                onClick = {
+                    navController.navigate(AppScreens.UnifiedInbox.route)
                 }
             ) {
-                IconButton(
-                    onClick = {
-                        haptic.performHapticFeedbackSafely(HapticFeedbackType.LongPress)
-                        navController.navigate(AppScreens.UnifiedInbox.route)
+                BadgedBox(
+                    badge = {
+                        if (unreadMessageCount > 0) {
+                            Badge {
+                                Text(text = unreadMessageCount.toString())
+                            }
+                        }
                     }
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Chat,
-                        contentDescription = "Mensajes"
+                        imageVector = Icons.Default.Email,
+                        contentDescription = "Mensajes",
+                        tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }

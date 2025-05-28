@@ -405,4 +405,44 @@ class NotificacionRepository @Inject constructor(
         // El sistema utiliza tokens FCM almacenados en Firestore y Cloud Functions
         // para determinar a qué dispositivos enviar la notificación
     }
+
+    /**
+     * Envía una notificación a un usuario específico
+     * @param destinatarioId ID del usuario destinatario
+     * @param titulo Título de la notificación
+     * @param mensaje Mensaje de la notificación
+     * @param tipo Tipo de notificación (opcional, por defecto SISTEMA)
+     * @param datos Datos adicionales para la notificación (opcional)
+     * @return Resultado de la operación
+     */
+    suspend fun enviarNotificacion(
+        destinatarioId: String,
+        titulo: String,
+        mensaje: String,
+        tipo: String = "SISTEMA",
+        datos: Map<String, String>? = null
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // Crear una notificación
+            val notificacion = Notificacion(
+                id = UUID.randomUUID().toString(),
+                titulo = titulo,
+                mensaje = mensaje,
+                fecha = Timestamp.now(),
+                usuarioDestinatarioId = destinatarioId,
+                leida = false,
+                tipo = TipoNotificacion.valueOf(tipo.uppercase())
+            )
+            
+            // Guardar la notificación en Firestore
+            notificacionesCollection.document(notificacion.id).set(notificacion).await()
+            
+            // Enviar también notificación push aquí si implementas FCM
+            
+            return@withContext Result.Success(notificacion.id)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al enviar notificación a $destinatarioId: $titulo")
+            return@withContext Result.Error(e)
+        }
+    }
 } 

@@ -1238,5 +1238,30 @@ fun Navigation(
                 navController = navController
             )
         }
+
+        // Pantalla de consulta de registro diario para familiar
+        composable(
+            route = AppScreens.ConsultaRegistroDiario.route,
+            arguments = listOf(
+                navArgument("alumnoId") { type = NavType.StringType },
+                navArgument("alumnoNombre") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
+            val alumnoNombre = backStackEntry.arguments?.getString("alumnoNombre") ?: "Alumno"
+            
+            Timber.d("Navegando a ConsultaRegistroDiario para alumno: $alumnoId, nombre: $alumnoNombre")
+            
+            com.tfg.umeegunero.feature.familiar.registros.screen.ConsultaRegistroDiarioScreen(
+                viewModel = hiltViewModel(),
+                alumnoId = alumnoId,
+                alumnoNombre = alumnoNombre,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
     }
 } 

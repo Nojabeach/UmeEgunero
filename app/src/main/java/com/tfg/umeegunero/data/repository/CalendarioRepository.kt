@@ -40,21 +40,50 @@ class CalendarioRepository @Inject constructor(
     }
 
     /**
-     * Obtiene los eventos de un mes específico
+     * Obtiene los eventos por centro
+     * Útil para calendarios compartidos entre profesores y familiares del mismo centro
+     * @param centroId ID del centro educativo
+     * @return Lista de eventos del centro
+     */
+    suspend fun getEventosByCentro(centroId: String): List<Evento> {
+        return try {
+            val snapshot = eventosCollection
+                .whereEqualTo("centroId", centroId)
+                .get()
+                .await()
+
+            snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Evento::class.java)?.copy(id = doc.id)
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Obtiene los eventos de un mes específico para un centro
      * @param year Año del mes
      * @param month Mes (1-12)
+     * @param centroId ID del centro (opcional)
      * @return Lista de eventos del mes
      */
-    suspend fun getEventosByMonth(year: Int, month: Int): List<Evento> {
+    suspend fun getEventosByMonth(year: Int, month: Int, centroId: String? = null): List<Evento> {
         return try {
             val startOfMonth = LocalDateTime.of(year, month, 1, 0, 0)
             val endOfMonth = startOfMonth.plusMonths(1).minusSeconds(1)
 
-            val snapshot = eventosCollection
+            val query = eventosCollection
                 .whereGreaterThanOrEqualTo("fecha", startOfMonth.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
                 .whereLessThanOrEqualTo("fecha", endOfMonth.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
-                .get()
-                .await()
+            
+            // Si se proporciona un centroId, filtrar por él
+            val finalQuery = if (centroId != null) {
+                query.whereEqualTo("centroId", centroId)
+            } else {
+                query
+            }
+
+            val snapshot = finalQuery.get().await()
 
             snapshot.documents.mapNotNull { doc ->
                 doc.toObject(Evento::class.java)?.copy(id = doc.id)
@@ -220,6 +249,62 @@ class CalendarioRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Result.Error(e)
+        }
+    }
+
+    /**
+     * Crea un nuevo evento en el calendario
+     * @param evento Datos del evento a crear
+     * @return Resultado de la operación con el ID del evento creado
+     */
+    suspend fun createEvento(evento: Evento): Result<String> {
+        return try {
+            val docRef = eventosCollection.document()
+            val eventoWithId = evento.copy(id = docRef.id)
+            docRef.set(eventoWithId).await()
+            Result.Success(docRef.id)
+        } catch (e: Exception) {
+            Result.Error(e)
+        }
+    }
+    
+    /**
+     * Obtiene los eventos relacionados con un alumno específico
+     * @param alumnoId ID del alumno
+     * @return Lista de eventos del alumno
+     */
+    suspend fun getEventosByAlumnoId(alumnoId: String): List<Evento> {
+        return try {
+            val snapshot = eventosCollection
+                .whereArrayContains("alumnosIds", alumnoId)
+                .get()
+                .await()
+
+            snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Evento::class.java)?.copy(id = doc.id)
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    
+    /**
+     * Obtiene los eventos relacionados con un usuario específico
+     * @param usuarioId ID del usuario
+     * @return Lista de eventos del usuario
+     */
+    suspend fun getEventosByUsuarioId(usuarioId: String): List<Evento> {
+        return try {
+            val snapshot = eventosCollection
+                .whereArrayContains("participantes", usuarioId)
+                .get()
+                .await()
+
+            snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Evento::class.java)?.copy(id = doc.id)
+            }
+        } catch (e: Exception) {
+            emptyList()
         }
     }
 } 

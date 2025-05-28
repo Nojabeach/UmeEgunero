@@ -5,7 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
+import com.tfg.umeegunero.data.model.TipoUsuario
+import com.tfg.umeegunero.data.model.Usuario
+import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CalendarioRepository
+import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.util.toTimestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -45,11 +49,25 @@ data class CalendarioUiState(
 )
 
 /**
+ * Información del usuario actual
+ */
+data class UserInfo(
+    val id: String,
+    val nombre: String,
+    val apellidos: String,
+    val email: String,
+    val tipoUsuario: TipoUsuario,
+    val centroId: String
+)
+
+/**
  * ViewModel para la pantalla de calendario
  */
 @HiltViewModel
 class CalendarioViewModel @Inject constructor(
-    private val calendarioRepository: CalendarioRepository
+    private val calendarioRepository: CalendarioRepository,
+    private val authRepository: AuthRepository,
+    private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalendarioUiState())
@@ -390,5 +408,105 @@ class CalendarioViewModel @Inject constructor(
      */
     fun cargarEventos() {
         loadEventos()
+    }
+
+    /**
+     * Limpia la lista de eventos
+     */
+    fun clearEvents() {
+        _uiState.update { it.copy(eventos = emptyList()) }
+    }
+    
+    /**
+     * Obtiene la información del usuario actual
+     * Este método debe usarse con precaución ya que no es asíncrono
+     * @return Información del usuario
+     */
+    suspend fun getUserInfo(): UserInfo {
+        val currentUser = authRepository.getCurrentUser()
+        // Asumimos que usaremos el primer perfil que se encuentre
+        val perfil = currentUser?.perfiles?.firstOrNull()
+        return UserInfo(
+            id = currentUser?.dni ?: "",
+            nombre = currentUser?.nombre ?: "",
+            apellidos = currentUser?.apellidos ?: "",
+            email = currentUser?.email ?: "",
+            tipoUsuario = perfil?.tipo ?: TipoUsuario.FAMILIAR,
+            centroId = perfil?.centroId ?: ""
+        )
+    }
+    
+    /**
+     * Carga eventos específicos de un centro educativo
+     * @param centroId ID del centro educativo
+     */
+    fun loadEventosByCentro(centroId: String) {
+        viewModelScope.launch {
+            try {
+                val eventos = calendarioRepository.getEventosByCentro(centroId)
+                _uiState.update { it.copy(eventos = it.eventos + eventos) }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar eventos del centro $centroId")
+            }
+        }
+    }
+    
+    /**
+     * Carga eventos específicos de un usuario
+     * @param usuarioId ID del usuario
+     */
+    fun loadEventosByUsuario(usuarioId: String) {
+        viewModelScope.launch {
+            try {
+                val eventos = calendarioRepository.getEventosByUsuarioId(usuarioId)
+                _uiState.update { it.copy(eventos = it.eventos + eventos) }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar eventos del usuario $usuarioId")
+            }
+        }
+    }
+    
+    /**
+     * Carga eventos específicos para los hijos de un familiar
+     * Útil para mostrar eventos específicos de los alumnos del familiar
+     */
+    fun loadEventosByHijos() {
+        viewModelScope.launch {
+            try {
+                // Obtener IDs de los hijos del familiar actual
+                val usuario = authRepository.getCurrentUser()
+                if (usuario == null) {
+                    Timber.d("Usuario no encontrado")
+                    return@launch
+                }
+                
+                // Comprobar si el usuario tiene un perfil de tipo FAMILIAR
+                val perfilFamiliar = usuario.perfiles.find { it.tipo == TipoUsuario.FAMILIAR }
+                if (perfilFamiliar == null) {
+                    Timber.d("No se encontró un perfil de tipo FAMILIAR")
+                    return@launch
+                }
+                
+                val familiarId = usuario.dni
+                if (familiarId.isEmpty()) {
+                    Timber.e("ID del familiar está vacío")
+                    return@launch
+                }
+                
+                try {
+                    val hijos = usuarioRepository.getHijosByFamiliarId(familiarId)
+                    
+                    // Para cada hijo, cargar sus eventos específicos
+                    for (hijo in hijos) {
+                        val eventosHijo = calendarioRepository.getEventosByAlumnoId(hijo.id)
+                        _uiState.update { it.copy(eventos = it.eventos + eventosHijo) }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener hijos del familiar: ${e.message}")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar eventos de los hijos: ${e.message}")
+            }
+        }
     }
 } 

@@ -278,26 +278,50 @@ class DetalleDiaEventoViewModel @Inject constructor(
             }
             
             try {
+                Timber.d("Iniciando eliminación del evento: ${evento.id}, título: ${evento.titulo}")
+                
                 // Eliminar del repositorio
-                eventoRepository.eliminarEvento(evento.id)
+                val resultado = eventoRepository.eliminarEvento(evento.id)
                 
-                // Recargar eventos
-                val fechaEvento = evento.fecha.toDate().toInstant()
-                    .atZone(ZoneId.systemDefault()).toLocalDate()
-                cargarEventosPorFecha(fechaEvento)
-                
-                _uiState.update { 
-                    it.copy(
-                        cargando = false,
-                        mensaje = "Evento eliminado correctamente"
-                    ) 
+                when (resultado) {
+                    is Result.Success -> {
+                        Timber.d("Evento eliminado correctamente del repositorio: ${evento.id}")
+                        
+                        // Recargar eventos
+                        val fechaEvento = evento.fecha.toDate().toInstant()
+                            .atZone(ZoneId.systemDefault()).toLocalDate()
+                        Timber.d("Recargando eventos para la fecha: $fechaEvento")
+                        cargarEventosPorFecha(fechaEvento)
+                        
+                        _uiState.update { 
+                            it.copy(
+                                cargando = false,
+                                mensaje = "Evento eliminado correctamente"
+                            ) 
+                        }
+                    }
+                    
+                    is Result.Error -> {
+                        val errorMsg = resultado.exception?.message ?: "Error desconocido"
+                        Timber.e(resultado.exception, "Error al eliminar evento: ${evento.id}, $errorMsg")
+                        _uiState.update { 
+                            it.copy(
+                                cargando = false,
+                                error = "Error al eliminar evento: $errorMsg"
+                            ) 
+                        }
+                    }
+                    
+                    is Result.Loading -> {
+                        // No hacer nada, ya estamos en estado de carga
+                    }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al eliminar evento")
+                Timber.e(e, "Error inesperado al eliminar evento: ${evento.id}, ${e.message}")
                 _uiState.update { 
                     it.copy(
                         cargando = false,
-                        error = "Error al eliminar evento: ${e.message}"
+                        error = "Error al eliminar evento: ${e.message ?: "Error desconocido"}"
                     ) 
                 }
             }

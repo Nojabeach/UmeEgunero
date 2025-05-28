@@ -22,36 +22,17 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import java.text.SimpleDateFormat
 import java.util.*
 import timber.log.Timber
 import com.tfg.umeegunero.ui.theme.FamiliarColor
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.google.firebase.Timestamp
-import com.tfg.umeegunero.data.repository.AuthRepository
-import com.tfg.umeegunero.data.repository.EventoRepository
-import com.tfg.umeegunero.util.Result
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import javax.inject.Inject
+import com.tfg.umeegunero.data.model.Evento
+import com.tfg.umeegunero.feature.familiar.viewmodel.CalendarioFamiliaViewModel
 
-// Modelo de datos para un evento
-data class Evento(
-    val id: String,
-    val titulo: String,
-    val descripcion: String,
-    val fecha: Long,
-    val ubicacion: String,
-    val tipo: TipoEvento
-)
-
+// Modelo de datos para un evento con características visuales
 enum class TipoEvento(val color: Color, val icon: ImageVector) {
     REUNION(Color(0xFF1976D2), Icons.Default.Groups),
     EXCURSION(Color(0xFF43A047), Icons.Default.DirectionsBus),
@@ -71,104 +52,6 @@ data class CalendarioUiState(
     val fechaSeleccionada: Calendar = Calendar.getInstance()
 )
 
-/**
- * ViewModel para la pantalla de calendario
- */
-@HiltViewModel
-class CalendarioFamiliaViewModel @Inject constructor(
-    private val eventoRepository: EventoRepository,
-    private val authRepository: AuthRepository
-) : ViewModel() {
-    
-    private val _uiState = MutableStateFlow(CalendarioUiState())
-    val uiState: StateFlow<CalendarioUiState> = _uiState.asStateFlow()
-    
-    init {
-        cargarEventos()
-    }
-    
-    /**
-     * Carga los eventos desde Firestore
-     */
-    fun cargarEventos() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
-            try {
-                val usuario = authRepository.getCurrentUser()
-                if (usuario == null) {
-                    _uiState.update { it.copy(
-                        error = "No se pudo obtener la información del usuario",
-                        isLoading = false
-                    ) }
-                    return@launch
-                }
-                
-                // Obtener el centro del familiar (simplificado)
-                val centroId = usuario.perfiles.firstOrNull()?.centroId ?: "centro_default"
-                
-                // Obtener eventos del centro
-                val eventosFirestore = eventoRepository.obtenerEventosPorCentro(centroId)
-                
-                // Convertir a nuestro modelo local
-                val eventos = eventosFirestore.map { evento ->
-                    Evento(
-                        id = evento.id,
-                        titulo = evento.titulo,
-                        descripcion = evento.descripcion,
-                        fecha = evento.fecha.seconds * 1000, // Convertir a milisegundos
-                        ubicacion = evento.ubicacion ?: "",
-                        tipo = when (evento.tipo.toString().lowercase()) {
-                            "reunion" -> TipoEvento.REUNION
-                            "excursion" -> TipoEvento.EXCURSION
-                            "fiesta" -> TipoEvento.FIESTA
-                            "salud" -> TipoEvento.SALUD
-                            "festivo" -> TipoEvento.FESTIVO
-                            else -> TipoEvento.OTRO
-                        }
-                    )
-                }
-                
-                _uiState.update { it.copy(
-                    eventos = eventos,
-                    isLoading = false
-                ) }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al cargar eventos: ${e.message}")
-                _uiState.update { it.copy(
-                    error = "Error: ${e.message}",
-                    isLoading = false
-                ) }
-            }
-        }
-    }
-    
-    /**
-     * Actualiza la fecha seleccionada
-     */
-    fun seleccionarFecha(fecha: Calendar) {
-        _uiState.update { it.copy(fechaSeleccionada = fecha) }
-    }
-    
-    /**
-     * Cambia al mes anterior
-     */
-    fun mesAnterior() {
-        val nuevaFecha = _uiState.value.fechaSeleccionada.clone() as Calendar
-        nuevaFecha.add(Calendar.MONTH, -1)
-        _uiState.update { it.copy(fechaSeleccionada = nuevaFecha) }
-    }
-    
-    /**
-     * Cambia al mes siguiente
-     */
-    fun mesSiguiente() {
-        val nuevaFecha = _uiState.value.fechaSeleccionada.clone() as Calendar
-        nuevaFecha.add(Calendar.MONTH, 1)
-        _uiState.update { it.copy(fechaSeleccionada = nuevaFecha) }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarioFamiliaScreen(
@@ -177,6 +60,30 @@ fun CalendarioFamiliaScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val haptic = LocalHapticFeedback.current
+    val selectedDate = remember { mutableStateOf(Calendar.getInstance()) }
+    
+    // Obtener eventos y filtrar por tipo de usuario
+    LaunchedEffect(selectedDate.value, viewModel) {
+        viewModel.clearEvents()
+        
+        // Obtener centro educativo del usuario actual (familiar)
+        val userInfo = viewModel.getUserInfo()
+        val centroId = userInfo.centroId
+        
+        if (centroId.isNotEmpty()) {
+            // Cargar eventos del centro
+            viewModel.loadEventosByCentro(centroId)
+            
+            // Cargar eventos personalizados del familiar
+            viewModel.loadEventosByUsuario(userInfo.id)
+            
+            // Cargar eventos específicos para los hijos del familiar
+            viewModel.loadEventosByHijos()
+        } else {
+            // Si no hay centroId, cargar solo eventos del usuario
+            viewModel.loadEventosByUsuario(userInfo.id)
+        }
+    }
     
     // SnackbarHostState para mostrar mensajes de error
     val snackbarHostState = remember { SnackbarHostState() }
@@ -193,7 +100,15 @@ fun CalendarioFamiliaScreen(
     
     // Filtrado de eventos para el día seleccionado
     val eventosDiaSeleccionado = uiState.eventos.filter { evento ->
-        val fechaEvento = Calendar.getInstance().apply { timeInMillis = evento.fecha }
+        val fechaEvento = Calendar.getInstance().apply { 
+            // Convertir Timestamp a milisegundos para usar con Calendar
+            timeInMillis = if (evento.fecha is com.google.firebase.Timestamp) {
+                (evento.fecha as com.google.firebase.Timestamp).seconds * 1000
+            } else {
+                // Asumir que ya está en formato Long
+                evento.fecha as Long
+            }
+        }
         fechaEvento.get(Calendar.YEAR) == uiState.fechaSeleccionada.get(Calendar.YEAR) &&
         fechaEvento.get(Calendar.MONTH) == uiState.fechaSeleccionada.get(Calendar.MONTH) &&
         fechaEvento.get(Calendar.DAY_OF_MONTH) == uiState.fechaSeleccionada.get(Calendar.DAY_OF_MONTH)
@@ -412,7 +327,15 @@ fun CalendarioGrid(
     // Determinar los días con eventos
     val diasConEventos = remember(fechaSeleccionada.get(Calendar.YEAR), fechaSeleccionada.get(Calendar.MONTH), eventos) {
         eventos.mapNotNull { evento ->
-            val eventoCalendar = Calendar.getInstance().apply { timeInMillis = evento.fecha }
+            val eventoCalendar = Calendar.getInstance().apply { 
+                // Convertir Timestamp a milisegundos para usar con Calendar
+                timeInMillis = if (evento.fecha is com.google.firebase.Timestamp) {
+                    (evento.fecha as com.google.firebase.Timestamp).seconds * 1000
+                } else {
+                    // Asumir que ya está en formato Long
+                    evento.fecha as Long
+                }
+            }
             if (eventoCalendar.get(Calendar.YEAR) == fechaSeleccionada.get(Calendar.YEAR) &&
                 eventoCalendar.get(Calendar.MONTH) == fechaSeleccionada.get(Calendar.MONTH)) {
                 eventoCalendar.get(Calendar.DAY_OF_MONTH)
@@ -549,6 +472,15 @@ fun EventoItem(
     evento: Evento,
     onClick: () -> Unit
 ) {
+    val tipoEvento = when (evento.tipo.toString().lowercase()) {
+        "reunion" -> TipoEvento.REUNION
+        "excursion" -> TipoEvento.EXCURSION
+        "fiesta" -> TipoEvento.FIESTA
+        "salud" -> TipoEvento.SALUD
+        "festivo" -> TipoEvento.FESTIVO
+        else -> TipoEvento.OTRO
+    }
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -566,7 +498,7 @@ fun EventoItem(
                 modifier = Modifier
                     .size(12.dp)
                     .clip(CircleShape)
-                    .background(evento.tipo.color)
+                    .background(tipoEvento.color)
             )
             
             Spacer(modifier = Modifier.width(16.dp))
@@ -582,9 +514,15 @@ fun EventoItem(
                 )
                 
                 val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-                val date = Date(evento.fecha)
+                val timestamp = if (evento.fecha is com.google.firebase.Timestamp) {
+                    (evento.fecha as com.google.firebase.Timestamp).toDate()
+                } else {
+                    // Asumir que está en formato Long (milisegundos)
+                    Date(evento.fecha as Long)
+                }
+                
                 Text(
-                    text = timeFormat.format(date),
+                    text = timeFormat.format(timestamp),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -599,9 +537,9 @@ fun EventoItem(
             
             // Icono según tipo de evento
             Icon(
-                imageVector = evento.tipo.icon,
+                imageVector = tipoEvento.icon,
                 contentDescription = null,
-                tint = evento.tipo.color
+                tint = tipoEvento.color
             )
         }
     }

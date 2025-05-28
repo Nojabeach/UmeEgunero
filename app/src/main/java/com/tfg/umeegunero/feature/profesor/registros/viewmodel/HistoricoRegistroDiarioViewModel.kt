@@ -464,6 +464,34 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true, registros = emptyList()) }
                 
+                // Formatear la fecha en formato yyyyMMdd para construir un ID específico
+                val formatoFecha = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+                val fechaFormateada = formatoFecha.format(fecha)
+                val registroIdEspecifico = "registro_${fechaFormateada}_$alumnoId"
+                
+                Timber.d("Buscando registro específico con ID: $registroIdEspecifico")
+                
+                // Estrategia 1: Intentar buscar por ID específico primero
+                try {
+                    val resultadoEspecifico = registroDiarioRepository.obtenerRegistroDiarioPorId(registroIdEspecifico)
+                    if (resultadoEspecifico is Result.Success && resultadoEspecifico.data != null) {
+                        Timber.d("Encontrado registro específico por ID: $registroIdEspecifico")
+                        val registro = resultadoEspecifico.data
+                        
+                        _uiState.update { 
+                            it.copy(
+                                registros = listOf(registro),
+                                isLoading = false
+                            )
+                        }
+                        return@launch
+                    }
+                } catch (e: Exception) {
+                    Timber.d("No se encontró registro por ID específico: $registroIdEspecifico, ${e.message}")
+                }
+                
+                // Si no se encontró por ID específico, intentamos con búsqueda por rango de fechas
+                
                 // Obtener los límites del día seleccionado
                 val inicio = Calendar.getInstance().apply {
                     time = fecha
@@ -481,122 +509,80 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
                     set(Calendar.MILLISECOND, 999)
                 }.time
                 
-                // Formatear fechas para logs de depuración
-                val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                Timber.d("Buscando registros para alumno $alumnoId entre ${dateFormat.format(inicio)} y ${dateFormat.format(fin)}")
+                Timber.d("Buscando registros para alumno: $alumnoId, fecha: ${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fecha)}")
+                Timber.d("Rango de búsqueda: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(inicio)} a ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(fin)}")
                 
-                // También formatear la fecha seleccionada en formato específico para logs
-                val selectedDateFormatted = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(fecha)
-                Timber.d("Fecha seleccionada en formato yyyyMMdd: $selectedDateFormatted")
-                
-                // Usar el repositorio con Timestamp para consultas más precisas
+                // Estrategia 2: Buscar por rango de fechas
                 val inicioTimestamp = Timestamp(inicio)
                 val finTimestamp = Timestamp(fin)
+                val resultadoPorFecha = registroDiarioRepository.obtenerRegistrosPorFechaYAlumno(alumnoId, inicioTimestamp, finTimestamp)
                 
-                // Buscar por rango de fechas
-                val result = registroDiarioRepository.obtenerRegistrosPorFechaYAlumno(alumnoId, inicioTimestamp, finTimestamp)
-                
-                when (result) {
-                    is Result.Success -> {
-                        val registrosCrudos = result.data
-                        
-                        if (registrosCrudos.isEmpty()) {
-                            Timber.d("No se encontraron registros por rango de fechas")
-                            
-                            // Intentar caso especial para 27/05/2025
-                            if (selectedDateFormatted == "20250527") {
-                                Timber.d("Caso especial: Intentando buscar por ID específico para 27/05/2025")
-                                
-                                // Generar ID específico para este caso
-                                val registroEspecificoId = "registro_20250527_$alumnoId"
-                                
-                                // Usar obtenerRegistrosAlumno para buscar todos los registros y filtrar
-                                registroDiarioRepository.obtenerRegistrosDiariosPorAlumno(alumnoId)
-                                    .collect { alumnoResult ->
-                                        if (alumnoResult is Result.Success) {
-                                            val registrosAlumno = alumnoResult.data
-                                            
-                                            // Buscar específicamente por ID o fecha
-                                            val registroEspecial = registrosAlumno.find { 
-                                                it.id == registroEspecificoId || 
-                                                it.id.contains("20250527") || 
-                                                (it.fecha.seconds >= inicioTimestamp.seconds && 
-                                                 it.fecha.seconds <= finTimestamp.seconds)
-                                            }
-                                            
-                                            if (registroEspecial != null) {
-                                                Timber.d("Encontrado registro especial para fecha 27/05/2025: ${registroEspecial.id}")
-                                                _uiState.update { 
-                                                    it.copy(
-                                                        registros = listOf(procesarRegistroParaHistorico(registroEspecial)),
-                                                        isLoading = false
-                                                    )
-                                                }
-                                            } else {
-                                                Timber.d("No se encontró ningún registro especial para 27/05/2025")
-                                                _uiState.update { 
-                                                    it.copy(
-                                                        registros = emptyList(),
-                                                        isLoading = false
-                                                    )
-                                                }
-                                            }
-                                        } else if (alumnoResult is Result.Error) {
-                                            Timber.e(alumnoResult.exception, "Error al buscar registros del alumno")
-                                            _uiState.update { 
-                                                it.copy(
-                                                    isLoading = false,
-                                                    error = "Error al cargar registros: ${alumnoResult.exception?.message ?: "Error desconocido"}"
-                                                )
-                                            }
-                                        }
-                                    }
-                            } else {
-                                // Caso normal: no hay registros para esta fecha
-                                _uiState.update { 
-                                    it.copy(
-                                        registros = emptyList(),
-                                        isLoading = false
-                                    )
-                                }
-                            }
-                        } else {
-                            // Procesar los registros encontrados normalmente
-                            val registros = registrosCrudos.map { procesarRegistroParaHistorico(it) }
-                                .sortedByDescending { it.fecha }
-                            
-                            _uiState.update { 
-                                it.copy(
-                                    registros = registros,
-                                    isLoading = false
-                                )
-                            }
-                            
-                            Timber.d("Se encontraron ${registros.size} registros para la fecha")
-                            registros.forEach { reg -> 
-                                Timber.d("Registro: fecha=${reg.fecha}")
-                            }
-                        }
-                    }
-                    is Result.Error -> {
-                        Timber.e(result.exception, "Error al obtener registros por fecha: ${result.exception?.message}")
+                if (resultadoPorFecha is Result.Success && resultadoPorFecha.data.isNotEmpty()) {
+                    // Tomar el primer registro que coincida con la fecha
+                    val registroActividad = resultadoPorFecha.data.firstOrNull()
+                    Timber.d("Encontrado registro por rango de fechas: ${registroActividad?.id}")
+                    
+                    if (registroActividad != null) {
                         _uiState.update { 
                             it.copy(
-                                isLoading = false,
-                                error = "Error al cargar registros: ${result.exception?.message ?: "Error desconocido"}"
+                                registros = listOf(registroActividad),
+                                isLoading = false
                             )
                         }
+                        return@launch
                     }
-                    is Result.Loading -> {
-                        // No hacer nada, ya estamos mostrando la carga
+                } else {
+                    Timber.d("No se encontraron registros por rango de fechas")
+                }
+                
+                // Estrategia 3: Buscar todos los registros del alumno y filtrar manualmente
+                val resultadosPorAlumno = registroDiarioRepository.getRegistrosActividadByAlumnoId(alumnoId)
+                
+                if (resultadosPorAlumno is Result.Success) {
+                    // Filtrar manualmente por fecha
+                    val registroActividad = resultadosPorAlumno.data.firstOrNull { registroAct ->
+                        val registroDate = registroAct.fecha.toDate()
+                        val cal = Calendar.getInstance()
+                        cal.time = registroDate
+                        
+                        val calInicio = Calendar.getInstance()
+                        calInicio.time = inicio
+                        
+                        cal.get(Calendar.YEAR) == calInicio.get(Calendar.YEAR) &&
+                        cal.get(Calendar.MONTH) == calInicio.get(Calendar.MONTH) &&
+                        cal.get(Calendar.DAY_OF_MONTH) == calInicio.get(Calendar.DAY_OF_MONTH)
+                    }
+                    
+                    if (registroActividad != null) {
+                        Timber.d("Encontrado registro filtrado manualmente: ${registroActividad.id}")
+                        
+                        _uiState.update { 
+                            it.copy(
+                                registros = listOf(registroActividad),
+                                isLoading = false
+                            )
+                        }
+                        return@launch
+                    } else {
+                        Timber.d("No se encontraron registros filtrando manualmente")
                     }
                 }
+                
+                // No se encontró ningún registro
+                _uiState.update { 
+                    it.copy(
+                        registros = emptyList(),
+                        isLoading = false
+                    )
+                }
+                
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar registros por fecha: ${e.message}")
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        error = "Error al cargar registros: ${e.message}"
+                        error = "Error al cargar registros por fecha: ${e.message}",
+                        registros = emptyList()
                     )
                 }
             }
@@ -607,7 +593,86 @@ class HistoricoRegistroDiarioViewModel @Inject constructor(
      * Refrescar todos los datos
      */
     fun refrescarDatos() {
-        cargarDatosIniciales()
+        viewModelScope.launch {
+            try {
+                Timber.d("Iniciando proceso de refrescar datos")
+                _uiState.update { it.copy(isLoading = true) }
+                
+                // Guardar el alumno y fecha seleccionada actuales para mantenerlos después de recargar
+                val alumnoSeleccionadoActual = _uiState.value.alumnoSeleccionado
+                val fechaSeleccionadaActual = _uiState.value.fechaSeleccionada
+                
+                Timber.d("Estado antes de refrescar: alumnoId=${alumnoSeleccionadoActual?.id}, fecha=${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fechaSeleccionadaActual)}")
+                
+                // Recargar datos básicos
+                cargarDatosIniciales()
+                
+                // Esperar un momento para que se completen las cargas iniciales
+                kotlinx.coroutines.delay(800) // Aumentamos el delay para dar más tiempo
+                
+                // Si había un alumno seleccionado, volver a cargarlo específicamente
+                if (alumnoSeleccionadoActual != null) {
+                    Timber.d("Recargando datos para alumno: ${alumnoSeleccionadoActual.id}")
+                    
+                    // Primero seleccionamos la clase correspondiente
+                    val claseId = _uiState.value.clases.firstOrNull { clase ->
+                        clase.id == alumnoSeleccionadoActual.claseId
+                    }?.id
+                    
+                    if (claseId != null) {
+                        Timber.d("Seleccionando clase: $claseId")
+                        seleccionarClase(claseId)
+                        
+                        // Esperar a que se carguen los alumnos
+                        kotlinx.coroutines.delay(500) // Aumentamos el delay para dar más tiempo
+                        
+                        // Seleccionar el alumno
+                        Timber.d("Reseleccionando alumno: ${alumnoSeleccionadoActual.id}")
+                        seleccionarAlumno(alumnoSeleccionadoActual.id)
+                        
+                        // Esperar a que se carguen los registros del alumno
+                        kotlinx.coroutines.delay(500) // Aumentamos el delay para dar más tiempo
+                        
+                        // Finalmente, cargar por fecha específica explícitamente
+                        Timber.d("Cargando registros por fecha: ${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fechaSeleccionadaActual)}")
+                        // Forzamos la carga de registros por fecha
+                        cargarRegistrosPorFecha(alumnoSeleccionadoActual.id, fechaSeleccionadaActual)
+                    } else {
+                        Timber.w("No se encontró la clase del alumno: ${alumnoSeleccionadoActual.claseId}")
+                        // Intentar cargar los registros directamente si no se encuentra la clase
+                        _uiState.update { 
+                            it.copy(
+                                alumnoSeleccionado = alumnoSeleccionadoActual,
+                                fechaSeleccionada = fechaSeleccionadaActual
+                            )
+                        }
+                        kotlinx.coroutines.delay(300)
+                        cargarRegistrosPorFecha(alumnoSeleccionadoActual.id, fechaSeleccionadaActual)
+                    }
+                }
+                
+                // Verificar si se cargaron registros
+                kotlinx.coroutines.delay(500)
+                if (_uiState.value.registros.isEmpty()) {
+                    Timber.w("No se cargaron registros después de refrescar. Intentando de nuevo con fecha específica.")
+                    alumnoSeleccionadoActual?.let { alumno ->
+                        cargarRegistrosPorFecha(alumno.id, fechaSeleccionadaActual)
+                    }
+                }
+                
+                Timber.d("Proceso de refrescar datos completado. Registros cargados: ${_uiState.value.registros.size}")
+                // Asegurar que ya no estamos en estado de carga
+                _uiState.update { it.copy(isLoading = false) }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al refrescar datos: ${e.message}")
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = "Error al refrescar datos: ${e.message}"
+                    )
+                }
+            }
+        }
     }
     
     /**

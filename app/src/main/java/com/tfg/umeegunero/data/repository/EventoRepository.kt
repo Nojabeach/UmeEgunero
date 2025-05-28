@@ -251,16 +251,34 @@ class EventoRepository @Inject constructor(
     /**
      * Elimina un evento
      * @param eventoId ID del evento a eliminar
+     * @return Result indicando éxito o error
      */
-    suspend fun eliminarEvento(eventoId: String) {
-        try {
+    suspend fun eliminarEvento(eventoId: String): Result<Unit> {
+        return try {
+            Timber.d("Intentando eliminar evento con ID: $eventoId")
+            
+            // Verificar primero que el evento existe
+            val eventoExistente = firestore.collection(COLLECTION_EVENTOS)
+                .document(eventoId)
+                .get()
+                .await()
+                
+            if (!eventoExistente.exists()) {
+                Timber.w("Intento de eliminar un evento que no existe: $eventoId")
+                return Result.Error(Exception("El evento no existe o ya fue eliminado"))
+            }
+            
+            // Proceder con la eliminación
             firestore.collection(COLLECTION_EVENTOS)
                 .document(eventoId)
                 .delete()
                 .await()
+                
+            Timber.d("Evento eliminado correctamente: $eventoId")
+            Result.Success(Unit)
         } catch (e: Exception) {
-            Timber.e(e, "Error al eliminar evento")
-            throw e
+            Timber.e(e, "Error al eliminar evento: $eventoId")
+            Result.Error(e)
         }
     }
 

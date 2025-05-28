@@ -42,6 +42,7 @@ import java.util.*
  * @property nombreCompleto Nombre completo del alumno (nombre + apellidos).
  * @property asistenciaHoy Indica si el alumno está presente hoy.
  * @property ultimaAsistencia Fecha de la última asistencia del alumno.
+ * @property registroDiarioLeido Indica si el registro diario ha sido leído por los familiares
  *
  * @see Familiar
  */
@@ -72,7 +73,8 @@ data class Alumno(
     val presente: Boolean = false,
     val asistenciaHoy: Boolean? = null,
     val ultimaAsistencia: Date? = null,
-    val avatarUrl: String = ""
+    val avatarUrl: String = "",
+    val registroDiarioLeido: Boolean? = null
 ) {
     // Propiedad computada para obtener el nombre completo
     val nombreCompleto: String

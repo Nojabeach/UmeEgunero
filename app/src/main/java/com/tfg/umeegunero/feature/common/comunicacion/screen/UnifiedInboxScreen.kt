@@ -9,6 +9,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -92,6 +93,7 @@ import androidx.compose.material.icons.filled.Announcement
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.automirrored.filled.Announcement
@@ -324,128 +326,320 @@ fun MessageItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = if (!message.isRead) 4.dp else 1.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (!message.isRead) 
-                MaterialTheme.colorScheme.surface 
-            else 
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            // Indicador de tipo de mensaje
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(getMessageTypeColor(message.type)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = message.type.name.first().toString(),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+            containerColor = when (message.type) {
+                MessageType.ANNOUNCEMENT -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (!message.isRead) 1f else 0.7f)
+                MessageType.NOTIFICATION -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = if (!message.isRead) 1f else 0.7f)
+                else -> if (!message.isRead) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
             }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = message.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = if (!message.isRead) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                
-                Text(
-                    text = message.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (!message.isRead) 
-                        MaterialTheme.colorScheme.onSurface
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+        ),
+        border = if (!message.isRead) 
+            BorderStroke(2.dp, getMessageTypeColor(message.type)) 
+        else null
+    ) {
+        when (message.type) {
+            MessageType.ANNOUNCEMENT, MessageType.NOTIFICATION -> {
+                // Estilo tipo notificación para comunicados y notificaciones
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
                 ) {
-                    Text(
-                        text = message.senderName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    
-                    Text(
-                        text = " • ",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    
-                    Text(
-                        text = formattedDate,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // Cabecera con icono y título
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(getMessageTypeColor(message.type)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            when (message.type) {
+                                MessageType.ANNOUNCEMENT -> Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Announcement,
+                                    contentDescription = "Comunicado",
+                                    tint = Color.White
+                                )
+                                MessageType.NOTIFICATION -> Icon(
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = "Notificación",
+                                    tint = Color.White
+                                )
+                                else -> Text(
+                                    text = message.type.name.first().toString(),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.width(16.dp))
+                        
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = message.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            
+                            Text(
+                                text = "De: ${message.senderName}",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = if (!message.isRead) FontWeight.Bold else FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
+                        
+                        Box {
+                            IconButton(onClick = { showOptions = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "Más opciones",
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            
+                            DropdownMenu(
+                                expanded = showOptions,
+                                onDismissRequest = { showOptions = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Eliminar") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Eliminar"
+                                        )
+                                    },
+                                    onClick = {
+                                        onDeleteClick()
+                                        showOptions = false
+                                    }
+                                )
+                            }
+                        }
+                    }
                     
                     // Badge de prioridad
                     if (message.priority == MessagePriority.HIGH || 
                         message.priority == MessagePriority.URGENT) {
                         
-                        val priorityText = if (message.priority == MessagePriority.URGENT) {
-                            "Urgente"
-                        } else {
-                            "Alta"
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val priorityColor = if (message.priority == MessagePriority.URGENT) 
+                                Color.Red else Color(0xFFF57C00)
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = priorityColor.copy(alpha = 0.2f),
+                                contentColor = priorityColor
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PriorityHigh,
+                                        contentDescription = null,
+                                        tint = priorityColor,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = if (message.priority == MessagePriority.URGENT) "Urgente" else "Prioridad alta",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Contenido
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Text(
+                        text = message.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (!message.isRead) FontWeight.SemiBold else FontWeight.Normal,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Fecha y hora al final, a la derecha
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (!message.isRead) {
+                            Surface(
+                                shape = CircleShape,
+                                color = getMessageTypeColor(message.type)
+                            ) {
+                                Text(
+                                    text = "Sin leer",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
                         }
                         
                         Text(
-                            text = " • $priorityText",
+                            text = formattedDate,
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (message.priority == MessagePriority.HIGH) Color(0xFFF57C00) else Color.Red
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         )
                     }
                 }
             }
-            
-            Box {
-                IconButton(onClick = { showOptions = true }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Más opciones"
-                    )
-                }
-                
-                DropdownMenu(
-                    expanded = showOptions,
-                    onDismissRequest = { showOptions = false }
+            else -> {
+                // Estilo original para otros tipos de mensajes
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Eliminar") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Eliminar"
+                    // Indicador de tipo de mensaje
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(getMessageTypeColor(message.type)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = message.type.name.first().toString(),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = message.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = if (!message.isRead) FontWeight.Bold else FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        
+                        Text(
+                            text = message.content,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (!message.isRead) FontWeight.SemiBold else FontWeight.Normal,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            color = if (!message.isRead) 
+                                MaterialTheme.colorScheme.onSurface
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = message.senderName,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = if (!message.isRead) FontWeight.Bold else FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.primary
                             )
-                        },
-                        onClick = {
-                            onDeleteClick()
-                            showOptions = false
+                            
+                            Text(
+                                text = " • ",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            Text(
+                                text = formattedDate,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            // Badge de prioridad
+                            if (message.priority == MessagePriority.HIGH || 
+                                message.priority == MessagePriority.URGENT) {
+                                
+                                val priorityText = if (message.priority == MessagePriority.URGENT) {
+                                    "Urgente"
+                                } else {
+                                    "Alta"
+                                }
+                                
+                                Text(
+                                    text = " • $priorityText",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = if (!message.isRead) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (message.priority == MessagePriority.HIGH) Color(0xFFF57C00) else Color.Red
+                                )
+                            }
+                            
+                            // Indicador de no leído
+                            if (!message.isRead) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(getMessageTypeColor(message.type))
+                                )
+                            }
                         }
-                    )
+                    }
+                    
+                    Box {
+                        IconButton(onClick = { showOptions = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Más opciones"
+                            )
+                        }
+                        
+                        DropdownMenu(
+                            expanded = showOptions,
+                            onDismissRequest = { showOptions = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Eliminar") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Eliminar"
+                                    )
+                                },
+                                onClick = {
+                                    onDeleteClick()
+                                    showOptions = false
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }

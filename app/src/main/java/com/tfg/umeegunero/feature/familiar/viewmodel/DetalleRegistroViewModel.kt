@@ -57,22 +57,34 @@ class DetalleRegistroViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
 
             try {
+                Timber.d("Iniciando carga del registro con ID: $registroId")
+                
+                // Primero intentamos obtener el registro por ID
                 val registroResult = usuarioRepository.getRegistroById(registroId)
 
                 when (registroResult) {
                     is Result.Success -> {
                         val registro = registroResult.data
+                        Timber.d("Registro encontrado correctamente: ${registro.id}")
+                        
                         // Si hay profesor, cargar su nombre
                         var profesorNombre: String? = null
                         if (registro.profesorId.isNotBlank()) {
-                            val profesorResult = usuarioRepository.getUsuarioById(registro.profesorId)
-                            
-                            when (profesorResult) {
-                                is Result.Success<*> -> {
-                                    val profesor = profesorResult.data as Usuario
-                                    profesorNombre = "${profesor.nombre} ${profesor.apellidos}"
+                            try {
+                                val profesorResult = usuarioRepository.getUsuarioById(registro.profesorId)
+                                
+                                when (profesorResult) {
+                                    is Result.Success<*> -> {
+                                        val profesor = profesorResult.data as Usuario
+                                        profesorNombre = "${profesor.nombre} ${profesor.apellidos}"
+                                        Timber.d("Nombre del profesor cargado: $profesorNombre")
+                                    }
+                                    else -> { 
+                                        Timber.w("No se pudo cargar el profesor con ID: ${registro.profesorId}")
+                                    }
                                 }
-                                else -> { /* No hacer nada, es un profesor opcional */ }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al cargar información del profesor: ${e.message}")
                             }
                         }
                         
@@ -80,17 +92,46 @@ class DetalleRegistroViewModel @Inject constructor(
                         _uiState.update { it.copy(
                             isLoading = false,
                             registro = registro,
-                            profesorNombre = profesorNombre
+                            profesorNombre = profesorNombre,
+                            error = null
                         ) }
                         
                         // Marcar como visto por el familiar
-                        marcarComoVistoPorFamiliar(registro)
+                        try {
+                            marcarComoVistoPorFamiliar(registro)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al marcar como visto: ${e.message}")
+                            // No mostramos este error al usuario ya que no es crítico
+                        }
                     }
                     is Result.Error -> {
+                        Timber.e(registroResult.exception, "Error al cargar registro: ${registroResult.exception?.message}")
                         _uiState.update { it.copy(
                             isLoading = false,
                             error = "Error al cargar registro: ${registroResult.exception?.message ?: "Error desconocido"}"
                         ) }
+                        
+                        // Intentar una segunda estrategia: buscar por ID en RegistroDiarioRepository
+                        try {
+                            Timber.d("Intentando cargar registro con estrategia alternativa")
+                            val resultadoAlternativo = registroDiarioRepository.obtenerRegistroDiarioPorId(registroId)
+                            
+                            if (resultadoAlternativo is Result.Success && resultadoAlternativo.data != null) {
+                                Timber.d("Registro encontrado con estrategia alternativa")
+                                val registro = resultadoAlternativo.data
+                                
+                                _uiState.update { it.copy(
+                                    isLoading = false,
+                                    registro = registro,
+                                    error = null
+                                ) }
+                                
+                                marcarComoVistoPorFamiliar(registro)
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error en estrategia alternativa: ${e.message}")
+                            // No actualizamos el estado ya que ya mostramos el error principal
+                        }
                     }
                     is Result.Loading -> {
                         // Mantener estado de carga
@@ -98,7 +139,7 @@ class DetalleRegistroViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error inesperado al cargar el registro")
+                Timber.e(e, "Error inesperado al cargar el registro: ${e.message}")
                 _uiState.update { it.copy(
                     error = "Error inesperado: ${e.message}",
                     isLoading = false
@@ -113,12 +154,6 @@ class DetalleRegistroViewModel @Inject constructor(
     private fun marcarComoVistoPorFamiliar(registro: RegistroActividad) {
         viewModelScope.launch {
             try {
-                // Solo actualizar si no está ya marcado como visto
-                if (registro.vistoPorFamiliar) {
-                    Timber.d("El registro ya fue marcado como visto por un familiar")
-                    return@launch
-                }
-                
                 // Obtener el usuario actual (familiar)
                 val usuarioActual = authRepository.getCurrentUser()
                 if (usuarioActual == null) {
@@ -132,24 +167,27 @@ class DetalleRegistroViewModel @Inject constructor(
                 val lecturaFamiliar = LecturaFamiliar(
                     familiarId = usuarioActual.dni,
                     nombreFamiliar = "${usuarioActual.nombre} ${usuarioActual.apellidos}",
-                    fechaLectura = Timestamp(Date())
+                    fechaLectura = Timestamp(Date()),
+                    leido = true
                 )
+                
+                // Crear copia de lecturasPorFamiliar para agregar la nueva lectura
+                val lecturasPorFamiliarActualizadas = registro.lecturasPorFamiliar.toMutableMap().apply {
+                    this[usuarioActual.dni] = lecturaFamiliar
+                }
                 
                 // Actualizar el registro con la información de lectura
                 val registroActualizado = registro.copy(
                     vistoPorFamiliar = true,
                     fechaVisto = Timestamp(Date()),
-                    // Agregar a las lecturas existentes
-                    lecturasPorFamiliar = registro.lecturasPorFamiliar.toMutableMap().apply {
-                        this[usuarioActual.dni] = lecturaFamiliar
-                    }
+                    lecturasPorFamiliar = lecturasPorFamiliarActualizadas
                 )
                 
-                // Guardar en la base de datos
+                // Guardar en la base de datos usando el repositorio correcto
                 val resultado = registroDiarioRepository.actualizarRegistroDiario(registroActualizado)
                 
                 when (resultado) {
-                    is Result.Success<*> -> {
+                    is Result.Success -> {
                         Timber.d("Registro marcado como visto correctamente")
                         // Actualizar el estado con el registro actualizado
                         _uiState.update { it.copy(registro = registroActualizado) }
@@ -157,7 +195,7 @@ class DetalleRegistroViewModel @Inject constructor(
                     is Result.Error -> {
                         Timber.e(resultado.exception, "Error al marcar registro como visto: ${resultado.exception?.message}")
                     }
-                    is Result.Loading<*> -> {
+                    is Result.Loading -> {
                         // No hacer nada en este caso
                     }
                 }

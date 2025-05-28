@@ -480,12 +480,16 @@ class ProfesorDashboardViewModel @Inject constructor(
     private fun refreshUnreadMessageCount() {
         viewModelScope.launch {
             try {
-                val userId = _uiState.value.profesor?.dni ?: return@launch
+                val userId = _uiState.value.profesor?.dni ?: authRepository.getCurrentUser()?.dni ?: return@launch
+                
+                // Obtener mensajes no leídos desde el repositorio
                 messageRepository.getUnreadMessageCount(userId).collectLatest { result ->
                     when (result) {
                         is Result.Success -> {
-                            _unreadMessageCount.value = result.data
-                            Timber.d("Mensajes no leídos: ${result.data}")
+                            val count = result.data
+                            _unreadMessageCount.value = count
+                            _uiState.update { it.copy(totalMensajesNoLeidos = count) }
+                            Timber.d("Contador de mensajes no leídos actualizado: $count")
                         }
                         is Result.Error -> {
                             Timber.e(result.exception, "Error al obtener mensajes no leídos")
@@ -494,7 +498,7 @@ class ProfesorDashboardViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al verificar mensajes no leídos")
+                Timber.e(e, "Error al verificar mensajes no leídos: ${e.message}")
             }
         }
     }

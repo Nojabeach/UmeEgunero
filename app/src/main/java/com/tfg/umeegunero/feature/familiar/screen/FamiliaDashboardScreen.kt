@@ -78,6 +78,7 @@ import com.tfg.umeegunero.util.DateUtils
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import timber.log.Timber
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * Modelo para representar una solicitud de vinculación pendiente
@@ -461,7 +462,14 @@ fun FamiliaDashboardScreen(
                             Timber.e(e, "Error al realizar feedback háptico")
                         }
                         showNavigateToMensajesDialog = false
-                        navController.navigate(AppScreens.ChatContacts.createRoute(AppScreens.ChatFamilia.route))
+                        scope.launch {
+                            try {
+                                navController.navigate(AppScreens.ChatContacts.createRoute(AppScreens.ChatFamilia.route))
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al navegar a ChatContacts: ${e.message}")
+                                snackbarHostState.showSnackbar("Error al abrir chat: ${e.message}")
+                            }
+                        }
                     }
                 ) {
                     Text("Sí")
@@ -489,7 +497,7 @@ fun FamiliaDashboardScreen(
                             Timber.e(e, "Error al realizar feedback háptico")
                         }
                         showNavigateToConfiguracionDialog = false
-                        navController.navigate(AppScreens.Perfil.route)
+                        navController.navigate(AppScreens.EditProfile.route)
                     }
                 ) {
                     Text("Sí")
@@ -526,15 +534,21 @@ fun FamiliaDashboardScreen(
                         if (uiState.hijoSeleccionado != null) {
                             val alumnoId = uiState.hijoSeleccionado!!.dni
                             val alumnoNombre = uiState.hijoSeleccionado!!.nombre
-                            navController.navigate(
-                                AppScreens.ConsultaRegistroDiario.createRoute(
-                                    alumnoId = alumnoId,
-                                    alumnoNombre = alumnoNombre
-                                )
-                            )
+                            scope.launch {
+                                try {
+                                    navController.navigate(AppScreens.ConsultaRegistroDiario.createRoute(
+                                        alumnoId = alumnoId,
+                                        alumnoNombre = alumnoNombre
+                                    ))
+                                    Timber.d("Navegando a historial completo para alumno: ${alumnoId}, nombre: ${alumnoNombre}")
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al navegar a historial completo: ${e.message}")
+                                    snackbarHostState.showSnackbar("Error al navegar al historial completo. Intente de nuevo.")
+                                }
+                            }
                         } else {
                             scope.launch {
-                                snackbarHostState.showSnackbar("Selecciona un hijo primero")
+                                snackbarHostState.showSnackbar("No hay hijos registrados para mostrar el historial.")
                             }
                         }
                     },
@@ -600,10 +614,19 @@ fun FamiliaDashboardScreen(
                             onClick = {
                                 try {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    Timber.d("Intentando navegar a mensajes unificados directamente")
+                                    scope.launch {
+                                        try {
+                                            // Navegamos directamente a la bandeja de mensajes unificados en lugar del chat
+                                            navController.navigate(AppScreens.UnifiedInbox.route)
+                                        } catch (e: Exception) {
+                                            Timber.e(e, "Error al navegar a mensajes: ${e.message}")
+                                            snackbarHostState.showSnackbar("Error al abrir mensajes: ${e.message}")
+                                        }
+                                    }
                                 } catch (e: Exception) {
-                                    Timber.e(e, "Error al realizar feedback háptico")
+                                    Timber.e(e, "Error al realizar feedback háptico o navegar: ${e.message}")
                                 }
-                                navController.navigate(AppScreens.ChatContacts.createRoute(AppScreens.ChatFamilia.route))
                             }
                         ) {
                             Icon(
@@ -711,10 +734,19 @@ fun FamiliaDashboardScreen(
                                 registrosActividad = uiState.registrosActividad,
                                 onVerDetalles = { registroId ->
                                     try {
-                                        navController.navigate(
-                                            AppScreens.DetalleRegistro.createRoute(registroId)
-                                        )
+                                        Timber.d("Intentando navegar a DetalleRegistro con ID: $registroId")
+                                        scope.launch {
+                                            try {
+                                                navController.navigate(
+                                                    AppScreens.DetalleRegistro.createRoute(registroId)
+                                                )
+                                            } catch (e: Exception) {
+                                                Timber.e(e, "Error al navegar a DetalleRegistro: ${e.message}")
+                                                snackbarHostState.showSnackbar("Error al abrir detalle: ${e.message}")
+                                            }
+                                        }
                                     } catch (e: Exception) {
+                                        Timber.e(e, "Error al preparar navegación a DetalleRegistro: ${e.message}")
                                         scope.launch {
                                             snackbarHostState.showSnackbar("No se pudo navegar a los detalles")
                                         }
@@ -814,33 +846,29 @@ fun FamiliaDashboardScreen(
                     
                     // Historial Completo
                     item {
-                        OpcionDashboardCard(
-                            titulo = "Historial Completo",
-                            descripcion = "Consulta todos los registros históricos de actividad de tu hijo/a",
+                        HistorialCard(
+                            titulo = "Ver historial completo",
                             icono = Icons.Default.History,
                             onClick = {
-                                try {
-                                    if (uiState.hijoSeleccionado == null) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                // Seleccionar primer hijo o mostrar un selector si hay varios
+                                val primerHijo = uiState.hijos.firstOrNull()
+                                if (primerHijo != null) {
+                                    try {
+                                        navController.navigate(AppScreens.ConsultaRegistroDiario.createRoute(
+                                            alumnoId = primerHijo.id,
+                                            alumnoNombre = primerHijo.nombre
+                                        ))
+                                        Timber.d("Navegando a historial completo para alumno: ${primerHijo.id}, nombre: ${primerHijo.nombre}")
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Error al navegar a historial completo: ${e.message}")
                                         scope.launch {
-                                            snackbarHostState.showSnackbar("Selecciona un hijo primero")
+                                            snackbarHostState.showSnackbar("Error al navegar al historial completo. Intente de nuevo.")
                                         }
-                                        return@OpcionDashboardCard
                                     }
-                                    
-                                    val hijoId = uiState.hijoSeleccionado?.dni ?: return@OpcionDashboardCard
-                                    val hijoNombre = uiState.hijoSeleccionado?.nombre ?: "Alumno"
-                                    
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    navController.navigate(
-                                        AppScreens.ConsultaRegistroDiario.createRoute(
-                                            alumnoId = hijoId,
-                                            alumnoNombre = hijoNombre
-                                        )
-                                    )
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Error al navegar a Historial: ${e.message}")
+                                } else {
                                     scope.launch {
-                                        snackbarHostState.showSnackbar("Error al navegar: ${e.message}")
+                                        snackbarHostState.showSnackbar("No hay hijos registrados para mostrar el historial.")
                                     }
                                 }
                             }
@@ -1267,17 +1295,18 @@ fun SolicitudesPendientesFooter(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min), // Altura automática según el contenido
-        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+            .heightIn(min = 100.dp), // Mayor altura mínima para evitar que se corte
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp), // Bordes más redondeados
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
-        elevation = CardDefaults.cardElevation(4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp) // Mayor elevación
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp), // Más padding vertical
+            verticalArrangement = Arrangement.spacedBy(8.dp) // Más espacio entre elementos
         ) {
             // Título con icono
             Row(
@@ -1288,23 +1317,25 @@ fun SolicitudesPendientesFooter(
                     imageVector = Icons.Default.NotificationsActive,
                     contentDescription = "Solicitudes pendientes",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(28.dp) // Icono más grande
                 )
                 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp)) // Más espacio
                 
                 Text(
                     text = "Solicitudes de vinculación",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ), // Texto más destacado
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
             
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Contadores de estado en fila
+            // Contadores de estado en fila con más espacio
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp), // Más espacio superior
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 if (pendientes > 0) {
@@ -1334,7 +1365,7 @@ fun SolicitudesPendientesFooter(
                 if (pendientes == 0 && aprobadas == 0 && rechazadas == 0) {
                     Text(
                         text = "No hay solicitudes pendientes",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -1354,23 +1385,23 @@ fun StatusBadge(
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp)) // Bordes más redondeados
             .background(color.copy(alpha = 0.2f))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp) // Más padding
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = "$count",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyLarge, // Texto más grande
                 fontWeight = FontWeight.Bold,
                 color = color
             )
             
-            Spacer(modifier = Modifier.width(2.dp))
+            Spacer(modifier = Modifier.width(6.dp)) // Más espacio
             
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium, // Texto más grande
                 color = color
             )
         }
@@ -1392,6 +1423,7 @@ fun ResumenActividadCard(
 ) {
     val ultimoRegistro = registrosActividad.maxByOrNull { it.fecha }
     val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
     
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1426,10 +1458,14 @@ fun ResumenActividadCard(
                         onClick = { 
                             try {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onVerDetalles(ultimoRegistro.id)
                                 Timber.d("Navegando a DetalleRegistro con ID: ${ultimoRegistro.id}")
+                                // Usar Navigation para navegar directamente al detalle
+                                onVerDetalles(ultimoRegistro.id)
+                                // Mostrar Toast como indicador de que se está procesando
+                                Toast.makeText(context, "Abriendo detalle del registro...", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 Timber.e(e, "Error al navegar a Detalle de Registro: ${e.message}")
+                                Toast.makeText(context, "Error al abrir el detalle: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         },
                         colors = ButtonDefaults.buttonColors(
@@ -1652,6 +1688,60 @@ private fun OpcionDashboardCard(
                 tint = FamiliarColor
             )
         }
+    }
+}
+
+@Composable
+fun HistorialCard(
+    titulo: String,
+    icono: ImageVector,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icono,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Text(
+                text = titulo,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+            
+            Spacer(modifier = Modifier.weight(1f))
+            
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Ver",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+private fun showErrorMessage(snackbarHostState: SnackbarHostState, scope: CoroutineScope, mensaje: String) {
+    scope.launch {
+        snackbarHostState.showSnackbar(
+            message = mensaje,
+            duration = SnackbarDuration.Short
+        )
     }
 }
 
