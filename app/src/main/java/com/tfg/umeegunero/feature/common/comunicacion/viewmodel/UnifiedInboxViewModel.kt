@@ -245,6 +245,50 @@ class UnifiedInboxViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Marca todos los mensajes no leídos como leídos
+     * Esta función se llama al abrir la bandeja de entrada
+     */
+    fun markAllAsRead() {
+        viewModelScope.launch {
+            try {
+                val unreadMessages = _uiState.value.messages.filter { !it.isRead }
+                
+                if (unreadMessages.isNotEmpty()) {
+                    Timber.d("Marcando ${unreadMessages.size} mensajes como leídos")
+                    
+                    // Llamamos al repositorio para marcar todos como leídos
+                    unreadMessages.forEach { message ->
+                        messageRepository.markAsRead(message.id)
+                    }
+                    
+                    // Actualizamos el estado local para reflejar los cambios
+                    _uiState.update { currentState ->
+                        val updatedMessages = currentState.messages.map { message ->
+                            if (!message.isRead) {
+                                message.copy(status = com.tfg.umeegunero.data.model.MessageStatus.READ)
+                            } else {
+                                message
+                            }
+                        }
+                        
+                        currentState.copy(messages = updatedMessages)
+                    }
+                    
+                    // Reaplicamos los filtros
+                    applyFilters()
+                } else {
+                    Timber.d("No hay mensajes sin leer para marcar")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al marcar todos los mensajes como leídos")
+                _uiState.update { 
+                    it.copy(error = "Error al marcar mensajes como leídos: ${e.message}")
+                }
+            }
+        }
+    }
+
     init {
         setupPeriodicMessageCheck()
     }

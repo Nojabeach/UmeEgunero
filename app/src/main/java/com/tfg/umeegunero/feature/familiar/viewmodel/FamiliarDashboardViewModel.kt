@@ -17,6 +17,7 @@ import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.FamiliarRepository
 import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import com.tfg.umeegunero.data.repository.SolicitudRepository
+import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.feature.familiar.screen.SolicitudPendienteUI
 import com.tfg.umeegunero.util.Result
@@ -121,7 +122,8 @@ class FamiliarDashboardViewModel @Inject constructor(
     private val alumnoRepository: AlumnoRepository,
     private val registroDiarioRepository: RegistroDiarioRepository,
     private val solicitudRepository: SolicitudRepository,
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val unifiedMessageRepository: UnifiedMessageRepository
 ) : ViewModel() {
 
     // Estado mutable interno que solo el ViewModel puede modificar
@@ -816,27 +818,74 @@ class FamiliarDashboardViewModel @Inject constructor(
      * 
      * Este método actualiza el contador de mensajes no leídos a 0 cuando
      * el usuario navega a la pantalla de mensajes unificados.
+     * También marca todos los mensajes no leídos como leídos en la base de datos.
      */
     fun marcarMensajesLeidos() {
         viewModelScope.launch {
             try {
                 // Obtener el ID del familiar
                 val familiarId = uiState.value.familiar?.id ?: return@launch
+                val usuario = authRepository.getCurrentUser() ?: return@launch
                 
-                // Marcar todos los mensajes como leídos en el repositorio
-                // Esta operación dependerá de la implementación específica del repositorio
-                // Aquí simplemente actualizamos el estado local
+                Timber.d("Marcando mensajes como leídos para el familiar $familiarId")
                 
+                // Intentar obtener todos los mensajes no leídos del usuario actual
+                unifiedMessageRepository.getCurrentUserInbox().collect { result ->
+                    when (result) {
+                        is Result.Success -> {
+                            val mensajesNoLeidos = result.data.filter { !it.isRead }
+                            
+                            // Marcar cada mensaje como leído
+                            Timber.d("Marcando ${mensajesNoLeidos.size} mensajes como leídos")
+                            mensajesNoLeidos.forEach { mensaje ->
+                                try {
+                                    unifiedMessageRepository.markAsRead(mensaje.id)
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al marcar mensaje ${mensaje.id} como leído")
+                                }
+                            }
+                            
+                            // Actualizar el estado local inmediatamente para reflejar el cambio en la UI
+                            _uiState.update { 
+                                it.copy(
+                                    registrosSinLeer = 0,
+                                    totalMensajesNoLeidos = 0
+                                )
+                            }
+                            
+                            // Actualizar también el flow específico para la UI
+                            _unreadMessageCount.update { 0 }
+                            
+                            Timber.d("Mensajes marcados como leídos para el familiar $familiarId")
+                        }
+                        is Result.Error -> {
+                            Timber.e(result.exception, "Error al obtener mensajes para marcar como leídos")
+                            
+                            // Aún así, actualizamos el contador local para mejorar la experiencia de usuario
+                            _uiState.update { 
+                                it.copy(
+                                    registrosSinLeer = 0,
+                                    totalMensajesNoLeidos = 0
+                                )
+                            }
+                            _unreadMessageCount.update { 0 }
+                        }
+                        is Result.Loading -> {
+                            // No hacer nada durante la carga
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al marcar mensajes como leídos")
+                
+                // En caso de error, actualizar igualmente el contador local
                 _uiState.update { 
                     it.copy(
                         registrosSinLeer = 0,
                         totalMensajesNoLeidos = 0
                     )
                 }
-                
-                Timber.d("Mensajes marcados como leídos para el familiar $familiarId")
-            } catch (e: Exception) {
-                Timber.e(e, "Error al marcar mensajes como leídos")
+                _unreadMessageCount.update { 0 }
             }
         }
     }

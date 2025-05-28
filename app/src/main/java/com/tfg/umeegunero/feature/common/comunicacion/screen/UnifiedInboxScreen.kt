@@ -118,6 +118,9 @@ fun UnifiedInboxScreen(
     
     LaunchedEffect(Unit) {
         viewModel.loadMessages()
+        
+        // Marcamos todos los mensajes como leídos al entrar en la pantalla
+        viewModel.markAllAsRead()
     }
     
     Scaffold(

@@ -25,7 +25,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalDining
 import androidx.compose.material.icons.filled.NightsStay
-import androidx.compose.material.icons.filled.Subject
+import androidx.compose.material.icons.automirrored.filled.Subject
 import androidx.compose.material.icons.filled.Wc
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -53,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -275,25 +276,36 @@ fun RegistroDiarioCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // Cabecera con fecha
+            // Cabecera con fecha y hora
             Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.DateRange,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                        .format(registro.fecha.toDate()),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                                .format(registro.fecha.toDate()),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = SimpleDateFormat("HH:mm", Locale.getDefault())
+                                .format(registro.fecha.toDate()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 
                 if (!registro.vistoPorFamiliar) {
-                    Spacer(modifier = Modifier.weight(1f))
                     Box(
                         modifier = Modifier
                             .size(12.dp)
@@ -303,62 +315,214 @@ fun RegistroDiarioCard(
                 }
             }
             
+            val createdByText = registro.creadoPor?.let { "Por: $it" } ?: ""
+            if (createdByText.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = createdByText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.End)
+                )
+            }
+            
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Resumen de comidas
-            InfoRow(
+            // Comidas
+            InfoSeccion(
                 icon = Icons.Default.LocalDining,
                 title = "Comidas",
-                content = obtenerResumenComidas(registro)
+                content = {
+                    Column {
+                        ComidaItem("Primer plato", registro.comidas.primerPlato.estadoComida)
+                        ComidaItem("Segundo plato", registro.comidas.segundoPlato.estadoComida)
+                        ComidaItem("Postre", registro.comidas.postre.estadoComida)
+                        
+                        if (!registro.observacionesComida.isNullOrEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Observaciones: ${registro.observacionesComida}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            )
+                        }
+                    }
+                }
             )
             
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(12.dp))
             
             // Siesta
-            InfoRow(
+            InfoSeccion(
                 icon = Icons.Default.NightsStay,
                 title = "Siesta",
-                content = if (registro.haSiestaSiNo) {
-                    val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
-                    if (registro.horaInicioSiesta.isNotEmpty() && registro.horaFinSiesta.isNotEmpty()) {
-                        "De ${registro.horaInicioSiesta} a ${registro.horaFinSiesta}"
-                    } else {
-                        "Ha dormido siesta"
+                content = {
+                    Column {
+                        if (registro.haSiestaSiNo) {
+                            val horaInicio = registro.horaInicioSiesta.ifEmpty { "No registrada" }
+                            val horaFin = registro.horaFinSiesta.ifEmpty { "No registrada" }
+                            
+                            Text("El alumno ha dormido siesta", style = MaterialTheme.typography.bodyMedium)
+                            Text("De $horaInicio a $horaFin", style = MaterialTheme.typography.bodyMedium)
+                            
+                            if (!registro.observacionesSiesta.isNullOrEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Observaciones: ${registro.observacionesSiesta}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            }
+                        } else {
+                            Text("El alumno no ha dormido siesta", style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
-                } else {
-                    "No ha dormido siesta"
                 }
             )
             
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+            // Mostrar deposiciones si ha hecho caca
+            if (registro.haHechoCaca) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                InfoSeccion(
+                    icon = Icons.Default.Wc,
+                    title = "Deposiciones",
+                    content = {
+                        Column {
+                            Text(
+                                "El alumno ha hecho ${registro.numeroCacas} deposiciones", 
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            
+                            if (!registro.observacionesCaca.isNullOrEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Observaciones: ${registro.observacionesCaca}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            }
+                        }
+                    }
+                )
+            }
             
-            // Necesidades fisiológicas
-            InfoRow(
-                icon = Icons.Default.Wc,
-                title = "Necesidades",
-                content = if (registro.haHechoCaca) {
-                    "Ha hecho caca"
-                } else {
-                    "No ha hecho caca"
-                }
-            )
+            // Materiales necesarios
+            if (registro.necesitaPanales || registro.necesitaToallitas || registro.necesitaRopaCambio || 
+                !registro.otroMaterialNecesario.isNullOrEmpty()) {
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                InfoSeccion(
+                    icon = Icons.Default.DateRange,
+                    title = "Material necesario",
+                    content = {
+                        Column {
+                            if (registro.necesitaPanales) {
+                                Text("• Pañales", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            if (registro.necesitaToallitas) {
+                                Text("• Toallitas", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            if (registro.necesitaRopaCambio) {
+                                Text("• Ropa de cambio", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            if (!registro.otroMaterialNecesario.isNullOrEmpty()) {
+                                Text("• ${registro.otroMaterialNecesario}", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                )
+            }
             
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-            
-            // Observaciones
-            InfoRow(
-                icon = Icons.Default.Subject,
-                title = "Observaciones",
-                content = if (registro.observacionesGenerales.isNotBlank()) {
-                    registro.observacionesGenerales
-                } else {
-                    "No hay observaciones"
-                }
-            )
+            // Observaciones generales
+            if (!registro.observacionesGenerales.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                InfoSeccion(
+                    icon = Icons.AutoMirrored.Filled.Subject,
+                    title = "Observaciones generales",
+                    content = {
+                        Text(
+                            text = registro.observacionesGenerales ?: "",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                )
+            }
         }
     }
 }
 
+@Composable
+fun InfoSeccion(
+    icon: ImageVector,
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Box(modifier = Modifier.padding(start = 28.dp)) {
+            content()
+        }
+    }
+}
+
+@Composable
+fun ComidaItem(nombre: String, estado: EstadoComida) {
+    Row(
+        modifier = Modifier.padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val (color, texto) = when (estado) {
+            EstadoComida.COMPLETO -> Pair(Color.Green, "Completo")
+            EstadoComida.PARCIAL -> Pair(Color.Yellow, "Parcial")
+            EstadoComida.RECHAZADO -> Pair(Color.Red, "Rechazado")
+            EstadoComida.NO_SERVIDO -> Pair(Color.Gray, "No servido")
+            EstadoComida.NO_APLICABLE -> Pair(Color.Gray, "No aplicable")
+            EstadoComida.SIN_DATOS -> Pair(Color.Gray, "Sin datos")
+        }
+        
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(color, CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "$nombre: $texto",
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+/**
+ * Función para mantener compatibilidad con componentes existentes
+ */
 @Composable
 fun InfoRow(
     icon: ImageVector,
@@ -393,41 +557,6 @@ fun InfoRow(
             )
         }
     }
-}
-
-/**
- * Obtiene un resumen de las comidas
- */
-fun obtenerResumenComidas(registro: RegistroActividad): String {
-    val comidas = StringBuilder()
-    
-    if (registro.comidas.primerPlato.estadoComida != EstadoComida.NO_SERVIDO) {
-        val estado = if (registro.comidas.primerPlato.estadoComida == EstadoComida.COMPLETO) 
-            "Completo" 
-        else 
-            "Parcial"
-        comidas.append("Primer plato: $estado")
-    }
-    
-    if (registro.comidas.segundoPlato.estadoComida != EstadoComida.NO_SERVIDO) {
-        if (comidas.isNotEmpty()) comidas.append(", ")
-        val estado = if (registro.comidas.segundoPlato.estadoComida == EstadoComida.COMPLETO) 
-            "Completo" 
-        else 
-            "Parcial"
-        comidas.append("Segundo plato: $estado")
-    }
-    
-    if (registro.comidas.postre.estadoComida != EstadoComida.NO_SERVIDO) {
-        if (comidas.isNotEmpty()) comidas.append(", ")
-        val estado = if (registro.comidas.postre.estadoComida == EstadoComida.COMPLETO) 
-            "Completo" 
-        else 
-            "Parcial"
-        comidas.append("Postre: $estado")
-    }
-    
-    return if (comidas.isNotEmpty()) comidas.toString() else "No ha comido"
 }
 
 /**
