@@ -229,6 +229,18 @@ Se recomienda:
 - Mantener ejemplos de código actualizados
 - Verificar enlaces externos periódicamente
 
+## Actualizaciones Recientes
+
+Se ha actualizado la documentación para incluir las siguientes nuevas funcionalidades:
+
+1. **Exportación de PDF para Informes de Asistencia**: El sistema ahora permite exportar informes detallados en formato PDF que incluyen datos completos de asistencia, listado de alumnos presentes con DNI, y estadísticas.
+
+2. **Marcado Automático de Mensajes como Leídos**: La aplicación marca automáticamente los mensajes como leídos al visualizarlos, mejorando la experiencia de usuario y manteniendo la sincronización de estados con Firebase.
+
+3. **Sistema de Filtrado por Fecha en DetalleRegistroScreen**: Los usuarios familiares ahora pueden navegar fácilmente entre diferentes registros históricos usando un selector de fecha, sin necesidad de volver al listado principal.
+
+Estas nuevas funcionalidades están completamente documentadas tanto en el código (Dokka) como en la documentación de usuario.
+
 ---
 
 **Autor**: Maitane Ibañez Irazabal (2º DAM Online)  

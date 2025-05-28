@@ -136,4 +136,13 @@ interface RegistroActividadDao {
      */
     @Query("SELECT COUNT(*) FROM registros_actividad WHERE vistoPorFamiliar = 0")
     suspend fun getRegistrosSinLeerCount(): Int
+    
+    /**
+     * Obtiene todos los registros de actividad para un alumno específico de manera síncrona.
+     * 
+     * @param alumnoId ID del alumno
+     * @return Lista de registros
+     */
+    @Query("SELECT * FROM registros_actividad WHERE alumnoId = :alumnoId ORDER BY fechaTimestamp DESC")
+    suspend fun getRegistrosActividadByAlumnoSync(alumnoId: String): List<RegistroActividadEntity>
 } 

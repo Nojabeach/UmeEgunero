@@ -52,6 +52,15 @@ fun MessageDetailScreen(
     
     val uiState by viewModel.uiState.collectAsState()
     
+    // Marcar automáticamente como leído cuando se abre el mensaje
+    LaunchedEffect(uiState.message) {
+        uiState.message?.let { message ->
+            if (!message.isRead) {
+                viewModel.markAsRead()
+            }
+        }
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -371,42 +380,12 @@ fun GenericMessageDetail(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Botón para marcar como leído
-        if (!message.isRead) {
-            Button(
-                onClick = onMarkAsRead,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DoneAll,
-                    contentDescription = null,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-                Text("Marcar como leído")
-            }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DoneAll,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-                Text(
-                    text = "Mensaje leído",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
+        // Indicador de estado de lectura
+        MessageStatusIndicator(
+            status = message.status,
+            timestamp = message.timestamp,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 

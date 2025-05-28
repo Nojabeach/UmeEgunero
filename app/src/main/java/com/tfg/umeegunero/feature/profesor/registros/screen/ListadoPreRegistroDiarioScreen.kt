@@ -1,5 +1,6 @@
 package com.tfg.umeegunero.feature.profesor.registros.screen
 
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -64,6 +65,16 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import android.content.Intent
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.PictureAsPdf
 
 /**
  * Extensión para convertir LocalDate a Date
@@ -547,12 +558,13 @@ fun AlumnoSelectionChip(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .heightIn(min = 56.dp, max = 72.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onSelectionChanged(!isSelected)
             },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
                 tieneRegistro && isSelected -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
@@ -562,21 +574,22 @@ fun AlumnoSelectionChip(
             }
         ),
         border = when {
-            tieneRegistro && isSelected -> BorderStroke(2.dp, MaterialTheme.colorScheme.error)
+            tieneRegistro && isSelected -> BorderStroke(1.dp, MaterialTheme.colorScheme.error)
             tieneRegistro -> BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
-            isSelected -> BorderStroke(2.dp, ProfesorColor)
+            isSelected -> BorderStroke(1.dp, ProfesorColor)
             else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
         }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .fillMaxHeight()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Checkbox o indicador de estado
             Box(
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(20.dp),
                 contentAlignment = Alignment.Center
             ) {
                 when {
@@ -585,7 +598,7 @@ fun AlumnoSelectionChip(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = "Registro completado",
                             tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                     isSelected -> {
@@ -593,15 +606,15 @@ fun AlumnoSelectionChip(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = "Seleccionado",
                             tint = ProfesorColor,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                     else -> {
                         Box(
                             modifier = Modifier
-                                .size(24.dp)
+                                .size(18.dp)
                                 .border(
-                                    width = 2.dp,
+                                    width = 1.5.dp,
                                     color = MaterialTheme.colorScheme.outline,
                                     shape = CircleShape
                                 )
@@ -610,14 +623,19 @@ fun AlumnoSelectionChip(
                 }
             }
             
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             
-            // Información del alumno
-            Column(modifier = Modifier.weight(1f)) {
+            // Información del alumno (limitada para mostrar lo esencial)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
                     text = "${alumno.nombre} ${alumno.apellidos}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 
                 if (tieneRegistro) {
@@ -626,95 +644,41 @@ fun AlumnoSelectionChip(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = "Registro completado hoy",
-                            style = MaterialTheme.typography.bodySmall,
+                            text = "Registrado",
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         
-                        // Indicador de lectura por familiares
-                        if (alumno.registroDiarioLeido == true) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = "•",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.Visibility,
-                                    contentDescription = "Visto por familiar",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = "Visto por familiares",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        } else {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = "•",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.VisibilityOff,
-                                    contentDescription = "No visto por familiar",
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = "Pendiente de ver",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
+                        // Indicador compacto de estado de lectura
+                        Icon(
+                            imageVector = if (alumno.registroDiarioLeido == true) 
+                                Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = if (alumno.registroDiarioLeido == true) 
+                                "Visto" else "No visto",
+                            tint = if (alumno.registroDiarioLeido == true) 
+                                MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(14.dp)
+                        )
                     }
                 }
             }
             
-            // Indicador de estado o botón de eliminar
+            // Indicador de estado o botón de eliminar (más compacto)
             if (tieneRegistro) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                IconButton(
+                    onClick = { showDeleteDialog = true },
+                    modifier = Modifier.size(28.dp)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                        Text(
-                            text = "Registrado",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    
-                    IconButton(
-                        onClick = { showDeleteDialog = true },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Eliminar registro",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Eliminar registro",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             } else {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(4.dp),
                     color = if (alumno.presente) 
                         MaterialTheme.colorScheme.primaryContainer 
                     else 
@@ -722,8 +686,8 @@ fun AlumnoSelectionChip(
                 ) {
                     Text(
                         text = if (alumno.presente) "Presente" else "Ausente",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
                         color = if (alumno.presente) 
                             MaterialTheme.colorScheme.onPrimaryContainer 
                         else 
@@ -899,6 +863,11 @@ fun InformeAsistenciaDialog(
     val formatter = DateTimeFormatter.ofPattern("d 'de' MMMM, yyyy", Locale("es", "ES"))
     val context = LocalContext.current
     val viewModel: ListadoPreRegistroDiarioViewModel = hiltViewModel()
+    val scope = rememberCoroutineScope()
+    
+    // Estado para manejar la exportación de PDF
+    var isExportingPdf by remember { mutableStateOf(false) }
+    var pdfExportedMessage by remember { mutableStateOf<String?>(null) }
     
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1082,27 +1051,131 @@ fun InformeAsistenciaDialog(
                         }
                     }
                 }
+                
+                // Indicador de estado de exportación PDF
+                if (isExportingPdf) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = ProfesorColor,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Generando PDF...",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+                
+                // Mensaje de éxito o error en la exportación
+                pdfExportedMessage?.let {
+                    Surface(
+                        color = if (it.startsWith("Error")) 
+                            MaterialTheme.colorScheme.errorContainer
+                        else 
+                            MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (it.startsWith("Error")) 
+                                    Icons.Default.Error
+                                else 
+                                    Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = if (it.startsWith("Error")) 
+                                    MaterialTheme.colorScheme.error
+                                else 
+                                    MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = {
-                    val textoInforme = viewModel.generarTextoInforme()
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, "Informe de asistencia")
-                        putExtra(Intent.EXTRA_TEXT, textoInforme)
+            Row {
+                // Botón para compartir texto
+                TextButton(
+                    onClick = {
+                        val textoInforme = viewModel.generarTextoInforme()
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "Informe de asistencia")
+                            putExtra(Intent.EXTRA_TEXT, textoInforme)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Compartir informe"))
                     }
-                    context.startActivity(Intent.createChooser(intent, "Compartir informe"))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Compartir como texto",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Compartir texto")
                 }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "Compartir",
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Compartir")
+                
+                // Botón para exportar PDF
+                TextButton(
+                    onClick = {
+                        // Evitar múltiples clics
+                        if (isExportingPdf) return@TextButton
+                        
+                        scope.launch {
+                            isExportingPdf = true
+                            pdfExportedMessage = null
+                            
+                            try {
+                                val pdfUri = viewModel.exportarInformeAsistenciaPDF(context)
+                                
+                                if (pdfUri != null) {
+                                    // Crear intent para compartir PDF
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "application/pdf"
+                                        putExtra(Intent.EXTRA_STREAM, pdfUri)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Compartir PDF"))
+                                    pdfExportedMessage = "PDF generado correctamente"
+                                } else {
+                                    // Android 10+: suponemos que se guardó pero no tenemos URI
+                                    pdfExportedMessage = "PDF guardado en Descargas"
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al exportar PDF")
+                                pdfExportedMessage = "Error: No se pudo generar el PDF"
+                            } finally {
+                                isExportingPdf = false
+                            }
+                        }
+                    },
+                    enabled = !isExportingPdf
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PictureAsPdf,
+                        contentDescription = "Exportar como PDF",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Exportar PDF")
+                }
             }
         },
         confirmButton = {

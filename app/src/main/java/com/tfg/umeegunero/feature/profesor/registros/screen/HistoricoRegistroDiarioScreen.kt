@@ -890,7 +890,7 @@ fun LecturaFamiliaresIndicador(
         // Mostrar nombres de familiares que han leído
         lecturasPorFamiliar.values.take(2).forEach { lectura ->
             Text(
-                text = "• ${lectura.nombreFamiliar}",
+                text = "• Familiar ${lectura.familiarId.take(4)}...",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 28.dp, top = 2.dp)
@@ -940,7 +940,7 @@ fun LecturaFamiliaresIndicador(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = lectura.nombreFamiliar,
+                                        text = lectura.familiarId,
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold
                                     )

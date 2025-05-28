@@ -249,11 +249,15 @@ fun NuevaSolicitudDialog(
                     
                     Button(
                         onClick = {
-                            if (alumnoDni.isNotBlank() && validateDni(alumnoDni) && centroSeleccionado != null) {
-                                onSubmit(alumnoDni, centroSeleccionado!!.id)
+                            // Verificar que el centro está seleccionado
+                            centroSeleccionado?.let { centro ->
+                                onSubmit(alumnoDni, centro.id)
+                            } ?: run {
+                                // Manejar el caso de centro no seleccionado
+                                Timber.e("No se ha seleccionado un centro")
                             }
                         },
-                        enabled = alumnoDni.isNotBlank() && dniError == null && centroSeleccionado != null && !isLoading,
+                        enabled = alumnoDni.isNotBlank() && validateDni(alumnoDni) && centroSeleccionado != null && !isLoading,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = FamiliarColor)
                     ) {
@@ -516,11 +520,13 @@ fun FamiliaDashboardScreen(
             onDismissRequest = { showNavigateToHistorialDialog = false },
             title = { Text("Historial") },
             text = { 
-                if (uiState.hijoSeleccionado != null) {
-                    Text("¿Quieres ver el historial completo de ${uiState.hijoSeleccionado!!.nombre}?")
-                } else {
-                    Text("Necesitas seleccionar un hijo primero")
-                }
+                uiState.hijoSeleccionado?.let { hijo ->
+                    Text(
+                        text = "¿Quieres ver el historial completo de ${hijo.nombre}?",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                } ?: Text("Necesitas seleccionar un hijo primero")
             },
             confirmButton = {
                 TextButton(
@@ -531,22 +537,22 @@ fun FamiliaDashboardScreen(
                             Timber.e(e, "Error al realizar feedback háptico")
                         }
                         showNavigateToHistorialDialog = false
-                        if (uiState.hijoSeleccionado != null) {
-                            val alumnoId = uiState.hijoSeleccionado!!.dni
-                            val alumnoNombre = uiState.hijoSeleccionado!!.nombre
+                        uiState.hijoSeleccionado?.let { hijo ->
+                            val alumnoId = hijo.dni
+                            val alumnoNombre = hijo.nombre
                             scope.launch {
                                 try {
                                     navController.navigate(AppScreens.ConsultaRegistroDiario.createRoute(
                                         alumnoId = alumnoId,
                                         alumnoNombre = alumnoNombre
                                     ))
-                                    Timber.d("Navegando a historial completo para alumno: ${alumnoId}, nombre: ${alumnoNombre}")
+                                    Timber.d("Navegando a historial completo para alumno: $alumnoId, nombre: $alumnoNombre")
                                 } catch (e: Exception) {
                                     Timber.e(e, "Error al navegar a historial completo: ${e.message}")
                                     snackbarHostState.showSnackbar("Error al navegar al historial completo. Intente de nuevo.")
                                 }
                             }
-                        } else {
+                        } ?: run {
                             scope.launch {
                                 snackbarHostState.showSnackbar("No hay hijos registrados para mostrar el historial.")
                             }
@@ -746,19 +752,14 @@ fun FamiliaDashboardScreen(
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             
-                            ResumenActividadCard(
-                                alumno = uiState.hijoSeleccionado!!,
-                                registrosActividad = uiState.registrosActividad,
-                                onVerDetalles = { registroId ->
-                                    viewModel.navegarAConsultaRegistroDiario(
-                                        navController = navController,
-                                        alumno = uiState.hijoSeleccionado!!,
-                                        registroId = registroId
-                                    )
-                                },
-                                viewModel = viewModel,
-                                navController = navController
-                            )
+                            uiState.hijoSeleccionado?.let { hijo ->
+                                ResumenActividadCard(
+                                    alumno = hijo,
+                                    registrosActividad = uiState.registrosActividad,
+                                    viewModel = viewModel,
+                                    navController = navController
+                                )
+                            }
                         }
                     } else if (uiState.hijos.isEmpty()) {
                         // Mensaje cuando no hay hijos vinculados
@@ -1405,13 +1406,13 @@ fun StatusBadge(
  * 
  * @param alumno Alumno del que se muestra la actividad
  * @param registrosActividad Lista de registros de actividad del alumno
- * @param onVerDetalles Callback cuando se quiere ver el detalle de un registro
+ * @param viewModel ViewModel para gestionar la navegación
+ * @param navController Controlador de navegación para navegar a otras pantallas
  */
 @Composable
 fun ResumenActividadCard(
     alumno: Alumno,
     registrosActividad: List<RegistroActividad>,
-    onVerDetalles: (String) -> Unit,
     viewModel: FamiliarDashboardViewModel,
     navController: NavController
 ) {

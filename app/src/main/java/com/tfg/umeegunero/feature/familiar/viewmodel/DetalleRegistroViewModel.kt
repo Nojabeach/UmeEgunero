@@ -21,6 +21,24 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 import java.util.Date
+import java.time.LocalDate
+import java.time.ZoneId
+import java.util.Calendar
+
+/**
+ * Estado de UI para la pantalla de detalle de registro
+ */
+data class DetalleRegistroUiState(
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val registro: RegistroActividad? = null,
+    val profesorNombre: String? = null,
+    val fechaSeleccionada: Date = Date(),
+    val registrosDisponibles: List<Date> = emptyList(),
+    val alumnoId: String? = null,
+    val alumnoNombre: String? = null,
+    val mostrarSelectorFecha: Boolean = false
+)
 
 /**
  * ViewModel para la pantalla de detalle de registro de actividad de un alumno
@@ -73,15 +91,12 @@ class DetalleRegistroViewModel @Inject constructor(
                             try {
                                 val profesorResult = usuarioRepository.getUsuarioById(registro.profesorId)
                                 
-                                when (profesorResult) {
-                                    is Result.Success<*> -> {
-                                        val profesor = profesorResult.data as Usuario
-                                        profesorNombre = "${profesor.nombre} ${profesor.apellidos}"
-                                        Timber.d("Nombre del profesor cargado: $profesorNombre")
-                                    }
-                                    else -> { 
-                                        Timber.w("No se pudo cargar el profesor con ID: ${registro.profesorId}")
-                                    }
+                                if (profesorResult is Result.Success) {
+                                    val profesor = profesorResult.data
+                                    profesorNombre = "${profesor.nombre} ${profesor.apellidos}"
+                                    Timber.d("Nombre del profesor cargado: $profesorNombre")
+                                } else { 
+                                    Timber.w("No se pudo cargar el profesor con ID: ${registro.profesorId}")
                                 }
                             } catch (e: Exception) {
                                 Timber.e(e, "Error al cargar información del profesor: ${e.message}")
@@ -93,8 +108,16 @@ class DetalleRegistroViewModel @Inject constructor(
                             isLoading = false,
                             registro = registro,
                             profesorNombre = profesorNombre,
+                            fechaSeleccionada = registro.fecha.toDate(),
+                            alumnoId = registro.alumnoId,
+                            alumnoNombre = registro.alumnoNombre,
                             error = null
                         ) }
+                        
+                        // Cargar fechas disponibles para este alumno
+                        if (registro.alumnoId.isNotBlank()) {
+                            cargarFechasDisponibles(registro.alumnoId)
+                        }
                         
                         // Marcar como visto por el familiar
                         try {
@@ -123,8 +146,16 @@ class DetalleRegistroViewModel @Inject constructor(
                                 _uiState.update { it.copy(
                                     isLoading = false,
                                     registro = registro,
+                                    fechaSeleccionada = registro.fecha.toDate(),
+                                    alumnoId = registro.alumnoId,
+                                    alumnoNombre = registro.alumnoNombre,
                                     error = null
                                 ) }
+                                
+                                // Cargar fechas disponibles para este alumno
+                                if (registro.alumnoId.isNotBlank()) {
+                                    cargarFechasDisponibles(registro.alumnoId)
+                                }
                                 
                                 marcarComoVistoPorFamiliar(registro)
                             }
@@ -149,66 +180,162 @@ class DetalleRegistroViewModel @Inject constructor(
     }
     
     /**
-     * Marca el registro como visto por el familiar actual
+     * Carga las fechas en que hay registros disponibles para un alumno
      */
-    private fun marcarComoVistoPorFamiliar(registro: RegistroActividad) {
+    private fun cargarFechasDisponibles(alumnoId: String) {
         viewModelScope.launch {
             try {
-                // Obtener el usuario actual (familiar)
-                val usuarioActual = authRepository.getCurrentUser()
-                if (usuarioActual == null) {
-                    Timber.e("No se pudo obtener el usuario actual para marcar el registro como visto")
-                    return@launch
-                }
+                Timber.d("Cargando fechas disponibles para alumno: $alumnoId")
                 
-                Timber.d("Marcando registro ${registro.id} como visto por familiar ${usuarioActual.dni}")
+                // Obtener todos los registros del alumno
+                val result = registroDiarioRepository.obtenerRegistrosPorAlumno(alumnoId)
                 
-                // Crear la información de lectura
-                val lecturaFamiliar = LecturaFamiliar(
-                    familiarId = usuarioActual.dni,
-                    nombreFamiliar = "${usuarioActual.nombre} ${usuarioActual.apellidos}",
-                    fechaLectura = Timestamp(Date()),
-                    leido = true
-                )
-                
-                // Crear copia de lecturasPorFamiliar para agregar la nueva lectura
-                val lecturasPorFamiliarActualizadas = registro.lecturasPorFamiliar.toMutableMap().apply {
-                    this[usuarioActual.dni] = lecturaFamiliar
-                }
-                
-                // Actualizar el registro con la información de lectura
-                val registroActualizado = registro.copy(
-                    vistoPorFamiliar = true,
-                    fechaVisto = Timestamp(Date()),
-                    lecturasPorFamiliar = lecturasPorFamiliarActualizadas
-                )
-                
-                // Guardar en la base de datos usando el repositorio correcto
-                val resultado = registroDiarioRepository.actualizarRegistroDiario(registroActualizado)
-                
-                when (resultado) {
-                    is Result.Success -> {
-                        Timber.d("Registro marcado como visto correctamente")
-                        // Actualizar el estado con el registro actualizado
-                        _uiState.update { it.copy(registro = registroActualizado) }
+                when (result) {
+                    is Result.Success<List<RegistroActividad>> -> {
+                        val registros = result.data
+                        val fechas = registros.map { it.fecha.toDate() }.sortedDescending()
+                        
+                        _uiState.update { it.copy(
+                            registrosDisponibles = fechas
+                        )}
+                        
+                        Timber.d("Fechas disponibles cargadas: ${fechas.size}")
                     }
                     is Result.Error -> {
-                        Timber.e(resultado.exception, "Error al marcar registro como visto: ${resultado.exception?.message}")
+                        Timber.e(result.exception, "Error al cargar fechas disponibles: ${result.message}")
                     }
                     is Result.Loading -> {
-                        // No hacer nada en este caso
+                        // Estado de carga, no hacemos nada
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error inesperado al marcar registro como visto: ${e.message}")
+                Timber.e(e, "Error al cargar fechas disponibles: ${e.message}")
             }
         }
     }
 
     /**
-     * Limpia los mensajes de error
+     * Marca un registro como visto por el familiar actual
+     */
+    private suspend fun marcarComoVistoPorFamiliar(registro: RegistroActividad) {
+        try {
+            val usuarioActual = authRepository.getFirebaseUser()
+            
+            if (usuarioActual != null) {
+                val uid = usuarioActual.uid
+                
+                // Crear registro de lectura
+                val lecturaFamiliar = LecturaFamiliar(
+                    familiarId = uid,
+                    registroId = registro.id,
+                    alumnoId = registro.alumnoId,
+                    fechaLectura = Timestamp.now()
+                )
+                
+                // Guardar la lectura
+                val resultado = registroDiarioRepository.registrarLecturaFamiliar(lecturaFamiliar)
+                
+                if (resultado is Result.Success) {
+                    Timber.d("Registro marcado como visto correctamente")
+                } else if (resultado is Result.Error) {
+                    Timber.e(resultado.exception, "Error al marcar registro como visto: ${resultado.message}")
+                }
+            } else {
+                Timber.w("No se pudo obtener el usuario actual para marcar como visto")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al marcar registro como visto: ${e.message}")
+        }
+    }
+    
+    /**
+     * Limpia el mensaje de error
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+    
+    /**
+     * Maneja la selección de una fecha para cargar el registro correspondiente
+     */
+    fun seleccionarFecha(fecha: Date) {
+        val currentAlumnoId = _uiState.value.alumnoId ?: return
+        val currentAlumnoNombre = _uiState.value.alumnoNombre ?: return
+        
+        _uiState.update { it.copy(
+            fechaSeleccionada = fecha,
+            mostrarSelectorFecha = false
+        )}
+        
+        cargarRegistroPorFecha(currentAlumnoId, fecha, currentAlumnoNombre)
+    }
+
+    /**
+     * Abre o cierra el selector de fecha
+     */
+    fun toggleSelectorFecha() {
+        _uiState.update { it.copy(
+            mostrarSelectorFecha = !it.mostrarSelectorFecha
+        )}
+    }
+
+    /**
+     * Carga un registro para una fecha específica
+     */
+    private fun cargarRegistroPorFecha(alumnoId: String, fecha: Date, alumnoNombre: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            
+            try {
+                val result = registroDiarioRepository.obtenerRegistroPorAlumnoYFecha(alumnoId, fecha)
+                
+                when (result) {
+                    is Result.Success<RegistroActividad> -> {
+                        val registro = result.data
+                        
+                        // Si hay profesor, cargar su nombre
+                        var profesorNombre: String? = null
+                        if (registro.profesorId.isNotBlank()) {
+                            try {
+                                val profesorResult = usuarioRepository.getUsuarioById(registro.profesorId)
+                                
+                                if (profesorResult is Result.Success) {
+                                    val profesor = profesorResult.data
+                                    profesorNombre = "${profesor.nombre} ${profesor.apellidos}"
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al cargar información del profesor: ${e.message}")
+                            }
+                        }
+                        
+                        _uiState.update { it.copy(
+                            isLoading = false,
+                            registro = registro,
+                            profesorNombre = profesorNombre,
+                            error = null
+                        )}
+                        
+                        // Marcar como visto por el familiar
+                        marcarComoVistoPorFamiliar(registro)
+                    }
+                    is Result.Error -> {
+                        Timber.e(result.exception, "Error al cargar registro por fecha: ${result.message}")
+                        _uiState.update { it.copy(
+                            isLoading = false,
+                            error = "No se encontró registro para la fecha seleccionada."
+                        )}
+                    }
+                    is Result.Loading -> {
+                        // Mantener estado de carga
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar registro por fecha: ${e.message}")
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    error = "Error al cargar el registro: ${e.message}"
+                )}
+            }
+        }
     }
 }

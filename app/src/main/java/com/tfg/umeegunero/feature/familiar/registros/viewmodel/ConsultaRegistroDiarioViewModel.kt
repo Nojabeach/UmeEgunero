@@ -274,9 +274,9 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                                 val lecturasPorFamiliar = registro.lecturasPorFamiliar.toMutableMap()
                                 lecturasPorFamiliar[familiarId] = com.tfg.umeegunero.data.model.LecturaFamiliar(
                                     familiarId = familiarId,
-                                    nombreFamiliar = nombreFamiliar,
-                                    fechaLectura = com.google.firebase.Timestamp.now(),
-                                    leido = true
+                                    registroId = registroId,
+                                    alumnoId = registro.alumnoId,
+                                    fechaLectura = com.google.firebase.Timestamp.now()
                                 )
                                 
                                 registro.copy(
@@ -294,9 +294,9 @@ class ConsultaRegistroDiarioViewModel @Inject constructor(
                                 val lecturasPorFamiliar = it.lecturasPorFamiliar.toMutableMap()
                                 lecturasPorFamiliar[familiarId] = com.tfg.umeegunero.data.model.LecturaFamiliar(
                                     familiarId = familiarId,
-                                    nombreFamiliar = nombreFamiliar,
-                                    fechaLectura = com.google.firebase.Timestamp.now(),
-                                    leido = true
+                                    registroId = registroId,
+                                    alumnoId = it.alumnoId,
+                                    fechaLectura = com.google.firebase.Timestamp.now()
                                 )
                                 
                                 it.copy(

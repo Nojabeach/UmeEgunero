@@ -51,6 +51,7 @@ UmeEgunero es una aplicación Android nativa desarrollada como Trabajo Fin de Gr
 - **Integración con Solicitudes**: Generación automática de notificaciones para solicitudes de vinculación
 - **Soporte para FCM**: Notificaciones push en tiempo real para todos los tipos de mensajes
 - **Canal de Notificaciones Dedicado**: Canal específico para comunicaciones del sistema unificado
+- **Lectura Automática**: Marcado automático de mensajes como leídos al abrir el detalle, mejorando la experiencia de usuario
 
 ### 🔗 Integración del Sistema
 El sistema de comunicación unificado se integra con:
@@ -75,7 +76,7 @@ flowchart TD
     K[Push Notifications] <--> A
 ```
 
-### �� Gestión Preescolar Especializada
+### 🎯 Gestión Preescolar Especializada
 - **Registros Diarios**: Seguimiento detallado de actividades, comidas, siestas y más
 - **Desarrollo Infantil**: Monitorización del progreso educativo y evolutivo
 - **Actividades Preescolares**: Asignación y seguimiento de tareas adaptadas
@@ -144,6 +145,9 @@ sequenceDiagram
 - **Logging Estructurado**: Sistema de logs con Timber para debugging eficiente
 - **Gestión de Estados**: Manejo robusto de estados de UI con sealed classes
 - **Validación de Formularios**: Validación en tiempo real con feedback inmediato
+- **Exportación de Documentos**: Generación de informes en formato PDF para asistencia y otros registros
+- **Componentes Avanzados**: Selectores de fecha, filtros y otros componentes UI especializados
+- **Navegación por Calendario**: Sistema avanzado de navegación temporal entre registros históricos
 
 ## 🛠️ Arquitectura y Tecnologías
 

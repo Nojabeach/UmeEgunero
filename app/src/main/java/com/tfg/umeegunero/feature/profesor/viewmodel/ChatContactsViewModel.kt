@@ -628,7 +628,7 @@ class ChatContactsViewModel @Inject constructor(
      */
     fun updateSearchQuery(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
-        filterContacts()
+        aplicarFiltro(_uiState.value.selectedCourseId, _uiState.value.selectedClassId)
     }
     
     /**
@@ -643,18 +643,8 @@ class ChatContactsViewModel @Inject constructor(
             )
         }
         if (!_uiState.value.isSearchActive) {
-            filterContacts()
+            aplicarFiltro(_uiState.value.selectedCourseId, _uiState.value.selectedClassId)
         }
-    }
-    
-    /**
-     * Filtra los contactos según la búsqueda y los filtros aplicados
-     * @deprecated Use aplicarFiltro instead
-     */
-    @Deprecated("Use aplicarFiltro instead", ReplaceWith("aplicarFiltro(_uiState.value.selectedCourseId, _uiState.value.selectedClassId)"))
-    private fun filterContacts() {
-        // Redirigir a la nueva implementación
-        aplicarFiltro(_uiState.value.selectedCourseId, _uiState.value.selectedClassId)
     }
     
     /**
@@ -1296,7 +1286,6 @@ class ChatContactsViewModel @Inject constructor(
                     // 6. Extraer la información del familiar
                     val nombre = familiarDoc.getString("nombre") ?: "Familiar"
                     val apellidos = familiarDoc.getString("apellidos") ?: ""
-                    val email = familiarDoc.getString("email") ?: ""
                     
                     // 7. Obtener información del alumno para mostrar como contexto
                     val alumnoDoc = firestore.collection("usuarios").document(alumnoId).get().await()

@@ -560,4 +560,81 @@ Todas las pantallas siguen las directrices de Material 3 y buenas prácticas de 
 
 ## Versión del manual: 1.3.0 (actualizado a la versión 1.0.0 de la aplicación - Mayo 2025)
 
-Para más información sobre los componentes de UI disponibles, consulte [UI-COMPONENTS.md](UI-COMPONENTS.md). 
+Para más información sobre los componentes de UI disponibles, consulte [UI-COMPONENTS.md](UI-COMPONENTS.md).
+
+### Consulta de Registros Diarios (Perfil Familiar)
+
+Los familiares pueden consultar los registros diarios de sus hijos de forma sencilla y organizada:
+
+1. Desde el Dashboard, acceda a la sección "Registros Diarios".
+2. Seleccione el alumno cuya información desea consultar.
+3. Se mostrarán los registros disponibles ordenados por fecha, con el más reciente primero.
+4. Para ver el detalle completo, pulse sobre el registro deseado.
+
+#### Filtrado por Fecha
+
+Ahora puede filtrar los registros por fecha específica:
+
+1. En la pantalla de detalle del registro, observe el selector de fecha en la parte superior.
+2. Pulse sobre la tarjeta de fecha para desplegar el calendario de fechas disponibles.
+3. Seleccione la fecha deseada para cargar automáticamente el registro correspondiente.
+4. Las fechas que tienen registros disponibles se mostrarán destacadas.
+5. Puede navegar fácilmente entre diferentes días sin necesidad de volver al listado general.
+
+Este nuevo sistema de filtrado facilita la consulta histórica de la actividad del alumno a través del tiempo.
+
+### Sistema de Comunicación Unificado
+
+UmeEgunero incluye un sistema de comunicación integral que centraliza todos los tipos de mensajes y notificaciones en una única interfaz.
+
+#### Acceso al Sistema de Comunicación
+
+1. Desde cualquier Dashboard, pulse el icono de comunicación en la barra inferior o menú lateral.
+2. La bandeja unificada mostrará todos sus mensajes ordenados por fecha.
+3. Puede filtrar por tipo de mensaje (Chat, Notificación, Comunicado, etc.) utilizando los botones de filtro.
+
+#### Lectura de Mensajes
+
+1. Pulse sobre cualquier mensaje para ver su contenido completo.
+2. Los mensajes se marcarán automáticamente como leídos al abrirlos.
+3. En el caso de comunicados oficiales que requieren confirmación explícita, deberá pulsar el botón "Confirmar lectura".
+4. El estado de lectura se sincroniza con todos sus dispositivos automáticamente.
+
+#### Comunicación con Profesores
+
+1. En la pantalla de detalle de un alumno o un registro, utilice el botón de mensajería para iniciar una conversación con el profesor.
+2. También puede acceder a chats existentes desde la bandeja de comunicación unificada.
+3. Los mensajes nuevos aparecerán destacados y generarán una notificación.
+
+### Gestión de Informes y Exportación (Perfil Profesor)
+
+#### Generación de Informes de Asistencia
+
+Los profesores pueden generar informes detallados sobre la asistencia de los alumnos:
+
+1. Acceda a la pantalla "Registro Diario" desde el Dashboard.
+2. Pulse el icono de informe situado en la esquina superior derecha del selector de fecha.
+3. Se mostrará un resumen con las estadísticas de asistencia del día:
+   - Total de alumnos
+   - Alumnos presentes
+   - Alumnos ausentes
+   - Porcentaje de asistencia
+   - Alumnos con registro completado
+
+#### Exportación de Informes a PDF
+
+Ahora puede exportar los informes de asistencia en formato PDF para su archivo o envío:
+
+1. En la ventana de informe, pulse el botón "Exportar PDF".
+2. El sistema generará un documento PDF con:
+   - Fecha del informe
+   - Datos completos de la clase
+   - Listado de alumnos presentes con sus DNI
+   - Estadísticas detalladas
+   - Información adicional relevante
+3. Una vez generado, puede:
+   - Compartir el PDF directamente desde la aplicación
+   - Guardarlo en el almacenamiento del dispositivo
+   - Enviarlo por correo electrónico o mensajería
+
+El PDF generado es un documento oficial que puede utilizarse para fines administrativos y de seguimiento. 

@@ -111,11 +111,16 @@ class LocalRegistroActividadRepository @Inject constructor(
      * Obtiene los registros de actividad de un alumno.
      * 
      * @param alumnoId ID del alumno
-     * @return Flow con la lista de registros
+     * @return Lista de registros
      */
-    fun getRegistrosActividadByAlumno(alumnoId: String): Flow<List<RegistroActividad>> {
-        return registroActividadDao.getRegistrosActividadByAlumno(alumnoId)
-            .map { entities -> entities.map { it.toRegistroActividad() } }
+    suspend fun getRegistrosActividadByAlumno(alumnoId: String): List<RegistroActividad> {
+        return try {
+            val entities = registroActividadDao.getRegistrosActividadByAlumnoSync(alumnoId)
+            entities.map { it.toRegistroActividad() }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registros por alumno: $alumnoId")
+            emptyList()
+        }
     }
     
     /**

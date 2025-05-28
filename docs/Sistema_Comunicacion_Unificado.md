@@ -466,4 +466,83 @@ classDiagram
 
 ## Conclusión
 
-El sistema de comunicación unificado representa una mejora significativa en la arquitectura y experiencia de usuario de UmeEgunero, simplificando la forma en que todos los actores del ecosistema educativo interactúan entre sí, manteniendo al mismo tiempo la separación lógica necesaria entre los diferentes tipos de comunicación. La integración con los sistemas de solicitudes y notificaciones garantiza que los usuarios reciban información importante a través de múltiples canales, mejorando la comunicación general y la experiencia de usuario en la aplicación. 
+El sistema de comunicación unificado representa una mejora significativa en la arquitectura y experiencia de usuario de UmeEgunero, simplificando la forma en que todos los actores del ecosistema educativo interactúan entre sí, manteniendo al mismo tiempo la separación lógica necesaria entre los diferentes tipos de comunicación. La integración con los sistemas de solicitudes y notificaciones garantiza que los usuarios reciban información importante a través de múltiples canales, mejorando la comunicación general y la experiencia de usuario en la aplicación.
+
+## Detalles de Implementación
+
+### Marcado de Mensajes como Leídos
+
+#### Marcado Automático (Nuevo)
+
+Para mejorar la experiencia de usuario, los mensajes ahora se marcan automáticamente como leídos cuando un usuario abre la pantalla de detalle:
+
+```kotlin
+@Composable
+fun MessageDetailScreen(
+    messageId: String,
+    onBack: () -> Unit,
+    onNavigateToConversation: (String) -> Unit = {},
+    viewModel: MessageDetailViewModel = hiltViewModel()
+) {
+    // Cargar el mensaje
+    LaunchedEffect(messageId) {
+        viewModel.loadMessage(messageId)
+    }
+    
+    val uiState by viewModel.uiState.collectAsState()
+    
+    // Marcar automáticamente como leído cuando se abre el mensaje
+    LaunchedEffect(uiState.message) {
+        uiState.message?.let { message ->
+            if (!message.isRead) {
+                viewModel.markAsRead()
+            }
+        }
+    }
+    
+    // Resto del componente...
+}
+```
+
+Excepciones al marcado automático:
+- Comunicados que requieren confirmación explícita (flag `requireConfirmation`)
+- Mensajes que ya están marcados como leídos
+
+El marcado automático se implementa en el ViewModel:
+
+```kotlin
+fun markAsRead() {
+    val currentMessage = _uiState.value.message ?: return
+    
+    viewModelScope.launch {
+        try {
+            val result = messageRepository.markAsRead(currentMessage.id)
+            
+            when (result) {
+                is Result.Success -> {
+                    // Actualizar el estado local
+                    _uiState.update { state ->
+                        state.copy(
+                            message = state.message?.copy(
+                                status = MessageStatus.READ
+                            )
+                        )
+                    }
+                }
+                is Result.Error -> {
+                    _uiState.update { it.copy(error = "Error al marcar como leído: ${result.message}") }
+                }
+                else -> {}
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al marcar mensaje como leído: ${currentMessage.id}")
+        }
+    }
+}
+```
+
+Esta funcionalidad:
+1. Mejora la experiencia de usuario al eliminar pasos manuales
+2. Mantiene sincronizado el estado de lectura en Firebase
+3. Respeta los requisitos especiales para comunicados oficiales
+4. Optimiza el flujo de trabajo con los mensajes 

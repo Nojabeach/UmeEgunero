@@ -59,7 +59,7 @@ data class RegistroActividad(
     val vistoPor: Map<String, Boolean> = emptyMap(),
     
     // Control de lectura por familiares - Nuevo sistema
-    val lecturasPorFamiliar: Map<String, LecturaFamiliar> = emptyMap(),
+    val lecturasPorFamiliar: Map<String, com.tfg.umeegunero.data.model.LecturaFamiliar> = emptyMap(),
     
     // Metadatos
     val ultimaModificacion: Timestamp = Timestamp.now(),
@@ -94,14 +94,4 @@ data class RegistroActividad(
                calRegistro.get(java.util.Calendar.MONTH) == calTarget.get(java.util.Calendar.MONTH) &&
                calRegistro.get(java.util.Calendar.DAY_OF_MONTH) == calTarget.get(java.util.Calendar.DAY_OF_MONTH)
     }
-}
-
-/**
- * Información sobre la lectura de un registro por parte de un familiar
- */
-data class LecturaFamiliar(
-    val familiarId: String = "",
-    val nombreFamiliar: String = "",
-    val fechaLectura: Timestamp = Timestamp.now(),
-    val leido: Boolean = false
-) 
+} 

@@ -1,5 +1,7 @@
 package com.tfg.umeegunero.feature.profesor.registros.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Alumno
@@ -1026,5 +1028,144 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
      */
     fun cerrarDialogoInforme() {
         _uiState.update { it.copy(mostrarDialogoInforme = false) }
+    }
+    
+    /**
+     * Exporta el informe de asistencia como PDF
+     * @param context Contexto de la aplicación necesario para acceder al almacenamiento
+     * @return Uri del archivo PDF generado o null si hubo un error
+     */
+    suspend fun exportarInformeAsistenciaPDF(context: Context): Uri? {
+        return try {
+            Timber.d("Iniciando exportación de informe de asistencia a PDF")
+            
+            val informe = _uiState.value.datosInforme
+            val formatter = DateTimeFormatter.ofPattern("d_MMMM_yyyy", Locale("es", "ES"))
+            val fechaArchivo = informe.fecha.format(formatter)
+            val nombreClase = _uiState.value.nombreClase.replace(" ", "_")
+            
+            // Nombre del archivo
+            val nombreArchivo = "Informe_Asistencia_${nombreClase}_${fechaArchivo}.pdf"
+            
+            // Generar contenido del informe detallado con alumnos
+            val contenidoInforme = generarContenidoInformeDetallado()
+            
+            // Usar PdfExporter para generar el PDF
+            val pdfExporter = com.tfg.umeegunero.util.PdfExporter(context)
+            val success = pdfExporter.createPdfFromText(
+                contenido = contenidoInforme,
+                fileName = nombreArchivo,
+                title = "INFORME DE ASISTENCIA ESCOLAR"
+            )
+            
+            if (success) {
+                // Obtener Uri del archivo generado para compartir
+                val downloadsDir = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    null // En Android 10+ se gestiona por MediaStore
+                } else {
+                    android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+                }
+                
+                val pdfFile = java.io.File(downloadsDir, nombreArchivo)
+                if (pdfFile.exists()) {
+                    Timber.d("Archivo PDF generado exitosamente: ${pdfFile.absolutePath}")
+                    androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.provider",
+                        pdfFile
+                    )
+                } else {
+                    // En Android 10+ el archivo estará en MediaStore
+                    // Devolvemos null pero asumimos que se ha guardado correctamente
+                    Timber.d("PDF generado en Android 10+ (no se obtiene Uri directa)")
+                    null
+                }
+            } else {
+                Timber.e("Error al crear el archivo PDF")
+                null
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al exportar informe como PDF")
+            null
+        }
+    }
+    
+    /**
+     * Genera el contenido detallado del informe de asistencia incluyendo la lista de alumnos
+     * @return Texto formateado del informe con detalles completos
+     */
+    private fun generarContenidoInformeDetallado(): String {
+        val informe = _uiState.value.datosInforme
+        val formatter = DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy", Locale("es", "ES"))
+        val fechaFormateada = informe.fecha.format(formatter)
+        val nombreClase = _uiState.value.nombreClase
+        val fechaCorta = informe.fecha.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        
+        val alumnosPresentes = _uiState.value.alumnos.filter { it.presente }
+        val alumnosAusentes = _uiState.value.alumnos.filter { !it.presente }
+        
+        // Crear un StringBuilder para ir construyendo el contenido
+        val sb = StringBuilder()
+        
+        // Encabezado
+        sb.append("INFORME DE ASISTENCIA ESCOLAR\n\n")
+        sb.append("Clase: $nombreClase\n")
+        sb.append("Fecha: $fechaFormateada\n")
+        sb.append("-".repeat(50)).append("\n\n")
+        
+        // Resumen
+        sb.append("RESUMEN DE ASISTENCIA:\n")
+        sb.append("Total alumnos: ${informe.totalAlumnos}\n")
+        sb.append("Alumnos presentes: ${informe.alumnosPresentes}\n")
+        sb.append("Alumnos ausentes: ${informe.alumnosAusentes}\n")
+        sb.append("Porcentaje de asistencia: ${String.format("%.1f", informe.porcentajeAsistencia)}%\n\n")
+        
+        // Detalle de registros
+        sb.append("ESTADO DE REGISTROS:\n")
+        sb.append("Alumnos con registro completado: ${informe.alumnosConRegistro}\n")
+        sb.append("Alumnos sin registro: ${informe.alumnosSinRegistro}\n\n")
+        
+        // Lista de alumnos presentes
+        sb.append("ALUMNOS PRESENTES ($fechaCorta):\n")
+        sb.append("-".repeat(50)).append("\n")
+        
+        if (alumnosPresentes.isEmpty()) {
+            sb.append("No hay alumnos presentes registrados.\n")
+        } else {
+            sb.append("N° | DNI/ID | NOMBRE COMPLETO\n")
+            sb.append("-".repeat(50)).append("\n")
+            
+            alumnosPresentes.forEachIndexed { index, alumno ->
+                val numeroFormateado = String.format("%02d", index + 1)
+                val dni = alumno.dni.ifEmpty { alumno.id }
+                sb.append("$numeroFormateado | $dni | ${alumno.nombre} ${alumno.apellidos}\n")
+            }
+        }
+        
+        sb.append("\n")
+        
+        // Lista de alumnos ausentes
+        sb.append("ALUMNOS AUSENTES:\n")
+        sb.append("-".repeat(50)).append("\n")
+        
+        if (alumnosAusentes.isEmpty()) {
+            sb.append("No hay alumnos ausentes registrados.\n")
+        } else {
+            sb.append("N° | DNI/ID | NOMBRE COMPLETO\n")
+            sb.append("-".repeat(50)).append("\n")
+            
+            alumnosAusentes.forEachIndexed { index, alumno ->
+                val numeroFormateado = String.format("%02d", index + 1)
+                val dni = alumno.dni.ifEmpty { alumno.id }
+                sb.append("$numeroFormateado | $dni | ${alumno.nombre} ${alumno.apellidos}\n")
+            }
+        }
+        
+        sb.append("\n")
+        sb.append("=".repeat(50)).append("\n\n")
+        sb.append("Documento generado por la aplicación UmeEgunero\n")
+        sb.append("Fecha de emisión: ${java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))}")
+        
+        return sb.toString()
     }
 } 

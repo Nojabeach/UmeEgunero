@@ -856,3 +856,130 @@ Para una información más detallada sobre clases específicas, consulte la docu
 *Documento actualizado por:* Equipo de Desarrollo UmeEgunero
 *Fecha:* Mayo 2025
 *Versión:* 2.0
+
+## Exportación de Documentos a PDF
+
+El sistema incluye capacidades para exportar información en formato PDF utilizando la clase utilitaria `PdfExporter`.
+
+```kotlin
+/**
+ * Utilidad para exportar informes como documentos PDF
+ */
+class PdfExporter(private val context: Context) {
+    /**
+     * Crea un archivo PDF a partir de texto plano
+     * 
+     * @param contenido Texto a convertir a PDF
+     * @param fileName Nombre del archivo PDF a generar
+     * @param title Título opcional para el documento
+     * @return true si la operación fue exitosa, false en caso contrario
+     */
+    fun createPdfFromText(contenido: String, fileName: String, title: String? = null): Boolean {
+        // Implementación...
+    }
+}
+```
+
+### Exportación de Informes de Asistencia
+
+La funcionalidad de exportación de informes de asistencia permite a los profesores generar documentos PDF con información detallada:
+
+```kotlin
+/**
+ * Exporta el informe de asistencia como PDF
+ * @param context Contexto de la aplicación necesario para acceder al almacenamiento
+ * @return Uri del archivo PDF generado o null si hubo un error
+ */
+suspend fun exportarInformeAsistenciaPDF(context: Context): Uri? {
+    // Generar contenido del informe detallado con alumnos
+    val contenidoInforme = generarContenidoInformeDetallado()
+    
+    // Usar PdfExporter para generar el PDF
+    val pdfExporter = com.tfg.umeegunero.util.PdfExporter(context)
+    val success = pdfExporter.createPdfFromText(
+        contenido = contenidoInforme,
+        fileName = nombreArchivo,
+        title = "INFORME DE ASISTENCIA ESCOLAR"
+    )
+    
+    // Devolver URI para compartir o null
+}
+```
+
+Los informes de asistencia incluyen:
+- Fecha del informe
+- Datos del centro y clase
+- Listado completo de alumnos presentes con sus DNI
+- Estadísticas de asistencia
+- Información sobre registros completados
+
+## Sistema de Comunicación Unificado
+
+// ... existing code ...
+
+### Lectura Automática de Mensajes
+
+El sistema implementa la lectura automática de mensajes cuando un usuario abre el detalle de un mensaje:
+
+```kotlin
+@Composable
+fun MessageDetailScreen(
+    messageId: String,
+    onBack: () -> Unit,
+    onNavigateToConversation: (String) -> Unit = {},
+    viewModel: MessageDetailViewModel = hiltViewModel()
+) {
+    // ... código existente ...
+    
+    // Marcar automáticamente como leído cuando se abre el mensaje
+    LaunchedEffect(uiState.message) {
+        uiState.message?.let { message ->
+            if (!message.isRead) {
+                viewModel.markAsRead()
+            }
+        }
+    }
+    
+    // ... resto del código ...
+}
+```
+
+Esta funcionalidad mejora la experiencia de usuario al eliminar la necesidad de marcar manualmente los mensajes como leídos y mantiene sincronizado el estado de lectura en Firebase.
+
+## Componentes de UI Especializados
+
+// ... existing code ...
+
+### Selector de Fecha Avanzado
+
+La aplicación incluye componentes especializados para selección de fechas, como el `FechaSelectorCard` y `FechaSelectorDropdown` utilizados en la pantalla de detalle de registro:
+
+```kotlin
+@Composable
+fun FechaSelectorCard(
+    fechaSeleccionada: Date,
+    fechasDisponibles: List<Date>,
+    mostrarSelector: Boolean,
+    onFechaSeleccionada: (Date) -> Unit,
+    onToggleSelector: () -> Unit,
+    onHaptic: () -> Unit
+) {
+    // Implementación del componente...
+}
+
+@Composable
+fun FechaSelectorDropdown(
+    fechaSeleccionada: Date,
+    fechasDisponibles: List<Date>,
+    onFechaSeleccionada: (Date) -> Unit,
+    onDismiss: () -> Unit
+) {
+    // Implementación del componente...
+}
+```
+
+Estos componentes permiten:
+- Visualizar la fecha actual seleccionada
+- Mostrar un listado de fechas disponibles filtradas por relevancia
+- Proporcionar feedback háptico al interactuar con el selector
+- Navegar rápidamente entre diferentes registros históricos

@@ -2,6 +2,7 @@ package com.tfg.umeegunero.feature.familiar.screen
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,6 +46,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -77,12 +80,23 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.navigation.NavController
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.style.TextOverflow
 
 data class DetalleRegistroUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val registro: RegistroActividad? = null,
-    val profesorNombre: String? = null
+    val profesorNombre: String? = null,
+    val fechaSeleccionada: Date = Date(),
+    val registrosDisponibles: List<Date> = emptyList(),
+    val alumnoId: String? = null,
+    val alumnoNombre: String? = null,
+    val mostrarSelectorFecha: Boolean = false
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -96,6 +110,7 @@ fun DetalleRegistroScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
 
     // Cargar registro al inicializar
     LaunchedEffect(registroId) {
@@ -119,10 +134,19 @@ fun DetalleRegistroScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Detalle de actividad",
-                        color = Color.White
-                    )
+                    Column {
+                        Text(
+                            text = "Detalle de actividad",
+                            color = Color.White
+                        )
+                        if (uiState.alumnoNombre != null) {
+                            Text(
+                                text = uiState.alumnoNombre ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -134,6 +158,19 @@ fun DetalleRegistroScreen(
                     }
                 },
                 actions = {
+                    // Selector de fecha si hay fechas disponibles
+                    if (uiState.registrosDisponibles.isNotEmpty()) {
+                        IconButton(
+                            onClick = { viewModel.toggleSelectorFecha() }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = "Seleccionar fecha",
+                                tint = Color.White
+                            )
+                        }
+                    }
+                    
                     // Botón para chatear con el profesor
                     registro?.profesorId?.let { profesorId ->
                         IconButton(
@@ -214,6 +251,18 @@ fun DetalleRegistroScreen(
                         .verticalScroll(scrollState)
                         .padding(16.dp)
                 ) {
+                    // Selector de fecha
+                    FechaSelectorCard(
+                        fechaSeleccionada = uiState.fechaSeleccionada,
+                        fechasDisponibles = uiState.registrosDisponibles,
+                        mostrarSelector = uiState.mostrarSelectorFecha,
+                        onFechaSeleccionada = { viewModel.seleccionarFecha(it) },
+                        onToggleSelector = { viewModel.toggleSelectorFecha() },
+                        onHaptic = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
                     // Información básica
                     Card(
                         modifier = Modifier
@@ -546,6 +595,16 @@ fun DetalleRegistroScreen(
                         }
                     }
                 }
+            }
+            
+            // Dropdown de selección de fecha (se muestra sobre todo el contenido)
+            if (uiState.mostrarSelectorFecha) {
+                FechaSelectorDropdown(
+                    fechaSeleccionada = uiState.fechaSeleccionada,
+                    fechasDisponibles = uiState.registrosDisponibles,
+                    onFechaSeleccionada = { viewModel.seleccionarFecha(it) },
+                    onDismiss = { viewModel.toggleSelectorFecha() }
+                )
             }
         }
     }
@@ -1524,6 +1583,187 @@ fun DetalleRegistroScreenPreviewContent() {
                         text = registroMock.observacionesGenerales,
                         style = MaterialTheme.typography.bodyLarge
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tarjeta para mostrar la fecha seleccionada y permitir cambiarla
+ */
+@Composable
+fun FechaSelectorCard(
+    fechaSeleccionada: Date,
+    fechasDisponibles: List<Date>,
+    mostrarSelector: Boolean,
+    onFechaSeleccionada: (Date) -> Unit,
+    onToggleSelector: () -> Unit,
+    onHaptic: () -> Unit
+) {
+    val dateFormat = SimpleDateFormat("EEEE, dd 'de' MMMM 'de' yyyy", Locale("es", "ES"))
+    val formattedDate = dateFormat.format(fechaSeleccionada).replaceFirstChar { it.uppercase() }
+    
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    if (isPressed) {
+        onHaptic()
+    }
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) {
+                if (fechasDisponibles.size > 1) {
+                    onToggleSelector()
+                }
+            },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Fecha",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Text(
+                    text = formattedDate,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            
+            if (fechasDisponibles.size > 1) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Cambiar fecha",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Dropdown para seleccionar entre las fechas disponibles
+ */
+@Composable
+fun FechaSelectorDropdown(
+    fechaSeleccionada: Date,
+    fechasDisponibles: List<Date>,
+    onFechaSeleccionada: (Date) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val dateFormat = SimpleDateFormat("EEEE, dd 'de' MMMM", Locale("es", "ES"))
+    val dayFormat = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable { onDismiss() },
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = "Selecciona una fecha",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
+                Divider()
+                
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 300.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    fechasDisponibles.forEach { fecha ->
+                        val isSelected = fechaSeleccionada.time == fecha.time
+                        val formattedDate = dateFormat.format(fecha).replaceFirstChar { it.uppercase() }
+                        val shortDate = dayFormat.format(fecha)
+                        
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onFechaSeleccionada(fecha)
+                                },
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        text = formattedDate,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    
+                                    Text(
+                                        text = shortDate,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "Seleccionado",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                        
+                        Divider()
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Cerrar")
                 }
             }
         }
