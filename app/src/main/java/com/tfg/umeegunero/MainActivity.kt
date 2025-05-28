@@ -179,14 +179,29 @@ class MainActivity : ComponentActivity() {
                 Timber.d("Servicios Firebase disponibles")
                 
                 // Inicializamos Firebase Messaging
+                Timber.d("⚠️ [FCM] Solicitando token FCM desde MainActivity...")
                 FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         val token = task.result
-                        Timber.d("FCM Token: $token")
+                        Timber.d("⚠️ [FCM] Token FCM obtenido desde MainActivity: $token")
                         // Guardar token en Firestore de forma segura
                         guardarTokenDeFormaSegura(token)
                     } else {
-                        Timber.e(task.exception, "No se pudo obtener el token de FCM")
+                        Timber.e(task.exception, "⚠️ [FCM] ERROR: No se pudo obtener el token FCM desde MainActivity")
+                        
+                        // Intentar reintentar la operación una vez más
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            Timber.d("⚠️ [FCM] Reintentando obtener token FCM...")
+                            FirebaseMessaging.getInstance().token.addOnCompleteListener { retryTask ->
+                                if (retryTask.isSuccessful) {
+                                    val token = retryTask.result
+                                    Timber.d("⚠️ [FCM] Token FCM obtenido en reintento: $token")
+                                    guardarTokenDeFormaSegura(token)
+                                } else {
+                                    Timber.e(retryTask.exception, "⚠️ [FCM] ERROR: Falló también el reintento de obtener token FCM")
+                                }
+                            }
+                        }, 5000) // Esperar 5 segundos antes de reintentar
                     }
                 }
             } catch (e: Exception) {
@@ -302,7 +317,7 @@ class MainActivity : ComponentActivity() {
         // Verificar que el usuario está autenticado
         val user = auth.currentUser
         if (user == null) {
-            Timber.w("No se puede guardar el token FCM porque no hay usuario autenticado")
+            Timber.w("⚠️ [FCM] ERROR: No se puede guardar el token FCM porque no hay usuario autenticado")
             return
         }
         
@@ -310,9 +325,11 @@ class MainActivity : ComponentActivity() {
             // Primero obtenemos el DNI del usuario actual desde Firestore
             val userEmail = user.email
             if (userEmail.isNullOrEmpty()) {
-                Timber.w("No se puede guardar el token FCM porque el usuario no tiene email")
+                Timber.w("⚠️ [FCM] ERROR: No se puede guardar el token FCM porque el usuario no tiene email")
                 return
             }
+            
+            Timber.d("⚠️ [FCM] Buscando usuario con email: $userEmail para guardar token FCM")
             
             // Consultar el documento del usuario por email para obtener su DNI
             FirebaseFirestore.getInstance()
@@ -322,7 +339,7 @@ class MainActivity : ComponentActivity() {
                 .get()
                 .addOnSuccessListener { querySnapshot ->
                     if (querySnapshot.isEmpty) {
-                        Timber.e("No se encontró usuario con email: $userEmail")
+                        Timber.e("⚠️ [FCM] ERROR: No se encontró usuario con email: $userEmail para guardar token FCM")
                         return@addOnSuccessListener
                     }
                     
@@ -330,11 +347,11 @@ class MainActivity : ComponentActivity() {
                     val dni = userDoc.getString("dni")
                     
                     if (dni.isNullOrEmpty()) {
-                        Timber.e("El usuario no tiene DNI asignado: $userEmail")
+                        Timber.e("⚠️ [FCM] ERROR: El usuario no tiene DNI asignado: $userEmail")
                         return@addOnSuccessListener
                     }
                     
-                    Timber.d("Guardando token FCM para el usuario con DNI: $dni")
+                    Timber.d("⚠️ [FCM] Guardando token FCM para el usuario con DNI: $dni")
                     
                     // Generar un ID único para el dispositivo
                     val deviceId = "device_${System.currentTimeMillis()}"
@@ -347,6 +364,8 @@ class MainActivity : ComponentActivity() {
                         "preferencias.notificaciones.lastUpdated" to Timestamp.now()
                     )
                     
+                    Timber.d("⚠️ [FCM] Datos a actualizar: $tokenUpdate")
+                    
                     // Actualizar el documento con el DNI como ID
                     val dniDocRef = FirebaseFirestore.getInstance()
                         .collection("usuarios")
@@ -354,10 +373,10 @@ class MainActivity : ComponentActivity() {
                     
                     dniDocRef.update(tokenUpdate)
                         .addOnSuccessListener {
-                            Timber.d("Token FCM actualizado correctamente en preferencias del usuario con DNI: $dni")
+                            Timber.d("⚠️ [FCM] ✅ Token FCM actualizado correctamente en Firestore para usuario con DNI: $dni")
                         }
                         .addOnFailureListener { e ->
-                            Timber.e(e, "Error al actualizar token FCM en documento DNI: $dni")
+                            Timber.e(e, "⚠️ [FCM] ERROR al actualizar token FCM en documento DNI: $dni")
                             
                             // Si el error es porque no existe el campo preferencias.notificaciones,
                             // intentamos crearlo con una estructura completa
@@ -372,20 +391,22 @@ class MainActivity : ComponentActivity() {
                                 )
                             )
                             
+                            Timber.d("⚠️ [FCM] Intentando crear estructura de preferencias completa para DNI: $dni")
+                            
                             dniDocRef.set(initialData, SetOptions.merge())
                                 .addOnSuccessListener {
-                                    Timber.d("Preferencias de notificaciones creadas para usuario DNI: $dni")
+                                    Timber.d("⚠️ [FCM] ✅ Preferencias de notificaciones creadas para usuario DNI: $dni")
                                 }
                                 .addOnFailureListener { innerE ->
-                                    Timber.e(innerE, "Error al crear preferencias de notificaciones para DNI: $dni")
+                                    Timber.e(innerE, "⚠️ [FCM] ERROR CRÍTICO al crear preferencias de notificaciones para DNI: $dni")
                                 }
                         }
                 }
                 .addOnFailureListener { e ->
-                    Timber.e(e, "Error al buscar usuario por email: $userEmail")
+                    Timber.e(e, "⚠️ [FCM] ERROR al buscar usuario por email: $userEmail")
                 }
         } catch (e: Exception) {
-            Timber.e(e, "Error general al guardar token FCM: ${e.message}")
+            Timber.e(e, "⚠️ [FCM] ERROR general al guardar token FCM: ${e.message}")
         }
     }
     

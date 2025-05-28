@@ -234,19 +234,25 @@ class CalendarioViewModel @Inject constructor(
             return
         }
         
+        // Actualizar estado de carga
+        _uiState.update { it.copy(isLoading = true) }
+        
         viewModelScope.launch {
             try {
-                _uiState.update { it.copy(isLoading = true, mostrarDialogoEvento = false) }
-                
-                Timber.d("DEBUG-EVENTOS: Iniciando creación de evento como profesor ID=$profesorId, centro=$centroId")
-                
-                // Obtener los familiares de los alumnos del profesor
+                // Obtener los IDs de los destinatarios (familiares o profesores según corresponda)
                 val destinatarios = obtenerFamiliaresDeAlumnos()
                 
-                Timber.d("DEBUG-EVENTOS: Creando evento con ${destinatarios.size} destinatarios: $destinatarios")
+                Timber.d("DEBUG-EVENTOS: Creando evento con ${destinatarios.size} destinatarios")
+                Timber.d("DEBUG-EVENTOS: Lista de destinatarios: $destinatarios")
                 
-                // Crear objeto evento
-                val fechaHora = LocalDateTime.of(diaSeleccionado, LocalTime.of(8, 0))
+                // Crear fecha y hora a partir del día seleccionado (hora por defecto: 8:00)
+                val fechaHora = LocalDateTime.of(
+                    diaSeleccionado.year,
+                    diaSeleccionado.month,
+                    diaSeleccionado.dayOfMonth,
+                    8, 0
+                )
+                
                 val timestamp = fechaHora.toTimestamp()
                 val nuevoEvento = Evento(
                     id = "",  // Se asignará en el repositorio
@@ -257,7 +263,7 @@ class CalendarioViewModel @Inject constructor(
                     creadorId = profesorId,
                     centroId = centroId,
                     publico = true,
-                    destinatarios = destinatarios
+                    destinatarios = destinatarios // Esto ya se guarda como destinatariosIds en el modelo Evento
                 )
                 
                 Timber.d("DEBUG-EVENTOS: Enviando evento a repository con ${nuevoEvento.destinatarios.size} destinatarios")
@@ -336,9 +342,15 @@ class CalendarioViewModel @Inject constructor(
                                 destinatarios.add(profesor.dni)
                                 Timber.d("DEBUG-EVENTOS: Añadido profesor ${profesor.nombre} (DNI: ${profesor.dni}) como destinatario")
                             }
+                            
+                            Timber.d("DEBUG-EVENTOS: Total profesores añadidos como destinatarios: ${destinatarios.size}")
+                        } else {
+                            Timber.e("DEBUG-EVENTOS: Error al obtener profesores del centro: ${(profesores as? Result.Error)?.message}")
                         }
+                    } else {
+                        Timber.e("DEBUG-EVENTOS: No se pudo obtener el ID del centro del admin")
                     }
-                } else {
+                } else if (esProfesor) {
                     // Si es profesor, obtener las clases del profesor
                     Timber.d("DEBUG-EVENTOS: Obteniendo clases del profesor ${usuario.dni}")
                     val firestore = FirebaseFirestore.getInstance()
@@ -368,13 +380,23 @@ class CalendarioViewModel @Inject constructor(
                         Timber.d("DEBUG-EVENTOS: Procesando ${clasesIds.size} clases para obtener familiares")
                         procesarClasesParaFamiliares(clasesIds, destinatarios)
                     }
+                } else {
+                    Timber.w("DEBUG-EVENTOS: El usuario no es ni profesor ni administrador de centro")
                 }
             } else {
                 Timber.e("DEBUG-EVENTOS: No se pudo obtener el usuario actual")
             }
             
-            Timber.d("DEBUG-EVENTOS: Total de destinatarios encontrados: ${destinatarios.size}, IDs: $destinatarios")
-            destinatarios.toList()
+            // Log final de los destinatarios encontrados
+            Timber.d("DEBUG-EVENTOS: Total de destinatarios encontrados: ${destinatarios.size}")
+            Timber.d("DEBUG-EVENTOS: Lista de destinatarios: $destinatarios")
+            
+            // Si no se encontraron destinatarios, registrar un error
+            if (destinatarios.isEmpty()) {
+                Timber.w("DEBUG-EVENTOS: ¡ADVERTENCIA! No se encontraron destinatarios para el evento")
+            }
+            
+            return destinatarios.toList()
         } catch (e: Exception) {
             Timber.e(e, "DEBUG-EVENTOS: Error al obtener destinatarios para el evento")
             emptyList()
@@ -405,7 +427,7 @@ class CalendarioViewModel @Inject constructor(
                         try {
                             Timber.d("DEBUG-EVENTOS: Buscando familiares de alumno ${alumno.nombre} (DNI: ${alumno.dni})")
                             
-                            // Buscar en la colección vinculaciones_familiar_alumno usando el DNI del alumno
+                            // Estrategia 1: Buscar en la colección vinculaciones_familiar_alumno usando el DNI del alumno
                             val vinculacionesSnapshot = firestore.collection("vinculaciones_familiar_alumno")
                                 .whereEqualTo("alumnoId", alumno.dni)
                                 .get()
@@ -413,13 +435,40 @@ class CalendarioViewModel @Inject constructor(
                             
                             Timber.d("DEBUG-EVENTOS: Encontradas ${vinculacionesSnapshot.size()} vinculaciones para alumno ${alumno.dni}")
                             
+                            var familiaresEncontrados = 0
                             for (vinculacionDoc in vinculacionesSnapshot.documents) {
                                 val familiarId = vinculacionDoc.getString("familiarId")
                                 if (!familiarId.isNullOrEmpty()) {
                                     familiaresIds.add(familiarId)
+                                    familiaresEncontrados++
                                     Timber.d("DEBUG-EVENTOS: Añadido familiar ID: $familiarId para alumno ${alumno.nombre}")
                                 } else {
                                     Timber.w("DEBUG-EVENTOS: Vinculación sin familiarId válido para alumno ${alumno.dni}")
+                                }
+                            }
+                            
+                            // Estrategia 2: Si no se encontraron familiares con la primera estrategia, intentar directamente en el alumno
+                            if (familiaresEncontrados == 0) {
+                                Timber.d("DEBUG-EVENTOS: Intentando estrategia alternativa para alumno ${alumno.dni}")
+                                
+                                // Algunos alumnos pueden tener directamente un campo familiaresIds
+                                val alumnoDoc = firestore.collection("usuarios")
+                                    .document(alumno.dni)
+                                    .get()
+                                    .await()
+                                
+                                val familiaresDirectos = alumnoDoc.get("familiaresIds") as? List<String> ?: emptyList()
+                                
+                                if (familiaresDirectos.isNotEmpty()) {
+                                    familiaresDirectos.forEach { familiarId ->
+                                        if (!familiarId.isNullOrEmpty()) {
+                                            familiaresIds.add(familiarId)
+                                            Timber.d("DEBUG-EVENTOS: Añadido familiar ID (estrategia alternativa): $familiarId para alumno ${alumno.nombre}")
+                                        }
+                                    }
+                                    Timber.d("DEBUG-EVENTOS: Encontrados ${familiaresDirectos.size} familiares con estrategia alternativa para alumno ${alumno.dni}")
+                                } else {
+                                    Timber.w("DEBUG-EVENTOS: No se encontraron familiares con ninguna estrategia para alumno ${alumno.dni}")
                                 }
                             }
                             

@@ -203,18 +203,28 @@ class EventoRepository @Inject constructor(
             val eventoMap = evento.toMap().toMutableMap()
             eventoMap["creadorId"] = creadorId
             
-            // Asegurar que tanto destinatarios como destinatariosIds estén presentes en el mapa
-            val destinatarios = ArrayList(evento.destinatarios)
-            eventoMap["destinatarios"] = destinatarios
-            eventoMap["destinatariosIds"] = destinatarios
+            // Verificar que los destinatarios estén presentes en el mapa y no sean sobrescritos
+            if (!eventoMap.containsKey("destinatarios") || (eventoMap["destinatarios"] as? List<*>)?.isEmpty() == true) {
+                Timber.d("DEBUG-EVENTOS-REPO: No se encontraron destinatarios en el mapa, agregándolos desde el objeto evento")
+                val destinatarios = ArrayList(evento.destinatarios)
+                eventoMap["destinatarios"] = destinatarios
+            }
             
-            Timber.d("DEBUG-EVENTOS-REPO: Guardando evento con ${destinatarios.size} destinatarios")
-            Timber.d("DEBUG-EVENTOS-REPO: Lista de destinatarios: $destinatarios")
+            // Lo mismo para destinatariosIds
+            if (!eventoMap.containsKey("destinatariosIds") || (eventoMap["destinatariosIds"] as? List<*>)?.isEmpty() == true) {
+                Timber.d("DEBUG-EVENTOS-REPO: No se encontraron destinatariosIds en el mapa, agregándolos desde el objeto evento")
+                val destinatarios = ArrayList(evento.destinatarios)
+                eventoMap["destinatariosIds"] = destinatarios
+            }
+            
+            Timber.d("DEBUG-EVENTOS-REPO: Guardando evento con ${(eventoMap["destinatarios"] as? List<*>)?.size ?: 0} destinatarios")
+            Timber.d("DEBUG-EVENTOS-REPO: Lista de destinatarios: ${eventoMap["destinatarios"]}")
+            Timber.d("DEBUG-EVENTOS-REPO: Lista de destinatariosIds: ${eventoMap["destinatariosIds"]}")
             
             // Guardar el evento usando los datos del map actualizado
             nuevoEventoRef.set(eventoMap).await()
             
-            Timber.d("DEBUG-EVENTOS-REPO: Evento creado con ID: $eventoId, creador (DNI): $creadorId, destinatarios: ${destinatarios.size}")
+            Timber.d("DEBUG-EVENTOS-REPO: Evento creado con ID: $eventoId, creador (DNI): $creadorId")
             Result.Success(eventoId)
         } catch (e: Exception) {
             Timber.e(e, "DEBUG-EVENTOS-REPO: Error al crear evento: ${e.message}")

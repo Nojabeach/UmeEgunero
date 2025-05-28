@@ -84,7 +84,74 @@ fun ChatProfesorScreen(
     
     // Inicializar el ViewModel con los datos de la conversación
     LaunchedEffect(familiarId, conversacionId) {
+        Timber.d("🔄 ChatProfesorScreen: Inicializando chat con conversacionId=$conversacionId, familiarId=$familiarId")
         viewModel.inicializar(conversacionId, familiarId, alumnoId)
+        
+        // Actualización periódica mientras la pantalla esté visible
+        while(true) {
+            // Esperar 15 segundos antes de la siguiente actualización
+            kotlinx.coroutines.delay(15000)
+            Timber.d("🔄 ChatProfesorScreen: Actualización periódica de mensajes")
+            viewModel.inicializar(conversacionId, familiarId, alumnoId)
+        }
+    }
+    
+    // Receptor de broadcast para actualizar cuando lleguen nuevos mensajes
+    val context = LocalContext.current
+    DisposableEffect(Unit) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+                Timber.d("📬 ChatProfesorScreen: Broadcast recibido para actualizar mensajes")
+                
+                // Verificar si el mensaje es para esta conversación
+                val messageConversationId = intent?.getStringExtra("conversationId") ?: ""
+                if (messageConversationId.isNotEmpty() && messageConversationId != conversacionId) {
+                    Timber.d("📬 ChatProfesorScreen: Mensaje para otra conversación: $messageConversationId vs $conversacionId")
+                    return
+                }
+                
+                // Actualizar la conversación
+                viewModel.inicializar(conversacionId, familiarId, alumnoId)
+                
+                // Feedback táctil para notificar al usuario
+                try {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al realizar feedback háptico en broadcast")
+                }
+            }
+        }
+        
+        // Registrar para recibir broadcasts de nuevos mensajes
+        val filter = android.content.IntentFilter().apply {
+            addAction("com.tfg.umeegunero.NUEVO_MENSAJE_UNIFICADO")
+            addAction("com.tfg.umeegunero.NUEVO_MENSAJE_CHAT")
+        }
+        context.registerReceiver(receiver, filter)
+        
+        // Limpiar al destruir
+        onDispose {
+            try {
+                context.unregisterReceiver(receiver)
+            } catch (e: Exception) {
+                Timber.e(e, "Error al deregistrar receptor de broadcast en ChatProfesorScreen")
+            }
+        }
+    }
+    
+    // Observador del ciclo de vida para actualizar cuando la pantalla vuelva a primer plano
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                Timber.d("🔄 ChatProfesorScreen: Actualizando al volver a pantalla visible")
+                viewModel.inicializar(conversacionId, familiarId, alumnoId)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
     
     // Observar el estado de la UI

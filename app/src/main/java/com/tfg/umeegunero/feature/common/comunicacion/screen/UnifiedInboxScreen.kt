@@ -119,26 +119,79 @@ fun UnifiedInboxScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showFilterMenu by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
     
+    // Efecto para cargar mensajes al entrar y configurar actualización periódica
     LaunchedEffect(Unit) {
+        Timber.d("🔄 UnifiedInboxScreen: Cargando mensajes iniciales")
         viewModel.loadMessages()
         
-        // Añadir un retraso antes de marcar como leídos para asegurar que la lista se cargó
-        delay(500)
+        // Ya no marcaremos automáticamente los mensajes como leídos
+        // viewModel.markAllAsRead()
         
-        // Marcamos todos los mensajes como leídos al entrar en la pantalla
-        Timber.d("🔍 UnifiedInboxScreen: Marcando todos los mensajes como leídos al entrar")
-        viewModel.markAllAsRead()
-        
-        // Actualizamos explícitamente el contador después de marcar como leídos
+        // Actualizamos explícitamente el contador después de cargar los mensajes
         viewModel.loadMessageCount()
+        
+        // Configurar actualización periódica mientras la pantalla esté visible
+        while(true) {
+            // Esperar 30 segundos antes de la siguiente actualización
+            delay(30000)
+            Timber.d("🔄 UnifiedInboxScreen: Actualización periódica de mensajes")
+            viewModel.loadMessages()
+            viewModel.loadMessageCount()
+        }
+    }
+    
+    // Registrar receptor de broadcast para actualizar cuando lleguen nuevos mensajes
+    DisposableEffect(Unit) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+                Timber.d("📬 UnifiedInboxScreen: Broadcast recibido para actualizar mensajes")
+                scope.launch {
+                    viewModel.loadMessages()
+                    viewModel.loadMessageCount()
+                    
+                    // Mostrar snackbar informativo
+                    snackbarHostState.showSnackbar(
+                        message = "Nuevo mensaje recibido",
+                        duration = androidx.compose.material3.SnackbarDuration.Short
+                    )
+                }
+            }
+        }
+        
+        // Registrar para recibir broadcasts de nuevos mensajes
+        val filter = android.content.IntentFilter().apply {
+            addAction("com.tfg.umeegunero.NUEVO_MENSAJE_UNIFICADO")
+            addAction("com.tfg.umeegunero.NUEVO_MENSAJE_CHAT")
+            addAction("com.tfg.umeegunero.NUEVA_INCIDENCIA")
+            addAction("com.tfg.umeegunero.ASISTENCIA")
+            addAction("com.tfg.umeegunero.ACTUALIZACION_REGISTRO")
+        }
+        context.registerReceiver(receiver, filter)
+        
+        // Actualizar al crear el DisposableEffect
+        scope.launch {
+            viewModel.loadMessages()
+        }
+        
+        // Limpiar al destruir
+        onDispose {
+            context.unregisterReceiver(receiver)
+        }
     }
     
     // Actualizar contador antes de salir de la pantalla
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE) {
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                Timber.d("🔄 UnifiedInboxScreen: Actualizando al volver a pantalla visible")
+                scope.launch {
+                    viewModel.loadMessages()
+                    viewModel.loadMessageCount()
+                }
+            } else if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE) {
                 viewModel.loadMessageCount()
             }
         }

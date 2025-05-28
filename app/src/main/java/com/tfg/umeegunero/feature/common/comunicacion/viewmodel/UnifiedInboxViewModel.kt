@@ -49,19 +49,32 @@ class UnifiedInboxViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true, error = null) }
         
         viewModelScope.launch {
+            Timber.d("⚠️ [INBOX] Iniciando carga de mensajes unificados...")
+            
             messageRepository.getCurrentUserInbox().collect { result ->
                 when (result) {
                     is Result.Success -> {
+                        val messages = result.data
+                        Timber.d("⚠️ [INBOX] ✅ Cargados ${messages.size} mensajes unificados correctamente")
+                        
+                        // Contar mensajes no leídos
+                        val unreadCount = messages.count { 
+                            !it.isRead || it.status == com.tfg.umeegunero.data.model.MessageStatus.UNREAD 
+                        }
+                        Timber.d("⚠️ [INBOX] 📬 Mensajes sin leer: $unreadCount")
+                        
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
-                                messages = result.data,
+                                messages = messages,
+                                unreadCount = unreadCount,
                                 error = null
                             )
                         }
                         applyFilters()
                     }
                     is Result.Error -> {
+                        Timber.e(result.exception, "⚠️ [INBOX] ❌ Error al cargar mensajes: ${result.message}")
                         _uiState.update { 
                             it.copy(
                                 isLoading = false,
@@ -70,6 +83,7 @@ class UnifiedInboxViewModel @Inject constructor(
                         }
                     }
                     is Result.Loading -> {
+                        Timber.d("⚠️ [INBOX] 🔄 Cargando mensajes...")
                         _uiState.update { it.copy(isLoading = true) }
                     }
                 }

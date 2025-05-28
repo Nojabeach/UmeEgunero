@@ -1,9 +1,25 @@
 package com.tfg.umeegunero.feature.familiar.screen
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -13,9 +29,35 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -25,6 +67,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -32,20 +75,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.google.firebase.Timestamp
 import com.tfg.umeegunero.data.model.MessageStatus
 import com.tfg.umeegunero.data.model.UnifiedMessage
 import com.tfg.umeegunero.feature.common.mensajeria.ChatViewModel
 import com.tfg.umeegunero.feature.profesor.screen.AttachmentType
 import com.tfg.umeegunero.ui.theme.FamiliarColor
+import kotlinx.coroutines.delay
 import timber.log.Timber
 import java.text.SimpleDateFormat
-import java.util.*
-import android.net.Uri
-import android.widget.Toast
-import kotlinx.coroutines.delay
+import java.util.Calendar
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -100,9 +143,74 @@ fun ChatFamiliaScreen(
             }
             else -> {
                 // Caso normal: tenemos profesorId
-                Timber.d("Inicializando chat normalmente con profesorId: $profesorId")
+                Timber.d("🔄 ChatFamiliaScreen: Inicializando chat con profesorId=$profesorId, conversacionId=$conversacionId")
+                viewModel.inicializar(conversacionId, profesorId, alumnoId)
+                
+                // Actualización periódica mientras la pantalla esté visible
+                while(true) {
+                    // Esperar 15 segundos antes de la siguiente actualización
+                    delay(15000)
+                    Timber.d("🔄 ChatFamiliaScreen: Actualización periódica de mensajes")
+                    viewModel.inicializar(conversacionId, profesorId, alumnoId)
+                }
+            }
+        }
+    }
+    
+    // Receptor de broadcast para actualizar cuando lleguen nuevos mensajes
+    DisposableEffect(Unit) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                Timber.d("📬 ChatFamiliaScreen: Broadcast recibido para actualizar mensajes")
+                
+                // Verificar si el mensaje es para esta conversación
+                val messageConversationId = intent?.getStringExtra("conversationId") ?: ""
+                if (messageConversationId.isNotEmpty() && messageConversationId != conversacionId) {
+                    Timber.d("📬 ChatFamiliaScreen: Mensaje para otra conversación: $messageConversationId vs $conversacionId")
+                    return
+                }
+                
+                // Actualizar la conversación
+                viewModel.inicializar(conversacionId, profesorId, alumnoId)
+                
+                // Feedback táctil para notificar al usuario
+                try {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al realizar feedback háptico en broadcast")
+                }
+            }
+        }
+        
+        // Registrar para recibir broadcasts de nuevos mensajes
+        val filter = IntentFilter().apply {
+            addAction("com.tfg.umeegunero.NUEVO_MENSAJE_UNIFICADO")
+            addAction("com.tfg.umeegunero.NUEVO_MENSAJE_CHAT")
+        }
+        context.registerReceiver(receiver, filter)
+        
+        // Limpiar al destruir
+        onDispose {
+            try {
+                context.unregisterReceiver(receiver)
+            } catch (e: Exception) {
+                Timber.e(e, "Error al deregistrar receptor de broadcast en ChatFamiliaScreen")
+            }
+        }
+    }
+    
+    // Observador del ciclo de vida para actualizar cuando la pantalla vuelva a primer plano
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                Timber.d("🔄 ChatFamiliaScreen: Actualizando al volver a pantalla visible")
                 viewModel.inicializar(conversacionId, profesorId, alumnoId)
             }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
     

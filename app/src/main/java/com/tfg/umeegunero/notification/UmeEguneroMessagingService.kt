@@ -94,15 +94,22 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
      */
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Timber.d("Nuevo token FCM recibido: $token")
+        Timber.d("⚠️ [FCM] Nuevo token FCM recibido: $token")
         
         // Guardar el token en DataStore
         serviceScope.launch {
-            preferenciasRepository.guardarFcmToken(token)
-            Timber.d("Token FCM guardado en preferencias")
-            
-            // Guardar token en Firestore
-            guardarTokenEnFirestore(token)
+            try {
+                preferenciasRepository.guardarFcmToken(token)
+                Timber.d("⚠️ [FCM] Token FCM guardado en preferencias locales")
+                
+                // Guardar token en Firestore
+                guardarTokenEnFirestore(token)
+                
+                // Log adicional para depurar
+                Timber.d("⚠️ [FCM] Token FCM guardado y proceso de registro iniciado")
+            } catch (e: Exception) {
+                Timber.e(e, "⚠️ [FCM] ERROR crítico al guardar token FCM: ${e.message}")
+            }
         }
     }
     
@@ -110,12 +117,26 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
      * Guarda el token FCM en el documento del usuario actual en Firestore
      */
     private fun guardarTokenEnFirestore(token: String) {
-        val currentUser = FirebaseAuth.getInstance().currentUser ?: return
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        
+        if (currentUser == null) {
+            Timber.e("⚠️ [FCM] ERROR: No hay usuario autenticado para guardar token FCM")
+            return
+        }
+        
         val userUid = currentUser.uid
+        Timber.d("⚠️ [FCM] Iniciando guardado de token para usuario Firebase UID: $userUid")
         
         try {
             // Primero obtenemos el DNI del usuario actual desde Firestore
-            val userEmail = currentUser.email ?: return
+            val userEmail = currentUser.email
+            
+            if (userEmail.isNullOrEmpty()) {
+                Timber.e("⚠️ [FCM] ERROR: Usuario sin email para guardar token FCM")
+                return
+            }
+            
+            Timber.d("⚠️ [FCM] Buscando usuario con email: $userEmail para guardar token FCM")
             
             // Consultar el documento del usuario por email para obtener su DNI
             FirebaseFirestore.getInstance()
@@ -125,7 +146,7 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
                 .get()
                 .addOnSuccessListener { querySnapshot ->
                     if (querySnapshot.isEmpty) {
-                        Timber.e("No se encontró usuario con email: $userEmail")
+                        Timber.e("⚠️ [FCM] ERROR: No se encontró usuario con email: $userEmail")
                         return@addOnSuccessListener
                     }
                     
@@ -133,11 +154,11 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
                     val dni = userDoc.getString("dni")
                     
                     if (dni.isNullOrEmpty()) {
-                        Timber.e("El usuario no tiene DNI asignado: $userEmail")
+                        Timber.e("⚠️ [FCM] ERROR: El usuario no tiene DNI asignado: $userEmail")
                         return@addOnSuccessListener
                     }
                     
-                    Timber.d("Actualizando token FCM para el usuario con DNI: $dni")
+                    Timber.d("⚠️ [FCM] Actualizando token FCM para el usuario con DNI: $dni")
                     
                     // Generar un ID único para el dispositivo
                     val deviceId = "device_${System.currentTimeMillis()}"
@@ -156,10 +177,10 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
                     
                     dniDocRef.update(tokenUpdate)
                         .addOnSuccessListener {
-                            Timber.d("Token FCM actualizado correctamente en preferencias del usuario con DNI: $dni")
+                            Timber.d("⚠️ [FCM] ✅ Token FCM actualizado correctamente en Firestore para DNI: $dni")
                         }
                         .addOnFailureListener { e ->
-                            Timber.e(e, "Error al actualizar token FCM en documento DNI: $dni")
+                            Timber.e(e, "⚠️ [FCM] ERROR al actualizar token FCM en documento DNI: $dni")
                             
                             // Si el error es porque no existe el campo preferencias.notificaciones,
                             // intentamos crearlo con una estructura completa
@@ -174,20 +195,22 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
                                 )
                             )
                             
+                            Timber.d("⚠️ [FCM] Intentando crear estructura de preferencias completa para DNI: $dni")
+                            
                             dniDocRef.set(initialData, SetOptions.merge())
                                 .addOnSuccessListener {
-                                    Timber.d("Preferencias de notificaciones creadas para usuario DNI: $dni")
+                                    Timber.d("⚠️ [FCM] ✅ Preferencias de notificaciones creadas para usuario DNI: $dni")
                                 }
                                 .addOnFailureListener { innerE ->
-                                    Timber.e(innerE, "Error al crear preferencias de notificaciones para DNI: $dni")
+                                    Timber.e(innerE, "⚠️ [FCM] ERROR CRÍTICO al crear preferencias de notificaciones para DNI: $dni")
                                 }
                         }
                 }
                 .addOnFailureListener { e ->
-                    Timber.e(e, "Error al buscar usuario por email: $userEmail")
+                    Timber.e(e, "⚠️ [FCM] ERROR al buscar usuario por email: $userEmail")
                 }
         } catch (e: Exception) {
-            Timber.e(e, "Error general al guardar token FCM: ${e.message}")
+            Timber.e(e, "⚠️ [FCM] ERROR general al guardar token FCM: ${e.message}")
         }
     }
     
@@ -196,15 +219,19 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
      */
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
-        Timber.d("Mensaje FCM recibido de: ${remoteMessage.from}")
+        Timber.d("⚠️ [FCM] 📱 MENSAJE FCM RECIBIDO de: ${remoteMessage.from}")
+        Timber.d("⚠️ [FCM] Datos del mensaje: ${remoteMessage.data}")
         
         try {
             // Priorizar el campo 'messageType' del payload data para determinar el tipo de mensaje
             val messageType = remoteMessage.data["messageType"] ?: remoteMessage.data["tipo"]
             val messageId = remoteMessage.data["messageId"]
             
+            Timber.d("⚠️ [FCM] Tipo de mensaje: $messageType, ID: $messageId")
+            
             if (messageId != null) {
                 // Este es un mensaje unificado, procesarlo como tal
+                Timber.d("⚠️ [FCM] Procesando como mensaje unificado con ID: $messageId")
                 procesarNotificacionUnificada(remoteMessage.data)
                 return
             }
@@ -296,7 +323,7 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error al procesar notificación FCM")
+            Timber.e(e, "⚠️ [FCM] ERROR al procesar notificación FCM: ${e.message}")
             
             // Intentar mostrar algo aunque haya error
             val title = remoteMessage.notification?.title ?: remoteMessage.data["title"] ?: "Nueva notificación"
@@ -407,13 +434,15 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
         val senderId = data["senderId"] ?: ""
         val senderName = data["senderName"] ?: ""
         
-        Timber.d("Procesando notificación unificada: messageId=$messageId, messageType=$messageType, senderId=$senderId, senderName=$senderName")
+        Timber.d("⚠️ [FCM] 📬 Procesando notificación unificada: messageId=$messageId, messageType=$messageType, senderId=$senderId, senderName=$senderName")
         
         // Obtener los datos básicos de la notificación
         val titulo = data["title"] ?: data["titulo"] ?: "Nuevo mensaje"
         val mensaje = data["body"] ?: data["mensaje"] ?: data["content"] ?: "Has recibido un nuevo mensaje"
         val conversacionId = data["conversationId"] ?: ""
         val notificationId = messageId.hashCode()
+        
+        Timber.d("⚠️ [FCM] Detalles del mensaje: título=$titulo, conversacionId=$conversacionId")
         
         // Determinar canal según tipo de mensaje
         val channelId = when (messageType) {
@@ -427,13 +456,15 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
             else -> AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
         }
         
+        Timber.d("⚠️ [FCM] Canal seleccionado para notificación: $channelId")
+        
         // Verificar específicamente si es de admin-centro a profesor
         val esAdminCentroAProfesor = senderId.isNotEmpty() && 
             data["senderRole"] == "ADMIN_CENTRO" && 
             data["receiverRole"] == "PROFESOR"
         
         if (esAdminCentroAProfesor) {
-            Timber.d("Notificación de admin-centro a profesor detectada: $messageId")
+            Timber.d("⚠️ [FCM] Notificación de admin-centro a profesor detectada: $messageId")
         }
         
         // Crear el intent para cuando se toca la notificación
@@ -485,13 +516,13 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
         val finalNotification = notification.build()
         
         // Registrar datos de notificación en logs
-        Timber.i("Mostrando notificación: id=$notificationId, canal=$channelId, título=$titulo")
+        Timber.i("⚠️ [FCM] 🔔 Mostrando notificación: id=$notificationId, canal=$channelId, título=$titulo")
         
         try {
             NotificationManagerCompat.from(this).notify(notificationId, finalNotification)
-            Timber.d("Notificación mostrada correctamente: $notificationId")
+            Timber.d("⚠️ [FCM] ✅ Notificación mostrada correctamente: $notificationId")
         } catch (e: Exception) {
-            Timber.e(e, "Error al mostrar notificación: $notificationId")
+            Timber.e(e, "⚠️ [FCM] ❌ Error al mostrar notificación: $notificationId, error: ${e.message}")
         }
         
         // Enviar broadcast para actualizar la UI si la app está abierta
@@ -499,9 +530,9 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
             putExtra("messageId", messageId)
             putExtra("messageType", messageType)
             putExtra("conversationId", conversacionId)
-            putExtra("senderId", senderId)
-            putExtra("receiverRole", data["receiverRole"])
         })
+        
+        Timber.d("⚠️ [FCM] Broadcast enviado para messageId=$messageId")
     }
     
     /**

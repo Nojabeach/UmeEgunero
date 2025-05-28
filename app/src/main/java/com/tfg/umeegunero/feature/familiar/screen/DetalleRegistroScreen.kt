@@ -125,10 +125,10 @@ fun DetalleRegistroScreen(
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
 
-    // Cargar registro al inicializar
-    LaunchedEffect(registroId) {
-        Timber.d("LaunchedEffect en DetalleRegistroScreen, cargando registro ID: $registroId")
-        viewModel.cargarRegistro(registroId)
+    // Recargar el registro cuando cambie la fecha seleccionada
+    LaunchedEffect(uiState.fechaSeleccionada) {
+        Timber.d("[DetalleRegistroScreen] Fecha seleccionada cambió: ${uiState.fechaSeleccionada}")
+        viewModel.seleccionarFecha(uiState.fechaSeleccionada)
     }
 
     // Observar cambios en el registro cuando cambia la fecha
