@@ -3,10 +3,13 @@ package com.tfg.umeegunero.data.repository
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.snapshots
 import com.tfg.umeegunero.data.model.EstadoNotificacionAusencia
 import com.tfg.umeegunero.data.model.NotificacionAusencia
 import com.tfg.umeegunero.util.Result
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -14,6 +17,8 @@ import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
 
 /**
  * Repositorio para gestionar las notificaciones de ausencia de los alumnos.
@@ -227,5 +232,36 @@ class NotificacionAusenciaRepository @Inject constructor(
             Timber.e(e, "Error al actualizar estado de ausencia: $notificacionId")
             Result.Error(e)
         }
+    }
+
+    /**
+     * Observa las ausencias de una clase en tiempo real
+     * 
+     * @param claseId ID de la clase a observar
+     * @return Flow que emite las ausencias actualizadas cuando hay cambios
+     */
+    fun observarAusenciasPorClase(claseId: String): Flow<Result<List<NotificacionAusencia>>> = flow {
+        emit(Result.Loading())
+        
+        firestore.collection("notificaciones_ausencia")
+            .whereEqualTo("claseId", claseId)
+            .snapshots()
+            .map { snapshot ->
+                if (!snapshot.isEmpty) {
+                    val ausencias = snapshot.documents.mapNotNull { document ->
+                        document.toObject(NotificacionAusencia::class.java)?.copy(id = document.id)
+                    }
+                    Result.Success(ausencias) as Result<List<NotificacionAusencia>>
+                } else {
+                    Result.Success(emptyList<NotificacionAusencia>())
+                }
+            }
+            .catch { e ->
+                Timber.e(e, "Error al observar ausencias por clase: $claseId")
+                emit(Result.Error(e))
+            }
+            .collect { result ->
+                emit(result)
+            }
     }
 } 

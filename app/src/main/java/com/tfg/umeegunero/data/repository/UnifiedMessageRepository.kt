@@ -36,10 +36,12 @@ class UnifiedMessageRepository @Inject constructor(
     private val authRepositoryProvider: Provider<AuthRepository>,
     private val usuarioRepository: UsuarioRepository
 ) {
+    // Constantes para las colecciones
     companion object {
-        private const val MESSAGES_COLLECTION = "unified_messages"
-        private const val CONVERSATIONS_COLLECTION = "conversations"
-        private const val USERS_COLLECTION = "usuarios"
+        const val MESSAGES_COLLECTION = "unified_messages"
+        const val CONVERSATIONS_COLLECTION = "conversations"
+        const val USERS_COLLECTION = "usuarios"
+        const val MAX_CACHE_AGE = 5 * 60 * 1000 // 5 minutos en milisegundos
     }
     
     // Usar get() para obtener la instancia del Provider cuando sea necesario
@@ -91,23 +93,23 @@ class UnifiedMessageRepository @Inject constructor(
             val messageType = MessageType.valueOf(messageData["type"] as? String ?: MessageType.CHAT.name)
             val relatedEntityId = messageData["relatedEntityId"] as? String
             
-            // Actualizar en la colección unificada
+            // Actualizar en la colección unificada - primero los campos básicos
+            val updateFields = mapOf(
+                "status" to MessageStatus.READ.name,
+                "isRead" to true,
+                "readTimestamp" to Timestamp.now(),
+                "readBy.${currentUser.dni}" to Timestamp.now()
+            )
+            
             firestore.collection(MESSAGES_COLLECTION)
                 .document(messageId)
-                .update(
-                    mapOf(
-                        "status" to MessageStatus.READ.name,
-                        "readTimestamp" to Timestamp.now(),
-                        "readBy.${currentUser.dni}" to Timestamp.now()
-                    )
-                )
+                .update(updateFields)
                 .await()
             
-            // Actualizar también en la colección original según el tipo
-            when (messageType) {
-                MessageType.CHAT -> {
-                    // Para mensajes de chat, actualizar en la colección de mensajes
-                    if (!relatedEntityId.isNullOrEmpty()) {
+            // Actualizar también en la colección original según el tipo, con manejo de errores mejorado
+            if (!relatedEntityId.isNullOrEmpty()) {
+                when (messageType) {
+                    MessageType.CHAT -> {
                         try {
                             firestore.collection("mensajes")
                                 .document(relatedEntityId)
@@ -119,13 +121,17 @@ class UnifiedMessageRepository @Inject constructor(
                                 )
                                 .await()
                         } catch (e: Exception) {
-                            Timber.w(e, "No se pudo actualizar el mensaje original en 'mensajes'")
+                            // Si el documento no existe, lo registramos pero no interrumpimos el flujo
+                            if (e.message?.contains("NOT_FOUND") == true || 
+                                e.message?.contains("No document to update") == true) {
+                                Timber.w(e, "Documento original no encontrado en 'mensajes'. Esto es normal si el mensaje solo existe en la colección unificada.")
+                            } else {
+                                Timber.w(e, "No se pudo actualizar el mensaje original en 'mensajes'")
+                            }
+                            // No hacemos return aquí, continuamos con el flujo
                         }
                     }
-                }
-                MessageType.ANNOUNCEMENT -> {
-                    // Para comunicados, actualizar en la colección de comunicados
-                    if (!relatedEntityId.isNullOrEmpty()) {
+                    MessageType.ANNOUNCEMENT -> {
                         try {
                             firestore.collection("comunicados")
                                 .document(relatedEntityId)
@@ -136,13 +142,15 @@ class UnifiedMessageRepository @Inject constructor(
                                 )
                                 .await()
                         } catch (e: Exception) {
-                            Timber.w(e, "No se pudo actualizar el comunicado original")
+                            if (e.message?.contains("NOT_FOUND") == true || 
+                                e.message?.contains("No document to update") == true) {
+                                Timber.w(e, "Comunicado original no encontrado. Esto es normal si el mensaje solo existe en la colección unificada.")
+                            } else {
+                                Timber.w(e, "No se pudo actualizar el comunicado original")
+                            }
                         }
                     }
-                }
-                MessageType.NOTIFICATION -> {
-                    // Para notificaciones, actualizar si es necesario
-                    if (!relatedEntityId.isNullOrEmpty()) {
+                    MessageType.NOTIFICATION -> {
                         try {
                             firestore.collection("notificaciones")
                                 .document(relatedEntityId)
@@ -154,13 +162,15 @@ class UnifiedMessageRepository @Inject constructor(
                                 )
                                 .await()
                         } catch (e: Exception) {
-                            Timber.w(e, "No se pudo actualizar la notificación original")
+                            if (e.message?.contains("NOT_FOUND") == true || 
+                                e.message?.contains("No document to update") == true) {
+                                Timber.w(e, "Notificación original no encontrada (${relatedEntityId}). Esto es normal si fue migrada.")
+                            } else {
+                                Timber.w(e, "No se pudo actualizar la notificación original")
+                            }
                         }
                     }
-                }
-                MessageType.DAILY_RECORD -> {
-                    // Para registros de actividad diaria, marcar como leído por el familiar
-                    if (!relatedEntityId.isNullOrEmpty()) {
+                    MessageType.DAILY_RECORD -> {
                         try {
                             firestore.collection("registrosActividad")
                                 .document(relatedEntityId)
@@ -174,18 +184,23 @@ class UnifiedMessageRepository @Inject constructor(
                                 )
                                 .await()
                         } catch (e: Exception) {
-                            Timber.w(e, "No se pudo actualizar el registro de actividad original")
+                            if (e.message?.contains("NOT_FOUND") == true || 
+                                e.message?.contains("No document to update") == true) {
+                                Timber.w(e, "Registro de actividad original no encontrado. Esto es normal si el mensaje solo existe en la colección unificada.")
+                            } else {
+                                Timber.w(e, "No se pudo actualizar el registro de actividad original")
+                            }
                         }
                     }
-                }
-                MessageType.GROUP_CHAT,
-                MessageType.TASK,
-                MessageType.EVENT,
-                MessageType.SYSTEM,
-                MessageType.INCIDENT,
-                MessageType.ATTENDANCE -> {
-                    // Para estos tipos, no se requiere actualización adicional por ahora
-                    Timber.d("Tipo de mensaje $messageType marcado como leído, sin actualización adicional requerida")
+                    MessageType.GROUP_CHAT,
+                    MessageType.TASK,
+                    MessageType.EVENT,
+                    MessageType.SYSTEM,
+                    MessageType.INCIDENT,
+                    MessageType.ATTENDANCE -> {
+                        // Para estos tipos, no se requiere actualización adicional por ahora
+                        Timber.d("Tipo de mensaje $messageType marcado como leído, sin actualización adicional requerida")
+                    }
                 }
             }
             
@@ -689,10 +704,12 @@ class UnifiedMessageRepository @Inject constructor(
         }
     }
 
-    suspend fun getUnreadMessageCount(userId: String): Flow<Result<Int>> = flow {
-        try {
-            emit(Result.Loading())
-            
+    /**
+     * Obtiene el conteo de mensajes no leídos para un usuario
+     */
+    suspend fun getUnreadMessageCount(userId: String): Int {
+        return try {
+            // Consultar solo mensajes con status=UNREAD explícitamente
             val receiverQuery = firestore.collection(MESSAGES_COLLECTION)
                 .whereEqualTo("receiverId", userId)
                 .whereEqualTo("status", MessageStatus.UNREAD.name)
@@ -704,12 +721,91 @@ class UnifiedMessageRepository @Inject constructor(
             val receiverCount = receiverQuery.get().await().size()
             val receiversCount = receiversQuery.get().await().size()
             
-            val unreadCount = receiverCount + receiversCount
+            Timber.d("Contador de mensajes no leídos para $userId: receiverId=$receiverCount, receiversIds=$receiversCount, total=${receiverCount + receiversCount}")
             
-            emit(Result.Success(unreadCount))
+            // La suma de ambos contadores es el total de mensajes no leídos
+            receiverCount + receiversCount
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener contador de mensajes no leídos para usuario $userId")
+            0 // En caso de error, devolvemos 0 para evitar mostrar badges incorrectos
+        }
+    }
+
+    suspend fun getUnreadMessageCountFlow(userId: String): Flow<Result<Int>> = flow {
+        // Este método mantiene la firma para compatibilidad pero ahora utilizamos el método directo
+        try {
+            emit(Result.Loading())
+            val count = getUnreadMessageCount(userId)
+            emit(Result.Success(count))
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener conteo de mensajes no leídos")
             emit(Result.Error(e.message ?: "Error al obtener conteo de mensajes no leídos"))
+        }
+    }
+
+    /**
+     * Obtiene los participantes de una conversación
+     * @param conversationId ID de la conversación
+     * @return Lista de IDs de los participantes
+     */
+    suspend fun getConversationParticipants(conversationId: String): Result<List<String>> {
+        return try {
+            // Primero buscar en la colección de conversaciones
+            val conversationDoc = firestore.collection(CONVERSATIONS_COLLECTION)
+                .document(conversationId)
+                .get()
+                .await()
+                
+            if (conversationDoc.exists()) {
+                val participantsData = conversationDoc.get("participantsIds")
+                if (participantsData != null && participantsData is List<*>) {
+                    val participantsList = participantsData.filterIsInstance<String>()
+                    Timber.d("Participantes encontrados en conversación $conversationId: $participantsList")
+                    return Result.Success(participantsList)
+                }
+            }
+            
+            // Si no encontramos la conversación o no tiene participantes,
+            // buscar en los mensajes para inferir los participantes
+            val messages = firestore.collection(MESSAGES_COLLECTION)
+                .whereEqualTo("conversationId", conversationId)
+                .limit(5)
+                .get()
+                .await()
+                
+            if (!messages.isEmpty) {
+                val participants = mutableSetOf<String>()
+                
+                for (message in messages) {
+                    val senderId = message.getString("senderId")
+                    if (!senderId.isNullOrEmpty()) {
+                        participants.add(senderId)
+                    }
+                    
+                    val receiverId = message.getString("receiverId")
+                    if (!receiverId.isNullOrEmpty()) {
+                        participants.add(receiverId)
+                    }
+                    
+                    val receiversIds = message.get("receiversIds") as? List<String>
+                    if (!receiversIds.isNullOrEmpty()) {
+                        participants.addAll(receiversIds)
+                    }
+                }
+                
+                val currentUserId = authRepository.getCurrentUserId()
+                // Filtrar el usuario actual para quedarnos con el otro participante
+                val otherParticipants = participants.filter { it != currentUserId }
+                
+                Timber.d("Participantes inferidos de mensajes para conversación $conversationId: $otherParticipants")
+                return Result.Success(otherParticipants)
+            }
+            
+            Timber.w("No se encontraron participantes para la conversación $conversationId")
+            Result.Success(emptyList())
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener participantes de conversación: $conversationId")
+            Result.Error("Error al obtener participantes: ${e.message}")
         }
     }
 } 

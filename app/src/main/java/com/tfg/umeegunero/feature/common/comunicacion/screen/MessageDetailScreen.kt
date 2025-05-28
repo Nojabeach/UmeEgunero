@@ -33,6 +33,10 @@ import com.tfg.umeegunero.ui.components.LoadingIndicator
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
+import android.widget.Toast
+import timber.log.Timber
 
 /**
  * Pantalla de detalle para cualquier tipo de mensaje
@@ -51,6 +55,8 @@ fun MessageDetailScreen(
     }
     
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     
     // Marcar automáticamente como leído cuando se abre el mensaje
     LaunchedEffect(uiState.message) {
@@ -58,6 +64,42 @@ fun MessageDetailScreen(
             if (!message.isRead) {
                 viewModel.markAsRead()
             }
+        }
+    }
+    
+    // Navegar a la conversación con un mejor manejo de errores
+    val navigateToChat = { conversationId: String ->
+        scope.launch {
+            try {
+                // Intentar obtener un participante para la conversación
+                val participantId = viewModel.getParticipantId(conversationId)
+                
+                if (conversationId.isNotEmpty()) {
+                    Timber.d("Navegando a conversación: $conversationId con participante: $participantId")
+                    onNavigateToConversation(conversationId)
+                } else {
+                    Toast.makeText(
+                        context,
+                        "No se pudo determinar la conversación. Inténtelo de nuevo.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al preparar navegación a chat: ${e.message}")
+                Toast.makeText(
+                    context,
+                    "No se pudo abrir la conversación. Inténtelo más tarde.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+    
+    // Mostrar un error si lo hay
+    uiState.error?.let { error ->
+        LaunchedEffect(error) {
+            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+            viewModel.clearError()
         }
     }
     
@@ -132,12 +174,7 @@ fun MessageDetailScreen(
                             ChatMessageDetail(
                                 message = message,
                                 onContinueChat = {
-                                    if (message.conversationId.isNotEmpty()) {
-                                        onNavigateToConversation(message.conversationId)
-                                    } else {
-                                        // Log error
-                                        println("No hay ID de conversación para continuar el chat")
-                                    }
+                                    navigateToChat(message.conversationId)
                                 }
                             )
                         }

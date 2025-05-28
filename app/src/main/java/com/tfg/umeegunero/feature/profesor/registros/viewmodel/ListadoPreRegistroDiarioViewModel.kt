@@ -27,6 +27,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
+import java.io.File
+import java.io.FileOutputStream
 import timber.log.Timber
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -94,6 +99,7 @@ data class InformeAsistencia(
  * @property ausenciasNotificadas Lista de notificaciones de ausencia para la clase actual
  * @property mostrarDialogoAusencia Indica si debe mostrarse el diálogo de detalle de ausencia
  * @property ausenciaSeleccionada Notificación de ausencia seleccionada para mostrar detalles
+ * @property hayNuevaNotificacionAusencia Indica si hay una nueva notificación de ausencia
  */
 data class ListadoPreRegistroDiarioUiState(
     val alumnos: List<Alumno> = emptyList(),
@@ -117,7 +123,8 @@ data class ListadoPreRegistroDiarioUiState(
     val datosInforme: InformeAsistencia = InformeAsistencia(),
     val ausenciasNotificadas: List<NotificacionAusencia> = emptyList(),
     val mostrarDialogoAusencia: Boolean = false,
-    val ausenciaSeleccionada: NotificacionAusencia? = null
+    val ausenciaSeleccionada: NotificacionAusencia? = null,
+    val hayNuevaNotificacionAusencia: Boolean = false
 )
 
 /**
@@ -1121,43 +1128,71 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
 
     /**
      * Carga las notificaciones de ausencia para la clase actual
+     * y configura un listener en tiempo real para actualizaciones
      */
     fun cargarAusenciasNotificadas() {
         viewModelScope.launch {
             try {
                 val claseActual = _uiState.value.claseId
                 if (claseActual.isNotBlank()) {
-                    Timber.d("Cargando ausencias para clase: $claseActual")
-                    val resultado = notificacionAusenciaRepository.obtenerAusenciasPendientesPorClase(claseActual)
+                    Timber.d("Configurando listener de ausencias para clase: $claseActual")
                     
-                    if (resultado is Result.Success) {
-                        val ausencias = resultado.data
-                        
-                        // Filtrar las ausencias aceptadas para la fecha seleccionada
-                        val fechaSeleccionada = _uiState.value.fechaSeleccionada
-                        val alumnosConAusenciaJustificada = ausencias
-                            .filter { ausencia ->
-                                ausencia.estado == EstadoNotificacionAusencia.ACEPTADA.name &&
-                                ausencia.fechaAusencia.toDate().toInstant()
-                                    .atZone(java.time.ZoneId.systemDefault())
-                                    .toLocalDate() == fechaSeleccionada
+                    // Usar un listener en tiempo real en lugar de una consulta única
+                    notificacionAusenciaRepository.observarAusenciasPorClase(claseActual)
+                        .collect { resultado ->
+                            if (resultado is Result.Success) {
+                                val ausencias = resultado.data
+                                
+                                // Filtrar las ausencias aceptadas para la fecha seleccionada
+                                val fechaSeleccionada = _uiState.value.fechaSeleccionada
+                                val alumnosConAusenciaJustificada = ausencias
+                                    .filter { ausencia ->
+                                        ausencia.estado == EstadoNotificacionAusencia.ACEPTADA.name &&
+                                        ausencia.fechaAusencia.toDate().toInstant()
+                                            .atZone(java.time.ZoneId.systemDefault())
+                                            .toLocalDate() == fechaSeleccionada
+                                    }
+                                    .map { it.alumnoId }
+                                    .toSet()
+                                
+                                // Verificar si hay nuevas ausencias pendientes comparando con el estado anterior
+                                val ausenciasPendientesAnteriores = _uiState.value.ausenciasNotificadas
+                                    .filter { it.estado == EstadoNotificacionAusencia.PENDIENTE.name }
+                                    .map { it.id }
+                                    .toSet()
+                                    
+                                val ausenciasPendientesNuevas = ausencias
+                                    .filter { it.estado == EstadoNotificacionAusencia.PENDIENTE.name }
+                                    .map { it.id }
+                                    .toSet()
+                                
+                                // Si hay nuevas ausencias pendientes, mostrar notificación
+                                val hayNuevasAusencias = ausenciasPendientesNuevas.minus(ausenciasPendientesAnteriores).isNotEmpty()
+                                
+                                _uiState.update { it.copy(
+                                    ausenciasNotificadas = ausencias,
+                                    alumnosConAusenciaJustificada = alumnosConAusenciaJustificada,
+                                    hayNuevaNotificacionAusencia = hayNuevasAusencias
+                                ) }
+                                
+                                if (hayNuevasAusencias) {
+                                    // Después de 5 segundos, ocultar la notificación
+                                    viewModelScope.launch {
+                                        delay(5000)
+                                        _uiState.update { it.copy(hayNuevaNotificacionAusencia = false) }
+                                    }
+                                }
+                                
+                                Timber.d("Ausencias actualizadas en tiempo real: ${ausencias.size}, justificadas para hoy: ${alumnosConAusenciaJustificada.size}")
+                            } else if (resultado is Result.Error) {
+                                Timber.e(resultado.exception, "Error al observar ausencias para la clase")
                             }
-                            .map { it.alumnoId }
-                            .toSet()
-                        
-                        _uiState.update { it.copy(
-                            ausenciasNotificadas = ausencias,
-                            alumnosConAusenciaJustificada = alumnosConAusenciaJustificada
-                        ) }
-                        Timber.d("Ausencias cargadas: ${ausencias.size}, justificadas para hoy: ${alumnosConAusenciaJustificada.size}")
-                    } else {
-                        Timber.d("No se pudieron cargar ausencias para la clase")
-                    }
+                        }
                 } else {
                     Timber.d("No hay claseId definido para cargar ausencias")
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar ausencias notificadas")
+                Timber.e(e, "Error al configurar listener de ausencias notificadas")
                 // No actualizamos el estado de error para no interrumpir la experiencia
             }
         }

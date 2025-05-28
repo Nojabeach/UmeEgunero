@@ -66,6 +66,7 @@ import com.tfg.umeegunero.feature.common.comunicacion.screen.MessageDetailScreen
 import com.tfg.umeegunero.feature.common.comunicacion.screen.ComunicadoDetailScreen
 import com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen
 import com.tfg.umeegunero.feature.centro.screen.VincularAlumnoClaseScreen
+import android.widget.Toast
 
 /**
  * Sistema de navegación principal de la aplicación UmeEgunero.
@@ -1110,22 +1111,38 @@ fun Navigation(
             )
         ) { backStackEntry ->
             val messageId = backStackEntry.arguments?.getString("messageId") ?: ""
+            
+            val onNavigateToConversation: (String) -> Unit = { conversationId ->
+                try {
+                    // El viewModel no está directamente disponible aquí, por lo que tenemos que obtener el usuario de otra manera
+                    val currentUser = FirebaseAuth.getInstance().currentUser
+                    val isProfesor = currentUser?.email?.contains("profesor") == true
+                    
+                    // Navegar directamente - los parámetros se obtendrán en la pantalla de destino
+                    val route = if (isProfesor) {
+                        // Para profesores
+                        AppScreens.ChatProfesor.createRoute(conversationId, "")
+                    } else {
+                        // Para familiares
+                        AppScreens.ChatFamilia.createRoute(conversationId, "")
+                    }
+                    
+                    Timber.d("Navegando a chat: $route")
+                    navController.navigate(route)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al navegar a conversación: ${e.message}")
+                    Toast.makeText(
+                        navController.context,
+                        "No se pudo abrir la conversación. Inténtelo más tarde.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+            
             MessageDetailScreen(
                 messageId = messageId,
                 onBack = { navController.popBackStack() },
-                onNavigateToConversation = { conversationId ->
-                    // Navegar a la conversación correspondiente
-                    val currentUser = FirebaseAuth.getInstance().currentUser
-                    if (currentUser != null) {
-                        // Determinar si el usuario es profesor o familiar
-                        val route = if (currentUser.email?.contains("profesor") == true) {
-                            AppScreens.ChatProfesor.createRoute(conversationId, "")
-                        } else {
-                            AppScreens.ChatFamilia.createRoute(conversationId, "")
-                        }
-                        navController.navigate(route)
-                    }
-                }
+                onNavigateToConversation = onNavigateToConversation
             )
         }
         

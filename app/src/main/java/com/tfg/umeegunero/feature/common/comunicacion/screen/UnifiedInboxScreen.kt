@@ -63,6 +63,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -99,6 +100,9 @@ import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.automirrored.filled.Announcement
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Assignment
+import com.tfg.umeegunero.data.model.MessageStatus
+import kotlinx.coroutines.delay
+import timber.log.Timber
 
 /**
  * Pantalla unificada de bandeja de entrada para todos los tipos de comunicaciones
@@ -119,8 +123,29 @@ fun UnifiedInboxScreen(
     LaunchedEffect(Unit) {
         viewModel.loadMessages()
         
+        // Añadir un retraso antes de marcar como leídos para asegurar que la lista se cargó
+        delay(500)
+        
         // Marcamos todos los mensajes como leídos al entrar en la pantalla
+        Timber.d("🔍 UnifiedInboxScreen: Marcando todos los mensajes como leídos al entrar")
         viewModel.markAllAsRead()
+        
+        // Actualizamos explícitamente el contador después de marcar como leídos
+        viewModel.loadMessageCount()
+    }
+    
+    // Actualizar contador antes de salir de la pantalla
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE) {
+                viewModel.loadMessageCount()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
     
     Scaffold(
@@ -324,21 +349,24 @@ fun MessageItem(
     val formattedDate = dateFormat.format(message.timestamp.toDate())
     var showOptions by remember { mutableStateOf(false) }
     
+    // Determinar si el mensaje está realmente leído basándose en todos los indicadores disponibles
+    val isReallyRead = message.isRead || message.status == MessageStatus.READ
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (!message.isRead) 4.dp else 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (!isReallyRead) 4.dp else 1.dp),
         colors = CardDefaults.cardColors(
             containerColor = when (message.type) {
-                MessageType.ANNOUNCEMENT -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (!message.isRead) 1f else 0.7f)
-                MessageType.NOTIFICATION -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = if (!message.isRead) 1f else 0.7f)
-                else -> if (!message.isRead) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                MessageType.ANNOUNCEMENT -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (!isReallyRead) 1f else 0.7f)
+                MessageType.NOTIFICATION -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = if (!isReallyRead) 1f else 0.7f)
+                else -> if (!isReallyRead) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
             }
         ),
-        border = if (!message.isRead) 
+        border = if (!isReallyRead) 
             BorderStroke(2.dp, getMessageTypeColor(message.type)) 
         else null
     ) {
@@ -397,7 +425,7 @@ fun MessageItem(
                             Text(
                                 text = "De: ${message.senderName}",
                                 style = MaterialTheme.typography.bodySmall,
-                                fontWeight = if (!message.isRead) FontWeight.Bold else FontWeight.Medium,
+                                fontWeight = if (!isReallyRead) FontWeight.Bold else FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                             )
                         }
@@ -475,7 +503,7 @@ fun MessageItem(
                     Text(
                         text = message.content,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (!message.isRead) FontWeight.SemiBold else FontWeight.Normal,
+                        fontWeight = if (!isReallyRead) FontWeight.SemiBold else FontWeight.Normal,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f)
@@ -489,7 +517,7 @@ fun MessageItem(
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (!message.isRead) {
+                        if (!isReallyRead) {
                             Surface(
                                 shape = CircleShape,
                                 color = getMessageTypeColor(message.type)
@@ -543,7 +571,7 @@ fun MessageItem(
                         Text(
                             text = message.title,
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = if (!message.isRead) FontWeight.Bold else FontWeight.Normal,
+                            fontWeight = if (!isReallyRead) FontWeight.Bold else FontWeight.Normal,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -551,10 +579,10 @@ fun MessageItem(
                         Text(
                             text = message.content,
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = if (!message.isRead) FontWeight.SemiBold else FontWeight.Normal,
+                            fontWeight = if (!isReallyRead) FontWeight.SemiBold else FontWeight.Normal,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            color = if (!message.isRead) 
+                            color = if (!isReallyRead) 
                                 MaterialTheme.colorScheme.onSurface
                             else
                                 MaterialTheme.colorScheme.onSurfaceVariant
@@ -569,7 +597,7 @@ fun MessageItem(
                             Text(
                                 text = message.senderName,
                                 style = MaterialTheme.typography.bodySmall,
-                                fontWeight = if (!message.isRead) FontWeight.Bold else FontWeight.Normal,
+                                fontWeight = if (!isReallyRead) FontWeight.Bold else FontWeight.Normal,
                                 color = MaterialTheme.colorScheme.primary
                             )
                             
@@ -598,13 +626,13 @@ fun MessageItem(
                                 Text(
                                     text = " • $priorityText",
                                     style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = if (!message.isRead) FontWeight.Bold else FontWeight.Normal,
+                                    fontWeight = if (!isReallyRead) FontWeight.Bold else FontWeight.Normal,
                                     color = if (message.priority == MessagePriority.HIGH) Color(0xFFF57C00) else Color.Red
                                 )
                             }
                             
                             // Indicador de no leído
-                            if (!message.isRead) {
+                            if (!isReallyRead) {
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Box(
                                     modifier = Modifier

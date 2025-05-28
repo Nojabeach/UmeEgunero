@@ -7,6 +7,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -76,6 +78,7 @@ import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Sick
+import androidx.compose.material.icons.filled.Notifications
 import com.tfg.umeegunero.data.model.NotificacionAusencia
 import com.tfg.umeegunero.data.model.EstadoNotificacionAusencia
 import java.text.SimpleDateFormat
@@ -256,6 +259,17 @@ fun ListadoPreRegistroDiarioScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
+            // Notificación de nueva ausencia
+            AnimatedVisibility(
+                visible = uiState.hayNuevaNotificacionAusencia,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                NuevaAusenciaNotificacion(
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            
             // Cabecera con selector de fecha
             SelectorFecha(
                 fechaSeleccionada = uiState.fechaSeleccionada,
@@ -1777,6 +1791,51 @@ fun AlumnoItem(
                         }
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Componente para mostrar una notificación cuando llega una nueva ausencia
+ */
+@Composable
+fun NuevaAusenciaNotificacion(
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer
+            ),
+            shape = RoundedCornerShape(8.dp),
+            elevation = CardDefaults.cardElevation(4.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(24.dp)
+                )
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Text(
+                    text = "Nueva notificación de ausencia recibida",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
             }
         }
     }

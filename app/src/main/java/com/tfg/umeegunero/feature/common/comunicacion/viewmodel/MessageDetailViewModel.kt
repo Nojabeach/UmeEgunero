@@ -248,8 +248,42 @@ class MessageDetailViewModel @Inject constructor(
         return when {
             size < 1024 -> "$size B"
             size < 1024 * 1024 -> "${size / 1024} KB"
-            size < 1024 * 1024 * 1024 -> "${size / (1024 * 1024)} MB"
-            else -> "${size / (1024 * 1024 * 1024)} GB"
+            else -> "${size / (1024 * 1024)} MB"
+        }
+    }
+    
+    /**
+     * Obtiene el ID del participante para una conversación
+     * @param conversationId ID de la conversación
+     * @return ID del participante (profesor o familiar según corresponda)
+     */
+    suspend fun getParticipantId(conversationId: String): String {
+        try {
+            Timber.d("Obteniendo ID del participante para conversación: $conversationId")
+            
+            // Si el mensaje actual tiene el participante, usar directamente
+            val currentMessage = _uiState.value.message
+            if (currentMessage != null) {
+                if (currentMessage.senderId.isNotEmpty()) {
+                    Timber.d("Usando el senderId como participante: ${currentMessage.senderId}")
+                    return currentMessage.senderId
+                }
+            }
+            
+            // Intentar obtener el participante a través del repositorio de mensajes
+            val result = messageRepository.getConversationParticipants(conversationId)
+            if (result is Result.Success && result.data.isNotEmpty()) {
+                val participantId = result.data.first()
+                Timber.d("Participante encontrado en la conversación: $participantId")
+                return participantId
+            }
+            
+            // Si no se pudo obtener, devolver un valor por defecto (vacío)
+            Timber.w("No se pudo obtener el participante, devolviendo valor vacío")
+            return ""
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener el participante: ${e.message}")
+            return ""
         }
     }
 } 

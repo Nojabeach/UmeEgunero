@@ -104,6 +104,22 @@ data class UnifiedMessage(
             val statusStr = data["status"] as? String ?: MessageStatus.UNREAD.name
             val priorityValue = (data["priority"] as? Number)?.toInt() ?: MessagePriority.NORMAL.value
             
+            // Determinar si el mensaje está leído basado en el status o el campo explícito
+            val status = try { MessageStatus.valueOf(statusStr) } catch (e: Exception) { MessageStatus.UNREAD }
+            val explicitIsRead = data["isRead"] as? Boolean ?: false
+            val readTimestamp = data["readTimestamp"] as? Timestamp
+            val readByMap = data["readBy"] as? Map<*, *>
+            
+            // Un mensaje está leído si:
+            // 1. Su status es READ, o
+            // 2. El campo isRead es true, o
+            // 3. Tiene un readTimestamp, o
+            // 4. Tiene entradas en el mapa readBy
+            val isRead = status == MessageStatus.READ || 
+                         explicitIsRead || 
+                         readTimestamp != null ||
+                         (readByMap != null && readByMap.isNotEmpty())
+            
             return UnifiedMessage(
                 id = id,
                 senderId = data["senderId"] as? String ?: "",
@@ -114,10 +130,10 @@ data class UnifiedMessage(
                 content = data["content"] as? String ?: "",
                 type = try { MessageType.valueOf(typeStr) } catch (e: Exception) { MessageType.CHAT },
                 timestamp = data["timestamp"] as? Timestamp ?: Timestamp.now(),
-                status = try { MessageStatus.valueOf(statusStr) } catch (e: Exception) { MessageStatus.UNREAD },
+                status = status,
                 attachments = getStringList(data["attachments"]),
                 metadata = getStringMap(data["metadata"]),
-                isRead = data["isRead"] as? Boolean ?: false,
+                isRead = isRead,
                 isArchived = data["isArchived"] as? Boolean ?: false,
                 isDeleted = data["isDeleted"] as? Boolean ?: false,
                 conversationId = data["conversationId"] as? String ?: "",

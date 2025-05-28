@@ -90,6 +90,25 @@ fun HiltProfesorDashboardScreen(
         }
     }
     
+    // Actualizar cada vez que la pantalla vuelve a tener el foco
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.cargarMensajesNoLeidos()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    
+    // También actualizar al montar la pantalla
+    LaunchedEffect(key1 = Unit) {
+        viewModel.cargarMensajesNoLeidos()
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(

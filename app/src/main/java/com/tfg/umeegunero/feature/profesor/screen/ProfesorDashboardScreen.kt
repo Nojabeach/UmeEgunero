@@ -534,8 +534,8 @@ private fun ProfesorDashboardTopBar(
     navController: NavController = rememberNavController()
 ) {
     val haptic = LocalHapticFeedback.current
-    // Observar el contador de mensajes no leídos
-    val unreadMessageCount by viewModel.unreadMessageCount.collectAsState()
+    // Observar el contador de mensajes no leídos desde el uiState
+    val uiState by viewModel.uiState.collectAsState()
     
     CenterAlignedTopAppBar(
         title = { Text("Dashboard Profesor") },
@@ -548,9 +548,9 @@ private fun ProfesorDashboardTopBar(
             ) {
                 BadgedBox(
                     badge = {
-                        if (unreadMessageCount > 0) {
+                        if (uiState.totalMensajesNoLeidos > 0) {
                             Badge {
-                                Text(text = unreadMessageCount.toString())
+                                Text(text = uiState.totalMensajesNoLeidos.toString())
                             }
                         }
                     }

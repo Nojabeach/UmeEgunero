@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import timber.log.Timber
 import java.time.LocalDate
 import java.time.DayOfWeek
@@ -28,7 +29,6 @@ import androidx.navigation.NavController
 import com.tfg.umeegunero.navigation.AppScreens
 import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
 /**
@@ -111,11 +111,8 @@ class ProfesorDashboardViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ProfesorDashboardUiState())
     val uiState: StateFlow<ProfesorDashboardUiState> = _uiState.asStateFlow()
 
-    // Flow específico para el contador de mensajes no leídos
-    private val _unreadMessageCount = MutableStateFlow(0)
-    val unreadMessageCount: StateFlow<Int> = _unreadMessageCount.asStateFlow()
-
-    private var messageCheckJob: Job? = null
+    // Variable para evitar actualizaciones innecesarias
+    private var lastMessageCount = 0
 
     init {
         cargarDatosInicialesDashboard()
@@ -359,74 +356,74 @@ class ProfesorDashboardViewModel @Inject constructor(
     }
 
     /**
-     * Carga los mensajes no leídos del profesor
+     * Carga los mensajes no leídos y actualiza el contador.
      */
     fun cargarMensajesNoLeidos() {
         viewModelScope.launch {
-            val profesorId = _uiState.value.profesor?.dni ?: run {
-                Timber.w("Intentando cargar mensajes sin ID de profesor en el estado.")
-                return@launch
-            }
-
             try {
-                when (val mensajesResult = usuarioRepository.getMensajesNoLeidos(profesorId)) {
-                    is Result.Success -> {
-                        val mensajes = mensajesResult.data
-                        _uiState.update {
-                            it.copy(
-                                mensajesNoLeidos = mensajes,
-                                totalMensajesNoLeidos = mensajes.size
-                            )
-                        }
-                        
-                        // Actualizar también el flow específico para la UI
-                        _unreadMessageCount.update { mensajes.size }
-                        
-                        // Programar actualizaciones periódicas de este contador
-                        iniciarActualizacionesPeriodicasMensajes(profesorId)
-                    }
-                    is Result.Error -> {
-                        _uiState.update { it.copy(error = "Error al cargar mensajes: ${mensajesResult.exception?.message ?: "Error desconocido"}") }
-                        Timber.e(mensajesResult.exception, "Error al cargar mensajes no leídos")
-                    }
-                    is Result.Loading -> { /* No hacer nada */ }
+                val userId = authRepository.getCurrentUserId() ?: return@launch
+                
+                // Usar el repositorio unificado para obtener el conteo
+                val count = messageRepository.getUnreadMessageCount(userId)
+                
+                // Actualizar el estado solo si hay cambios
+                if (count != lastMessageCount) {
+                    _uiState.update { it.copy(totalMensajesNoLeidos = count) }
+                    lastMessageCount = count
+                    
+                    Timber.d("Contador de mensajes no leídos actualizado: $count")
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Error inesperado al cargar mensajes: ${e.message}") }
-                Timber.e(e, "Error inesperado al cargar mensajes no leídos")
+                Timber.e(e, "Error al cargar mensajes no leídos")
             }
         }
     }
     
     /**
-     * Inicia actualizaciones periódicas del contador de mensajes no leídos
+     * Configura la verificación periódica de mensajes no leídos
      */
-    private fun iniciarActualizacionesPeriodicasMensajes(profesorId: String) {
+    private fun setupMessageChecking() {
         viewModelScope.launch {
-            while(true) {
-                // Esperar 5 minutos antes de actualizar de nuevo
-                kotlinx.coroutines.delay(5 * 60 * 1000)
+            while (true) {
+                delay(30000) // Verificar cada 30 segundos
+                checkUnreadMessages()
+            }
+        }
+    }
+
+    /**
+     * Configura la verificación periódica de festivo
+     */
+    private fun checkFestivoHoy() {
+        viewModelScope.launch {
+            while (true) {
+                delay(60000) // Verificar cada minuto
+                val hoyEsFestivo = esDiaFestivoHoy()
+                _uiState.update { it.copy(esFestivoHoy = hoyEsFestivo) }
+            }
+        }
+    }
+
+    /**
+     * Actualiza el contador de mensajes no leídos
+     */
+    private fun checkUnreadMessages() {
+        viewModelScope.launch {
+            try {
+                val userId = authRepository.getCurrentUserId() ?: return@launch
                 
-                try {
-                    when (val mensajesResult = usuarioRepository.getMensajesNoLeidos(profesorId)) {
-                        is Result.Success -> {
-                            val mensajes = mensajesResult.data
-                            // Actualizar contador en el flow específico
-                            _unreadMessageCount.update { mensajes.size }
-                            
-                            // También actualizar el estado general
-                            _uiState.update { 
-                                it.copy(
-                                    mensajesNoLeidos = mensajes,
-                                    totalMensajesNoLeidos = mensajes.size
-                                )
-                            }
-                        }
-                        else -> { /* No hacer nada en caso de error o loading */ }
-                    }
-                } catch (e: Exception) {
-                    Timber.e(e, "Error en actualización periódica de mensajes: ${e.message}")
+                // Usar el repositorio unificado para obtener el conteo
+                val count = messageRepository.getUnreadMessageCount(userId)
+                
+                // Actualizar solo si hay cambios para evitar renderizados innecesarios
+                if (count != lastMessageCount) {
+                    _uiState.update { it.copy(totalMensajesNoLeidos = count) }
+                    lastMessageCount = count
+                    
+                    Timber.d("Contador de mensajes no leídos actualizado: $count")
                 }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al verificar mensajes no leídos")
             }
         }
     }
@@ -455,65 +452,6 @@ class ProfesorDashboardViewModel @Inject constructor(
         alumno: Alumno
     ) {
         navController.navigate("${AppScreens.RegistroDiarioProfesor.route}/${alumno.dni}")
-    }
-
-    /**
-     * Configura la verificación periódica de mensajes no leídos
-     */
-    private fun setupMessageChecking() {
-        messageCheckJob?.cancel()
-        messageCheckJob = viewModelScope.launch {
-            // Cargar inmediatamente por primera vez
-            refreshUnreadMessageCount()
-            
-            // Luego programar actualizaciones periódicas
-            while (true) {
-                delay(60000) // Verificar cada minuto
-                refreshUnreadMessageCount()
-            }
-        }
-    }
-
-    /**
-     * Actualiza el contador de mensajes no leídos
-     */
-    private fun refreshUnreadMessageCount() {
-        viewModelScope.launch {
-            try {
-                val userId = _uiState.value.profesor?.dni ?: authRepository.getCurrentUser()?.dni ?: return@launch
-                
-                // Obtener mensajes no leídos desde el repositorio
-                messageRepository.getUnreadMessageCount(userId).collectLatest { result ->
-                    when (result) {
-                        is Result.Success -> {
-                            val count = result.data
-                            _unreadMessageCount.value = count
-                            _uiState.update { it.copy(totalMensajesNoLeidos = count) }
-                            Timber.d("Contador de mensajes no leídos actualizado: $count")
-                        }
-                        is Result.Error -> {
-                            Timber.e(result.exception, "Error al obtener mensajes no leídos")
-                        }
-                        else -> { /* Ignorar estado Loading */ }
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al verificar mensajes no leídos: ${e.message}")
-            }
-        }
-    }
-
-    /**
-     * Configura la verificación periódica de festivo
-     */
-    private fun checkFestivoHoy() {
-        viewModelScope.launch {
-            while (true) {
-                delay(60000) // Verificar cada minuto
-                val hoyEsFestivo = esDiaFestivoHoy()
-                _uiState.update { it.copy(esFestivoHoy = hoyEsFestivo) }
-            }
-        }
     }
 
 }

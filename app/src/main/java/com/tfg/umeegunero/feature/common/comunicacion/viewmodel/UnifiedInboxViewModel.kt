@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.MessageType
 import com.tfg.umeegunero.data.model.UnifiedMessage
 import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -25,7 +26,8 @@ data class UnifiedInboxUiState(
     val filteredMessages: List<UnifiedMessage> = emptyList(),
     val selectedFilter: MessageType? = null,
     val error: String? = null,
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    val unreadCount: Int = 0
 )
 
 /**
@@ -33,7 +35,8 @@ data class UnifiedInboxUiState(
  */
 @HiltViewModel
 class UnifiedInboxViewModel @Inject constructor(
-    private val messageRepository: UnifiedMessageRepository
+    private val messageRepository: UnifiedMessageRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(UnifiedInboxUiState())
@@ -80,29 +83,64 @@ class UnifiedInboxViewModel @Inject constructor(
     fun markAsRead(messageId: String) {
         viewModelScope.launch {
             try {
-                messageRepository.markAsRead(messageId)
+                val result = messageRepository.markAsRead(messageId)
                 
-                // Actualizar localmente el estado de los mensajes
-                _uiState.update { currentState ->
-                    val updatedMessages = currentState.messages.map { message ->
-                        if (message.id == messageId) {
-                            message.copy(status = com.tfg.umeegunero.data.model.MessageStatus.READ)
-                        } else {
-                            message
-                        }
-                    }
+                if (result is Result.Success) {
+                    // Actualizar el mensaje en la lista local para reflejar el estado leído
+                    updateMessageReadState(messageId, true)
                     
-                    currentState.copy(messages = updatedMessages)
+                    // Verificar si necesitamos actualizar el contador
+                    loadMessageCount()
+                } else if (result is Result.Error) {
+                    _uiState.update { it.copy(error = result.message ?: "Error al marcar como leído") }
+                    Timber.e(result.exception, "Error al marcar mensaje como leído: $messageId")
                 }
-                
-                // Reaplicar filtros si hay alguno activo
-                applyFilters()
             } catch (e: Exception) {
-                Timber.e(e, "Error al marcar mensaje como leído: $messageId")
-                _uiState.update { 
-                    it.copy(error = "Error al marcar como leído: ${e.message}")
+                Timber.e(e, "Error inesperado al marcar mensaje como leído: $messageId")
+                _uiState.update { it.copy(error = "Error: ${e.message}") }
+            }
+        }
+    }
+    
+    /**
+     * Actualiza el estado de lectura de un mensaje en las listas locales
+     */
+    private fun updateMessageReadState(messageId: String, isRead: Boolean) {
+        _uiState.update { currentState ->
+            // Actualizar en la lista principal
+            val updatedMessages = currentState.messages.map { message ->
+                if (message.id == messageId) {
+                    // Crear copia del mensaje con todos los campos actualizados relacionados con lectura
+                    message.copy(
+                        isRead = isRead,
+                        status = if (isRead) com.tfg.umeegunero.data.model.MessageStatus.READ else com.tfg.umeegunero.data.model.MessageStatus.UNREAD
+                    )
+                } else {
+                    message
                 }
             }
+            
+            // Actualizar también en la lista filtrada si existe
+            val updatedFilteredMessages = if (currentState.filteredMessages.isNotEmpty()) {
+                currentState.filteredMessages.map { message ->
+                    if (message.id == messageId) {
+                        message.copy(
+                            isRead = isRead,
+                            status = if (isRead) com.tfg.umeegunero.data.model.MessageStatus.READ else com.tfg.umeegunero.data.model.MessageStatus.UNREAD
+                        )
+                    } else {
+                        message
+                    }
+                }
+            } else {
+                currentState.filteredMessages
+            }
+            
+            // Actualizar el estado
+            currentState.copy(
+                messages = updatedMessages,
+                filteredMessages = updatedFilteredMessages
+            )
         }
     }
     
@@ -246,45 +284,113 @@ class UnifiedInboxViewModel @Inject constructor(
     }
 
     /**
-     * Marca todos los mensajes no leídos como leídos
-     * Esta función se llama al abrir la bandeja de entrada
+     * Marca todos los mensajes como leídos
      */
     fun markAllAsRead() {
         viewModelScope.launch {
+            Timber.d("🔄 Iniciando proceso para marcar todos los mensajes como leídos")
+            
             try {
-                val unreadMessages = _uiState.value.messages.filter { !it.isRead }
+                val currentUser = authRepository.getCurrentUser()
+                if (currentUser == null) {
+                    Timber.w("⚠️ No se pueden marcar mensajes como leídos: usuario no autenticado")
+                    return@launch
+                }
                 
-                if (unreadMessages.isNotEmpty()) {
-                    Timber.d("Marcando ${unreadMessages.size} mensajes como leídos")
-                    
-                    // Llamamos al repositorio para marcar todos como leídos
-                    unreadMessages.forEach { message ->
-                        messageRepository.markAsRead(message.id)
+                // Obtener mensajes no leídos
+                val unreadMessages = _uiState.value.messages.filter { 
+                    !it.isRead && it.status != com.tfg.umeegunero.data.model.MessageStatus.READ
+                }
+                
+                if (unreadMessages.isEmpty()) {
+                    Timber.d("✓ No hay mensajes sin leer para marcar")
+                    return@launch
+                }
+                
+                Timber.d("📩 Marcando ${unreadMessages.size} mensajes como leídos para usuario ${currentUser.dni}")
+                
+                // Marcar cada mensaje como leído en el repositorio
+                unreadMessages.forEach { message ->
+                    try {
+                        Timber.d("🔖 Marcando mensaje ${message.id} como leído")
+                        val result = messageRepository.markAsRead(message.id)
+                        if (result is Result.Error) {
+                            Timber.e(result.exception, "❌ Error al marcar mensaje ${message.id} como leído: ${result.message}")
+                        } else if (result is Result.Success) {
+                            Timber.d("✅ Mensaje ${message.id} marcado como leído correctamente")
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "❌ Excepción al marcar mensaje ${message.id} como leído")
+                    }
+                }
+                
+                // Actualizar el estado local
+                _uiState.update { currentState ->
+                    val updatedMessages = currentState.messages.map { message ->
+                        if (!message.isRead && message.status != com.tfg.umeegunero.data.model.MessageStatus.READ) {
+                            message.copy(
+                                isRead = true, 
+                                status = com.tfg.umeegunero.data.model.MessageStatus.READ
+                            )
+                        } else {
+                            message
+                        }
                     }
                     
-                    // Actualizamos el estado local para reflejar los cambios
-                    _uiState.update { currentState ->
-                        val updatedMessages = currentState.messages.map { message ->
-                            if (!message.isRead) {
-                                message.copy(status = com.tfg.umeegunero.data.model.MessageStatus.READ)
+                    val updatedFilteredMessages = if (currentState.filteredMessages.isNotEmpty()) {
+                        currentState.filteredMessages.map { message ->
+                            if (!message.isRead && message.status != com.tfg.umeegunero.data.model.MessageStatus.READ) {
+                                message.copy(
+                                    isRead = true, 
+                                    status = com.tfg.umeegunero.data.model.MessageStatus.READ
+                                )
                             } else {
                                 message
                             }
                         }
-                        
-                        currentState.copy(messages = updatedMessages)
+                    } else {
+                        currentState.filteredMessages
                     }
                     
-                    // Reaplicamos los filtros
-                    applyFilters()
-                } else {
-                    Timber.d("No hay mensajes sin leer para marcar")
+                    currentState.copy(
+                        messages = updatedMessages,
+                        filteredMessages = updatedFilteredMessages,
+                        unreadCount = 0 // Actualizar explícitamente el contador a cero
+                    )
                 }
+                
+                // Actualizar contador global
+                Timber.d("🔄 Actualizando contador global después de marcar mensajes como leídos")
+                loadMessageCount()
+                
+                // Poner un pequeño delay para asegurar que la BD se actualice
+                delay(1000)
+                Timber.d("🔄 Verificando contador global nuevamente")
+                loadMessageCount() // Actualizar nuevamente para reflejar los cambios en la BD
             } catch (e: Exception) {
-                Timber.e(e, "Error al marcar todos los mensajes como leídos")
-                _uiState.update { 
-                    it.copy(error = "Error al marcar mensajes como leídos: ${e.message}")
-                }
+                Timber.e(e, "❌ Error general al marcar todos los mensajes como leídos")
+            }
+        }
+    }
+
+    /**
+     * Carga el contador de mensajes no leídos
+     */
+    fun loadMessageCount() {
+        viewModelScope.launch {
+            try {
+                val currentUser = authRepository.getCurrentUser() ?: return@launch
+                val count = messageRepository.getUnreadMessageCount(currentUser.dni)
+                
+                Timber.d("Contador de mensajes no leídos actualizado: $count")
+                
+                // Si hay eventos o callbacks registrados para notificar sobre cambios
+                // en el contador, este sería el lugar para invocarlos
+                
+                // Este valor podría usarse para badges u otras indicaciones visuales
+                _uiState.update { it.copy(unreadCount = count) }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar contador de mensajes no leídos: ${e.message}")
             }
         }
     }
