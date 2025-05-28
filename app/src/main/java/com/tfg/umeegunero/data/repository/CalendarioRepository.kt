@@ -307,4 +307,23 @@ class CalendarioRepository @Inject constructor(
             emptyList()
         }
     }
+    
+    /**
+     * Obtiene los eventos generales que aplican a todos los alumnos
+     * @return Lista de eventos generales
+     */
+    suspend fun getEventosGenerales(): List<Evento> {
+        return try {
+            val snapshot = eventosCollection
+                .whereEqualTo("esGeneral", true)
+                .get()
+                .await()
+
+            snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Evento::class.java)?.copy(id = doc.id)
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 } 

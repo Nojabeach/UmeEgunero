@@ -8,6 +8,7 @@ import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CalendarioRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -191,6 +192,56 @@ class CalendarioFamiliaViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar eventos de los hijos: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * Carga eventos creados por profesores del centro
+     * @param centroId ID del centro educativo
+     */
+    fun loadEventosByProfesores(centroId: String) {
+        viewModelScope.launch {
+            try {
+                // Primero obtenemos los profesores del centro
+                val resultadoProfesores = usuarioRepository.getProfesoresByCentroId(centroId)
+                
+                when (resultadoProfesores) {
+                    is Result.Success -> {
+                        val profesores = resultadoProfesores.data
+                        
+                        // Para cada profesor, cargamos sus eventos
+                        for (profesor in profesores) {
+                            val eventosProfesores = calendarioRepository.getEventosByUsuarioId(profesor.dni)
+                            _uiState.update { it.copy(eventos = it.eventos + eventosProfesores) }
+                        }
+                        
+                        Timber.d("Cargados eventos de ${profesores.size} profesores")
+                    }
+                    is Result.Error -> {
+                        Timber.e(resultadoProfesores.exception, "Error al obtener profesores del centro $centroId")
+                    }
+                    is Result.Loading -> {
+                        Timber.d("Cargando profesores del centro $centroId")
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar eventos de profesores: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * Carga eventos generales que aplican a todos los alumnos
+     */
+    fun loadEventosGenerales() {
+        viewModelScope.launch {
+            try {
+                val eventosGenerales = calendarioRepository.getEventosGenerales()
+                _uiState.update { it.copy(eventos = it.eventos + eventosGenerales) }
+                Timber.d("Cargados ${eventosGenerales.size} eventos generales")
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cargar eventos generales: ${e.message}")
             }
         }
     }

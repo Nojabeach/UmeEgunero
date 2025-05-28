@@ -3275,4 +3275,27 @@ open class UsuarioRepository @Inject constructor(
             return@withContext emptyList<Alumno>()
         }
     }
+
+    /**
+     * Obtiene todos los profesores de un centro
+     * @param centroId ID del centro educativo
+     * @return Resultado con la lista de profesores asociados al centro
+     */
+    suspend fun getProfesoresByCentroId(centroId: String): Result<List<Usuario>> = withContext(Dispatchers.IO) {
+        try {
+            // Buscamos usuarios que tengan un perfil de tipo PROFESOR asociado al centro
+            val profesores = usuariosCollection.get().await().documents
+                .mapNotNull { doc -> doc.toObject(Usuario::class.java) }
+                .filter { usuario -> 
+                    usuario.perfiles.any { 
+                        it.tipo == TipoUsuario.PROFESOR && it.centroId == centroId 
+                    }
+                }
+                
+            return@withContext Result.Success(profesores)
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener profesores del centro $centroId")
+            return@withContext Result.Error(e)
+        }
+    }
 }

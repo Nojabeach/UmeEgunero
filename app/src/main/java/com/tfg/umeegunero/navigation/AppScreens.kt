@@ -274,6 +274,11 @@ sealed class AppScreens(val route: String) {
         )
     }
     
+    /**
+     * Acceso directo a la pantalla de perfil sin parámetros
+     */
+    object PerfilScreen : AppScreens("perfil_screen")
+    
     /** 
      * Pantalla de cambio de contraseña
      * @param dni DNI del usuario que cambiará su contraseña
@@ -752,6 +757,8 @@ sealed class AppScreens(val route: String) {
     object DetalleComunicado : AppScreens("detalle_comunicado/{comunicadoId}") {
         fun createRoute(comunicadoId: String) = "detalle_comunicado/$comunicadoId"
     }
+    
+    /* Esta definición se ha eliminado porque ya existe una definición de DetalleRegistro */
     
     /** Pantalla para crear un nuevo comunicado */
     object CrearComunicado : AppScreens("crear_comunicado")

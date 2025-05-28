@@ -612,21 +612,24 @@ fun FamiliaDashboardScreen(
                     ) {
                         IconButton(
                             onClick = {
-                                try {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    Timber.d("Intentando navegar a mensajes unificados directamente")
-                                    scope.launch {
-                                        try {
-                                            // Navegamos directamente a la bandeja de mensajes unificados en lugar del chat
-                                            navController.navigate(AppScreens.UnifiedInbox.route)
-                                        } catch (e: Exception) {
-                                            Timber.e(e, "Error al navegar a mensajes: ${e.message}")
-                                            snackbarHostState.showSnackbar("Error al abrir mensajes: ${e.message}")
+                                                                    try {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        Timber.d("Intentando navegar a mensajes unificados directamente")
+                                        scope.launch {
+                                            try {
+                                                // Navegamos directamente a la bandeja de mensajes unificados en lugar del chat
+                                                navController.navigate(AppScreens.UnifiedInbox.route)
+                                                
+                                                // Actualizamos los contadores de mensajes cuando volvamos
+                                                viewModel.marcarMensajesLeidos()
+                                            } catch (e: Exception) {
+                                                Timber.e(e, "Error al navegar a mensajes: ${e.message}")
+                                                snackbarHostState.showSnackbar("Error al abrir mensajes: ${e.message}")
+                                            }
                                         }
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Error al realizar feedback háptico o navegar: ${e.message}")
                                     }
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Error al realizar feedback háptico o navegar: ${e.message}")
-                                }
                             }
                         ) {
                             Icon(
@@ -638,7 +641,27 @@ fun FamiliaDashboardScreen(
                     }
                     
                     // Icono de perfil
-                    IconButton(onClick = { showNavigateToConfiguracionDialog = true }) {
+                    IconButton(onClick = { 
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            // Obtener el DNI del familiar actual
+                            val familiar = uiState.familiar
+                            if (familiar != null) {
+                                navController.navigate(AppScreens.Perfil.createRoute(false))
+                                Timber.d("Navegando a perfil del familiar: ${familiar.id}")
+                            } else {
+                                Timber.e("No se pudo navegar al perfil: familiar es nulo")
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("No se pudo acceder al perfil: información de usuario no disponible")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al navegar a Perfil: ${e.message}")
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al abrir perfil: ${e.message}")
+                            }
+                        }
+                    }) {
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = "Perfil"
@@ -661,13 +684,7 @@ fun FamiliaDashboardScreen(
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            // Mostrar solicitudes pendientes como un pequeño banner informativo en el footer
-            if (uiState.solicitudesPendientes.isNotEmpty()) {
-                SolicitudesPendientesFooter(solicitudes = uiState.solicitudesPendientes)
-            }
-        }
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         if (uiState.isLoading) {
             // Mostrar un indicador de carga mientras se cargan los datos
@@ -834,9 +851,11 @@ fun FamiliaDashboardScreen(
                             descripcion = "Mensajes, notificaciones y comunicados del centro",
                             icono = Icons.Default.Email,
                             onClick = {
-                                try {
+                                                                    try {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     navController.navigate(AppScreens.UnifiedInbox.route)
+                                    // Actualizamos los contadores de mensajes cuando se navegue a Comunicación
+                                    viewModel.marcarMensajesLeidos()
                                 } catch (e: Exception) {
                                     Timber.e(e, "Error al navegar a Comunicación: ${e.message}")
                                 }
@@ -846,57 +865,41 @@ fun FamiliaDashboardScreen(
                     
                     // Historial Completo
                     item {
-                        HistorialCard(
-                            titulo = "Ver historial completo",
+                        OpcionDashboardCard(
+                            titulo = "Historial Completo",
+                            descripcion = "Consulta todos los registros diarios de actividad de tu hijo/a",
                             icono = Icons.Default.History,
                             onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                // Seleccionar primer hijo o mostrar un selector si hay varios
-                                val primerHijo = uiState.hijos.firstOrNull()
-                                if (primerHijo != null) {
-                                    try {
-                                        navController.navigate(AppScreens.ConsultaRegistroDiario.createRoute(
-                                            alumnoId = primerHijo.id,
-                                            alumnoNombre = primerHijo.nombre
-                                        ))
-                                        Timber.d("Navegando a historial completo para alumno: ${primerHijo.id}, nombre: ${primerHijo.nombre}")
-                                    } catch (e: Exception) {
-                                        Timber.e(e, "Error al navegar a historial completo: ${e.message}")
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    // Seleccionar primer hijo o mostrar un selector si hay varios
+                                    val primerHijo = uiState.hijos.firstOrNull()
+                                    if (primerHijo != null) {
+                                        try {
+                                            navController.navigate(AppScreens.ConsultaRegistroDiario.createRoute(
+                                                alumnoId = primerHijo.id,
+                                                alumnoNombre = primerHijo.nombre
+                                            ))
+                                            Timber.d("Navegando a ConsultaRegistroDiario para alumno: ${primerHijo.id}, nombre: ${primerHijo.nombre}")
+                                        } catch (e: Exception) {
+                                            Timber.e(e, "Error al navegar a historial completo: ${e.message}")
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("Error al navegar al historial completo. Intente de nuevo.")
+                                            }
+                                        }
+                                    } else {
                                         scope.launch {
-                                            snackbarHostState.showSnackbar("Error al navegar al historial completo. Intente de nuevo.")
+                                            snackbarHostState.showSnackbar("No hay hijos registrados para mostrar el historial.")
                                         }
                                     }
-                                } else {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("No hay hijos registrados para mostrar el historial.")
-                                    }
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al navegar a Historial Completo: ${e.message}")
                                 }
                             }
                         )
                     }
                     
-                    // Actividades Preescolares
-                    item {
-                        OpcionDashboardCard(
-                            titulo = "Actividades Preescolares",
-                            descripcion = "Visualiza las actividades educativas programadas para tu hijo/a",
-                            icono = Icons.Default.ColorLens,
-                            onClick = {
-                                try {
-                                    // El ID del familiar es su documento en Firebase
-                                    val familiarId = uiState.familiar?.id ?: return@OpcionDashboardCard
-                                    
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    navController.navigate(AppScreens.ActividadesPreescolar.route)
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Error al navegar a Actividades Preescolares: ${e.message}")
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Error al navegar: ${e.message}")
-                                    }
-                                }
-                            }
-                        )
-                    }
+                    // La actividad de Actividades Preescolares ha sido eliminada
                     
                     // Añadir card de gestión de notificaciones
                     item {
@@ -1691,50 +1694,7 @@ private fun OpcionDashboardCard(
     }
 }
 
-@Composable
-fun HistorialCard(
-    titulo: String,
-    icono: ImageVector,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icono,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Text(
-                text = titulo,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
-            )
-            
-            Spacer(modifier = Modifier.weight(1f))
-            
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = "Ver",
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-}
+// La función HistorialCard ha sido eliminada porque ahora se usa OpcionDashboardCard
 
 private fun showErrorMessage(snackbarHostState: SnackbarHostState, scope: CoroutineScope, mensaje: String) {
     scope.launch {

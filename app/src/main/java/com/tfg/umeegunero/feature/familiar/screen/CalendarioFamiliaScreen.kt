@@ -74,15 +74,24 @@ fun CalendarioFamiliaScreen(
             // Cargar eventos del centro
             viewModel.loadEventosByCentro(centroId)
             
+            // Cargar eventos creados por profesores
+            viewModel.loadEventosByProfesores(centroId)
+            
             // Cargar eventos personalizados del familiar
             viewModel.loadEventosByUsuario(userInfo.id)
             
             // Cargar eventos específicos para los hijos del familiar
             viewModel.loadEventosByHijos()
+            
+            // Cargar eventos generales para todos los alumnos
+            viewModel.loadEventosGenerales()
         } else {
             // Si no hay centroId, cargar solo eventos del usuario
             viewModel.loadEventosByUsuario(userInfo.id)
         }
+        
+        // Log para verificar la carga de eventos
+        Timber.d("Eventos cargados: ${viewModel.uiState.value.eventos.size}")
     }
     
     // SnackbarHostState para mostrar mensajes de error

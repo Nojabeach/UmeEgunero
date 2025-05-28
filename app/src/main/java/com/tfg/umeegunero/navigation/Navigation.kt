@@ -504,6 +504,14 @@ fun Navigation(
             )
         }
         
+        // Perfil sin parámetros (acceso directo)
+        composable(route = AppScreens.PerfilScreen.route) {
+            PerfilScreen(
+                navController = navController,
+                isAdminApp = false
+            )
+        }
+        
         // PANTALLAS DE ESTADÍSTICAS
         composable(route = AppScreens.Estadisticas.route) {
             com.tfg.umeegunero.feature.admin.screen.EstadisticasScreen(
@@ -1261,6 +1269,20 @@ fun Navigation(
                 alumnoId = alumnoId,
                 alumnoNombre = alumnoNombre,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Ruta para la pantalla de detalle de registro de actividad para familiares
+        composable(
+            route = AppScreens.DetalleRegistro.route,
+            arguments = listOf(
+                navArgument("registroId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val registroId = backStackEntry.arguments?.getString("registroId") ?: ""
+            com.tfg.umeegunero.feature.familiar.screen.DetalleRegistroScreen(
+                registroId = registroId,
+                navController = navController
             )
         }
     }
