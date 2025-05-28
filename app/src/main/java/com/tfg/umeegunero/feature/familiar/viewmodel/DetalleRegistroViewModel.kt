@@ -10,6 +10,7 @@ import com.tfg.umeegunero.data.repository.RegistroDiarioRepository
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.model.LecturaFamiliar
+import com.tfg.umeegunero.data.model.NotificacionAusencia
 import com.google.firebase.Timestamp
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +26,8 @@ import java.time.ZoneId
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.tfg.umeegunero.data.repository.AlumnoRepository
+import com.tfg.umeegunero.data.repository.NotificacionAusenciaRepository
 
 /**
  * Estado de UI para la pantalla de detalle de registro
@@ -38,7 +41,8 @@ data class DetalleRegistroUiState(
     val registrosDisponibles: List<Date> = emptyList(),
     val alumnoId: String? = null,
     val alumnoNombre: String? = null,
-    val mostrarSelectorFecha: Boolean = false
+    val mostrarSelectorFecha: Boolean = false,
+    val ausenciaNotificada: NotificacionAusencia? = null
 )
 
 /**
@@ -49,11 +53,17 @@ class DetalleRegistroViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
     private val registroDiarioRepository: RegistroDiarioRepository,
     private val authRepository: AuthRepository,
-    savedStateHandle: SavedStateHandle
+    savedStateHandle: SavedStateHandle,
+    private val alumnoRepository: AlumnoRepository,
+    private val notificacionAusenciaRepository: NotificacionAusenciaRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DetalleRegistroUiState())
     val uiState: StateFlow<DetalleRegistroUiState> = _uiState.asStateFlow()
+
+    private var alumnoId: String? = null
+    private var registrosCargados: Map<String, RegistroActividad> = emptyMap()
+    private var ausenciasCargadas: Map<String, NotificacionAusencia> = emptyMap()
 
     init {
         // Obtener el ID del registro de la navegación
@@ -382,6 +392,100 @@ class DetalleRegistroViewModel @Inject constructor(
                     error = "Error al cargar el registro: ${e.message}"
                 )}
             }
+        }
+    }
+
+    /**
+     * Carga información adicional del registro (nombre del profesor, etc.)
+     */
+    private suspend fun cargarInformacionAdicional(registro: RegistroActividad) {
+        try {
+            // Cargar nombre del profesor si no está disponible
+            if (registro.profesorNombre.isNullOrEmpty() && !registro.profesorId.isNullOrEmpty()) {
+                val resultadoProfesor = usuarioRepository.obtenerUsuarioPorId(registro.profesorId!!)
+                if (resultadoProfesor is Result.Success && resultadoProfesor.data != null) {
+                    _uiState.update { 
+                        it.copy(profesorNombre = "${resultadoProfesor.data.nombre} ${resultadoProfesor.data.apellidos}")
+                    }
+                }
+            } else {
+                _uiState.update { 
+                    it.copy(profesorNombre = registro.profesorNombre)
+                }
+            }
+            
+            // Cargar nombre del alumno si no está disponible
+            if (registro.alumnoNombre.isNullOrEmpty() && !registro.alumnoId.isNullOrEmpty()) {
+                val resultadoAlternativo = alumnoRepository.obtenerAlumnoPorId(registro.alumnoId!!)
+                if (resultadoAlternativo is Result.Success && resultadoAlternativo.data != null) {
+                    _uiState.update { 
+                        it.copy(alumnoNombre = resultadoAlternativo.data.nombre)
+                    }
+                }
+            } else {
+                _uiState.update { 
+                    it.copy(alumnoNombre = registro.alumnoNombre)
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al cargar información adicional")
+        }
+    }
+
+    /**
+     * Carga todos los registros y ausencias del alumno para mostrar las fechas disponibles
+     */
+    private suspend fun cargarRegistrosYAusenciasDelAlumno(alumnoId: String) {
+        try {
+            // Cargar registros
+            val resultadoRegistros = registroDiarioRepository.obtenerRegistrosPorAlumno(alumnoId)
+            if (resultadoRegistros is Result.Success) {
+                val registros = resultadoRegistros.data
+                registrosCargados = registros.associateBy { 
+                    SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(it.fecha.toDate())
+                }
+                
+                // Cargar ausencias
+                val resultadoAusencias = notificacionAusenciaRepository.obtenerAusenciasPorAlumno(alumnoId)
+                if (resultadoAusencias is Result.Success) {
+                    val ausencias = resultadoAusencias.data
+                    ausenciasCargadas = ausencias.associateBy {
+                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(it.fechaAusencia.toDate())
+                    }
+                    
+                    // Combinar fechas de registros y ausencias
+                    val fechasRegistros = registros.map { it.fecha.toDate() }
+                    val fechasAusencias = ausencias.map { it.fechaAusencia.toDate() }
+                    val todasLasFechas = (fechasRegistros + fechasAusencias).distinct().sortedDescending()
+                    
+                    _uiState.update { 
+                        it.copy(registrosDisponibles = todasLasFechas)
+                    }
+                    
+                    // Verificar si hay ausencia para la fecha actual
+                    verificarAusenciaParaFecha(_uiState.value.fechaSeleccionada)
+                } else {
+                    // Si no hay ausencias, solo usar las fechas de registros
+                    val fechasRegistros = registros.map { it.fecha.toDate() }.sortedDescending()
+                    _uiState.update { 
+                        it.copy(registrosDisponibles = fechasRegistros)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al cargar registros y ausencias del alumno")
+        }
+    }
+
+    /**
+     * Verifica si hay una ausencia notificada para la fecha seleccionada
+     */
+    private fun verificarAusenciaParaFecha(fecha: Date) {
+        val fechaKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fecha)
+        val ausencia = ausenciasCargadas[fechaKey]
+        
+        _uiState.update { 
+            it.copy(ausenciaNotificada = ausencia)
         }
     }
 }

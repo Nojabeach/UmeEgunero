@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,11 +32,18 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LocalActivity
+import androidx.compose.material.icons.filled.LocalDining
+import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Wc
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.automirrored.filled.Subject
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +58,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -78,6 +89,7 @@ import com.tfg.umeegunero.data.model.CacaControl
 import com.tfg.umeegunero.data.model.Comida
 import com.tfg.umeegunero.data.model.Comidas
 import com.tfg.umeegunero.data.model.EstadoComida
+import com.tfg.umeegunero.data.model.NotificacionAusencia
 import com.tfg.umeegunero.data.model.RegistroActividad
 import com.tfg.umeegunero.data.model.Siesta
 import com.tfg.umeegunero.feature.familiar.viewmodel.DetalleRegistroViewModel
@@ -95,7 +107,7 @@ import java.util.Locale
  * Pantalla de detalle de registro de actividad diaria
  * 
  * Muestra la información completa de un registro de actividad de un alumno,
- * incluyendo alimentación, siesta, higiene y observaciones generales.
+ * incluyendo alimentación, siesta, higiene, observaciones generales y ausencias notificadas.
  * 
  * @param registroId ID del registro a mostrar
  * @param navController Controlador de navegación
@@ -110,7 +122,6 @@ fun DetalleRegistroScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
 
@@ -120,8 +131,12 @@ fun DetalleRegistroScreen(
         viewModel.cargarRegistro(registroId)
     }
 
-    // Extraer el registro para poder usarlo de forma segura
-    val registro = uiState.registro
+    // Observar cambios en el registro cuando cambia la fecha
+    LaunchedEffect(uiState.registro?.id) {
+        uiState.registro?.let { nuevoRegistro ->
+            Timber.d("Registro actualizado: ${nuevoRegistro.id}, fecha: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(nuevoRegistro.fecha.toDate())}")
+        }
+    }
 
     // Mostrar error si existe
     LaunchedEffect(uiState.error) {
@@ -132,11 +147,6 @@ fun DetalleRegistroScreen(
             }
         }
     }
-    
-    // Efecto para manejar cambios en fecha seleccionada
-    LaunchedEffect(uiState.fechaSeleccionada) {
-        Timber.d("Fecha seleccionada cambió a: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(uiState.fechaSeleccionada)}")
-    }
 
     Scaffold(
         topBar = {
@@ -144,7 +154,7 @@ fun DetalleRegistroScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Detalle de actividad",
+                            text = "Actividad diaria",
                             color = Color.White
                         )
                         if (uiState.alumnoNombre != null) {
@@ -187,12 +197,12 @@ fun DetalleRegistroScreen(
                     }
                     
                     // Botón para chatear con el profesor
-                    registro?.profesorId?.let { profesorId ->
+                    uiState.registro?.profesorId?.let { profesorId ->
                         IconButton(
                             onClick = { 
                                 try {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    navController.navigate("chat/$profesorId/${registro.alumnoId}") 
+                                    navController.navigate("chat/$profesorId/${uiState.registro?.alumnoId}") 
                                 } catch (e: Exception) {
                                     Timber.e(e, "Error en feedback háptico: ${e.message}")
                                 }
@@ -230,8 +240,8 @@ fun DetalleRegistroScreen(
                 ) {
                     CircularProgressIndicator(color = FamiliarColor)
                 }
-            } else if (registro == null) {
-                // Mostrar mensaje de error si no hay registro
+            } else if (uiState.registro == null && uiState.ausenciaNotificada == null) {
+                // Mostrar mensaje de error si no hay registro ni ausencia
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -250,7 +260,7 @@ fun DetalleRegistroScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = "No se encontró el registro de actividad",
+                            text = "No se encontró información para esta fecha",
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.error,
                             textAlign = TextAlign.Center,
@@ -266,359 +276,41 @@ fun DetalleRegistroScreen(
                     }
                 }
             } else {
-                // Mostrar detalles del registro
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(scrollState)
-                        .padding(16.dp)
+                // Mostrar contenido
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Selector de fecha
-                    FechaSelectorCard(
-                        fechaSeleccionada = uiState.fechaSeleccionada,
-                        fechasDisponibles = uiState.registrosDisponibles,
-                        mostrarSelector = uiState.mostrarSelectorFecha,
-                        onFechaSeleccionada = { 
-                            Timber.d("Seleccionando nueva fecha: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it)}")
-                            viewModel.seleccionarFecha(it) 
-                        },
-                        onToggleSelector = { viewModel.toggleSelectorFecha() },
-                        onHaptic = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
-                    )
+                    item {
+                        FechaSelectorCard(
+                            fechaSeleccionada = uiState.fechaSeleccionada,
+                            fechasDisponibles = uiState.registrosDisponibles,
+                            mostrarSelector = uiState.mostrarSelectorFecha,
+                            onFechaSeleccionada = { 
+                                Timber.d("Seleccionando nueva fecha: ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it)}")
+                                viewModel.seleccionarFecha(it) 
+                            },
+                            onToggleSelector = { viewModel.toggleSelectorFecha() },
+                            onHaptic = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
+                        )
+                    }
                     
-                    Spacer(modifier = Modifier.height(16.dp))
+                    // Si hay ausencia notificada, mostrarla primero
+                    uiState.ausenciaNotificada?.let { ausencia ->
+                        item {
+                            AusenciaNotificadaCard(ausencia = ausencia)
+                        }
+                    }
                     
-                    // Información básica
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CalendarToday,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                Text(
-                                    text = formatDateExtended(registro.fecha),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                Column {
-                                    Text(
-                                        text = "Profesor: ${uiState.profesorNombre ?: "Desconocido"}",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Sección de alimentación
-                    if (registro.comidas != null) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-                                // Encabezado de la sección
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Restaurant,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                    
-                                    Spacer(modifier = Modifier.width(16.dp))
-                                    
-                                    Text(
-                                        text = "Alimentación",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                
-                                HorizontalDivider()
-                                
-                                // Detalles de la comida
-                                Column {
-                                    if (registro.comidas.primerPlato.descripcion.isNotBlank()) {
-                                        Text(
-                                            text = "Primer plato",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = registro.comidas.primerPlato.descripcion,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                        
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                    }
-                                    
-                                    if (registro.comidas.segundoPlato.descripcion.isNotBlank()) {
-                                        Text(
-                                            text = "Segundo plato",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = registro.comidas.segundoPlato.descripcion,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                        
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                    }
-                                    
-                                    if (registro.comidas.postre.descripcion.isNotBlank()) {
-                                        Text(
-                                            text = "Postre",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = registro.comidas.postre.descripcion,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Sección de Siesta
-                    if (registro.haSiestaSiNo) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp)
-                            ) {
-                                Text(
-                                    text = "Descanso",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.secondary
-                                )
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                // Hora inicio
-                                registro.horaInicioSiesta.let { inicio ->
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Schedule,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.secondary,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        Text(
-                                            text = "Inicio: ${inicio}",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-
-                                // Hora fin
-                                registro.horaFinSiesta.let { fin ->
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Schedule,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.secondary,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        Text(
-                                            text = "Fin: ${fin}",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-
-                                // Duración calculada
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Schedule,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.secondary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    Text(
-                                        text = "Duración: ${calcularDuracionSiesta(registro.horaInicioSiesta, registro.horaFinSiesta)} min",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Sección de Necesidades Fisiológicas
-                    if (registro.haHechoCaca) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp)
-                            ) {
-                                Text(
-                                    text = "Higiene",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.tertiary
-                                )
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                if (registro.haHechoCaca) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.tertiary,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        Text(
-                                            text = "Ha hecho deposiciones",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-
-                                if (registro.numeroCacas > 0) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.tertiary,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        Text(
-                                            text = "Número: ${registro.numeroCacas}",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                }
-
-                                if (registro.observacionesCaca.isNotBlank()) {
-                                    Text(
-                                        text = "Observaciones: ${registro.observacionesCaca}",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Sección de Observaciones Generales
-                    if (registro.observacionesGenerales.isNotBlank()) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp)
-                            ) {
-                                Text(
-                                    text = "Observaciones Generales",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                Text(
-                                    text = registro.observacionesGenerales,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                            }
+                    // Si hay registro, mostrar sus detalles
+                    uiState.registro?.let { registro ->
+                        item {
+                            RegistroActividadCard(
+                                registro = registro,
+                                profesorNombre = uiState.profesorNombre
+                            )
                         }
                     }
                 }
@@ -640,982 +332,471 @@ fun DetalleRegistroScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DetalleRegistroTopBar(
-    onNavigateBack: () -> Unit,
-    fecha: String,
-    nombreAlumno: String
-) {
-    TopAppBar(
-        title = {
-            Column {
-                Text(
-                    text = nombreAlumno,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White
-                )
-                Text(
-                    text = fecha,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-            }
-        },
-        navigationIcon = {
-            IconButton(onClick = onNavigateBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Volver atrás",
-                    tint = Color.White
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = FamiliarColor,
-            titleContentColor = Color.White,
-            navigationIconContentColor = Color.White
-        )
-    )
-}
-
-@Composable
-fun DetalleRegistroContent(
-    fecha: String,
-    nombreAlumno: String,
-    comidaData: Comida? = null,
-    observacionesTexto: String? = null,
-    cacaControlData: CacaControl? = null,
-    descanso: String,
-    actividades: List<String>,
-    isLoading: Boolean,
-    onNavigateBack: () -> Unit
-) {
-    val scrollState = rememberScrollState()
-    
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f)),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = FamiliarColor)
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(16.dp)
-            ) {
-                // Información básica
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CalendarToday,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text(
-                                text = fecha,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text(
-                                text = "Alumno: $nombreAlumno",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                    }
-                }
-
-                // Sección de alimentación
-                if (comidaData != null) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Alimentación",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            if (comidaData.consumoPrimero != null) {
-                                Text(
-                                    text = "Primer plato",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-
-                                Spacer(modifier = Modifier.height(4.dp))
-
-                                Text(
-                                    text = comidaData.consumoPrimero,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                
-                                if (comidaData.descripcionPrimero != null && comidaData.descripcionPrimero.isNotBlank()) {
-                                    Text(
-                                        text = comidaData.descripcionPrimero,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-                            }
-                            
-                            if (comidaData.consumoSegundo != null) {
-                                Text(
-                                    text = "Segundo plato",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-
-                                Spacer(modifier = Modifier.height(4.dp))
-
-                                Text(
-                                    text = comidaData.consumoSegundo,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                
-                                if (comidaData.descripcionSegundo != null && comidaData.descripcionSegundo.isNotBlank()) {
-                                    Text(
-                                        text = comidaData.descripcionSegundo,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-                            }
-                            
-                            if (comidaData.consumoPostre != null) {
-                                Text(
-                                    text = "Postre",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-
-                                Spacer(modifier = Modifier.height(4.dp))
-
-                                Text(
-                                    text = comidaData.consumoPostre,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                
-                                if (comidaData.descripcionPostre != null && comidaData.descripcionPostre.isNotBlank()) {
-                                    Text(
-                                        text = comidaData.descripcionPostre,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Sección de Necesidades Fisiológicas
-                if (cacaControlData != null) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Higiene",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.tertiary
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            if (cacaControlData.tipo1 == true) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.tertiary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    Text(
-                                        text = "Tipo 1",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-
-                            if (cacaControlData.tipo2 == true) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.tertiary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    Text(
-                                        text = "Tipo 2",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-                            
-                            if (cacaControlData.tipo3 == true) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.tertiary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    Text(
-                                        text = "Tipo 3",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-
-                            if (cacaControlData.hora != null) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Schedule,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.secondary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    Text(
-                                        text = "Hora: ${cacaControlData.hora}",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-
-                            if (cacaControlData.cantidad != null) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.tertiary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    Text(
-                                        text = "Cantidad: ${cacaControlData.cantidad}",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-
-                            if (cacaControlData.tipo != null) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.tertiary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    Text(
-                                        text = "Tipo: ${cacaControlData.tipo}",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-
-                            if (cacaControlData.descripcion != null) {
-                                Text(
-                                    text = cacaControlData.descripcion,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Sección de Observaciones Generales
-                if (observacionesTexto != null && observacionesTexto.isNotBlank()) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Observaciones Generales",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.error
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Text(
-                                text = observacionesTexto,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// Funciones utilitarias
-fun formatDateExtended(timestamp: Timestamp): String {
-    val dateFormat = SimpleDateFormat("EEEE, dd 'de' MMMM 'de' yyyy", Locale("es", "ES"))
-    return dateFormat.format(timestamp.toDate()).replaceFirstChar { it.uppercase() }
-}
-
-fun formatTime(timestamp: Timestamp): String {
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-    return timeFormat.format(timestamp.toDate())
-}
-
-fun formatDuracion(minutos: Int): String {
-    val horas = minutos / 60
-    val minutosRestantes = minutos % 60
-
-    return if (horas > 0) {
-        "$horas h $minutosRestantes min"
-    } else {
-        "$minutosRestantes min"
-    }
-}
-
 /**
- * Calcula la duración en minutos entre dos horas en formato "HH:mm"
+ * Tarjeta para mostrar una ausencia notificada
  */
-fun calcularDuracionSiesta(horaInicio: String, horaFin: String): Int {
-    if (horaInicio.isBlank() || horaFin.isBlank()) return 0
-    
-    try {
-        val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
-        val inicio = formatoHora.parse(horaInicio)
-        val fin = formatoHora.parse(horaFin)
-        
-        if (inicio != null && fin != null) {
-            // Calcular la diferencia en minutos
-            val diferenciaMillis = fin.time - inicio.time
-            return (diferenciaMillis / (1000 * 60)).toInt()
-        }
-    } catch (e: Exception) {
-        return 0
-    }
-    
-    return 0
-}
-
-fun nivelConsumoText(nivel: EstadoComida): String {
-    return when (nivel) {
-        EstadoComida.RECHAZADO -> "Nada"
-        EstadoComida.PARCIAL -> "Poco"
-        EstadoComida.COMPLETO -> "Bien"
-        EstadoComida.NO_SERVIDO -> "No servido"
-        EstadoComida.NO_APLICABLE -> "No aplicable"
-        EstadoComida.SIN_DATOS -> "Sin datos"
-    }
-}
-
-fun nivelConsumoColor(nivel: EstadoComida): Color {
-    return when (nivel) {
-        EstadoComida.RECHAZADO -> Color.Red
-        EstadoComida.PARCIAL -> Color(0xFFFF9800) // Orange
-        EstadoComida.COMPLETO -> Color(0xFF4CAF50) // Green
-        EstadoComida.NO_SERVIDO -> Color(0xFF2196F3) // Blue
-        EstadoComida.NO_APLICABLE -> Color(0xFF9E9E9E) // Gray
-        EstadoComida.SIN_DATOS -> Color(0xFF9E9E9E) // Gray
-    }
-}
-
-@Preview(showBackground = true)
 @Composable
-fun DetalleRegistroScreenPreview() {
-    UmeEguneroTheme {
-        DetalleRegistroScreenPreviewContent()
-    }
-}
-
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun DetalleRegistroScreenDarkPreview() {
-    UmeEguneroTheme(darkTheme = true) {
-        DetalleRegistroScreenPreviewContent()
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DetalleRegistroScreenPreviewContent() {
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scrollState = rememberScrollState()
-    
-    // Mock de datos para el preview
-    val alumnoNombre = "Martín García López"
-    val comidaMock = Comida(
-        consumoPrimero = "Lentejas con verduras",
-        descripcionPrimero = "Delicioso plato de lentejas con verduras",
-        consumoSegundo = "Filete de pollo con ensalada",
-        descripcionSegundo = "Delicioso filete de pollo con ensalada",
-        consumoPostre = "Fruta",
-        descripcionPostre = "Deliciosa fruta fresca"
-    )
-    
-    val siestaMock = Siesta(
-        duracion = 45,
-        observaciones = "Ha dormido tranquilamente.",
-        inicio = Timestamp(Date()),
-        fin = Timestamp(Date())
-    )
-    
-    val cacaMock = CacaControl(
-        tipo1 = true,
-        tipo2 = true,
-        tipo3 = true,
-        hora = "12:00",
-        cantidad = "1000 ml",
-        tipo = "Normal",
-        descripcion = "Sin problemas."
-    )
-    
-    val actividadesMock = Actividad(
-        titulo = "Clase de pintura",
-        descripcion = "Hoy hemos realizado dibujos con acuarelas sobre el otoño.",
-        participacion = "Ha participado activamente y ha mostrado creatividad.",
-        observaciones = "Se ha relacionado bien con sus compañeros."
-    )
-    
-    val registroMock = RegistroActividad(
-        id = "registro1",
-        alumnoId = "alumno1",
-        alumnoNombre = alumnoNombre,
-        fecha = Timestamp(Date()),
-        profesorId = "maestro1", 
-        profesorNombre = "Ana Martínez",
-        comidas = Comidas(),
-        observacionesComida = "Ha comido muy bien",
-        haSiestaSiNo = true,
-        horaInicioSiesta = "13:00",
-        horaFinSiesta = "14:45",
-        observacionesSiesta = "Ha dormido tranquilamente",
-        haHechoCaca = true,
-        numeroCacas = 1,
-        observacionesCaca = "Sin problemas",
-        observacionesGenerales = "Hoy ha sido un día muy bueno para Martín. Ha estado participativo y alegre."
-    )
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Registro de $alumnoNombre",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White
-                        )
-                        Text(
-                            text = formatDateExtended(registroMock.fecha),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.8f)
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = Color.White
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = FamiliarColor,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
+fun AusenciaNotificadaCard(
+    ausencia: NotificacionAusencia,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )
+    ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+                .fillMaxWidth()
                 .padding(16.dp)
-                .verticalScroll(scrollState)
         ) {
             // Encabezado
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.DateRange,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
-                Text(
-                    text = "Registro del día",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            
-            Text(
-                text = "Registrado por: ${registroMock.profesorNombre}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 32.dp, top = 4.dp, bottom = 16.dp)
-            )
-            
-            // Comida
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Restaurant,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        Text(
-                            text = "Comida",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Menú del día
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Menú del día:",
+                        text = "Ausencia notificada",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text(
-                        text = comidaMock.consumoPrimero?.let { "$it (${comidaMock.descripcionPrimero})" } ?: "No registrado",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Consumo
-                    Text(
-                        text = "Consumo:",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Primer plato
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Primer plato:",
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.width(120.dp)
-                        )
-                        
-                        Text(
-                            text = comidaMock.consumoPrimero?.let { nivelConsumoText(when (it) {
-                                "Lentejas con verduras" -> EstadoComida.COMPLETO
-                                "Filete de pollo con ensalada" -> EstadoComida.COMPLETO
-                                else -> EstadoComida.PARCIAL
-                            }) } ?: "No registrado",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = comidaMock.consumoPrimero?.let { nivelConsumoColor(when (it) {
-                                "Lentejas con verduras" -> EstadoComida.COMPLETO
-                                "Filete de pollo con ensalada" -> EstadoComida.COMPLETO
-                                else -> EstadoComida.PARCIAL
-                            }) } ?: Color.Black
-                        )
-                    }
-                    
-                    // Segundo plato
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Segundo plato:",
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.width(120.dp)
-                        )
-                        
-                        Text(
-                            text = comidaMock.consumoSegundo?.let { "$it (${comidaMock.descripcionSegundo})" } ?: "No registrado",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = comidaMock.consumoSegundo?.let { nivelConsumoColor(when (it) {
-                                "Lentejas con verduras" -> EstadoComida.COMPLETO
-                                "Filete de pollo con ensalada" -> EstadoComida.COMPLETO
-                                else -> EstadoComida.PARCIAL
-                            }) } ?: Color.Black
-                        )
-                    }
-                    
-                    // Postre
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Postre:",
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.width(120.dp)
-                        )
-                        
-                        Text(
-                            text = comidaMock.consumoPostre?.let { "$it (${comidaMock.descripcionPostre})" } ?: "No registrado",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = comidaMock.consumoPostre?.let { nivelConsumoColor(when (it) {
-                                "Fruta" -> EstadoComida.COMPLETO
-                                else -> EstadoComida.PARCIAL
-                            }) } ?: Color.Black
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Observaciones de la comida
-                    if (!comidaMock.observaciones.isNullOrBlank()) {
-                        Text(
-                            text = "Observaciones:",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = comidaMock.observaciones,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                }
-            }
-            
-            // Siesta
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Bedtime,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        Text(
-                            text = "Siesta",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Duración
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Duración:",
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.width(120.dp)
-                        )
-                        
-                        Text(
-                            text = formatDuracion(siestaMock.duracion),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Observaciones de la siesta
-                    if (!siestaMock.observaciones.isNullOrBlank()) {
-                        Text(
-                            text = "Observaciones:",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = siestaMock.observaciones,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                }
-            }
-
-            // Actividades
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocalActivity,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        Text(
-                            text = actividadesMock.titulo,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Descripción
-                    Text(
-                        text = "Descripción:",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text(
-                        text = actividadesMock.descripcion,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Participación
-                    Text(
-                        text = "Participación:",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text(
-                        text = actividadesMock.participacion,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    
-                    // Observaciones de las actividades
-                    if (!actividadesMock.observaciones.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text(
-                            text = "Observaciones:",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = actividadesMock.observaciones,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                }
-            }
-            
-            // Observaciones Generales
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "Observaciones Generales",
-                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.error
                     )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = registroMock.observacionesGenerales,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
                 }
+                
+                Text(
+                    text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(ausencia.fechaNotificacion.toDate()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Motivo
+            Text(
+                text = "Motivo: ${ausencia.motivo}",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            
+            // Comentarios del profesor si los hay
+            if (ausencia.comentariosProfesor.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Comentarios del profesor: ${ausencia.comentariosProfesor}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+            
+            // Notificado por
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Notificado por: ${ausencia.familiarNombre}",
+                style = MaterialTheme.typography.bodySmall,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+        }
+    }
+}
+
+/**
+ * Tarjeta para mostrar un registro de actividad completo
+ */
+@Composable
+fun RegistroActividadCard(
+    registro: RegistroActividad,
+    profesorNombre: String? = null,
+    modifier: Modifier = Modifier
+) {
+    val fecha = SimpleDateFormat("HH:mm", Locale.getDefault()).format(registro.fecha.toDate())
+    
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Encabezado con fecha y hora
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Registro de actividades",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Text(
+                    text = "Registrado a las $fecha",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            // Profesor que registró
+            if (profesorNombre != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Por: $profesorNombre",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Comidas
+            InfoSeccion(
+                icon = Icons.Default.LocalDining,
+                title = "Comidas",
+                content = {
+                    Column {
+                        ComidaItem("Primer plato", registro.comidas.primerPlato.estadoComida)
+                        ComidaItem("Segundo plato", registro.comidas.segundoPlato.estadoComida)
+                        ComidaItem("Postre", registro.comidas.postre.estadoComida)
+                        
+                        if (!registro.observacionesComida.isNullOrEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Observaciones: ${registro.observacionesComida}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            )
+                        }
+                    }
+                }
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Siesta
+            InfoSeccion(
+                icon = Icons.Default.NightsStay,
+                title = "Siesta",
+                content = {
+                    Column {
+                        if (registro.haSiestaSiNo) {
+                            val horaInicio = registro.horaInicioSiesta.ifEmpty { "No registrada" }
+                            val horaFin = registro.horaFinSiesta.ifEmpty { "No registrada" }
+                            
+                            Text("El alumno ha dormido siesta", style = MaterialTheme.typography.bodyMedium)
+                            Text("De $horaInicio a $horaFin", style = MaterialTheme.typography.bodyMedium)
+                            
+                            if (!registro.observacionesSiesta.isNullOrEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Observaciones: ${registro.observacionesSiesta}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            }
+                        } else {
+                            Text("El alumno no ha dormido siesta", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            )
+            
+            // Mostrar deposiciones si ha hecho caca
+            if (registro.haHechoCaca) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                InfoSeccion(
+                    icon = Icons.Default.Wc,
+                    title = "Deposiciones",
+                    content = {
+                        Column {
+                            Text(
+                                "El alumno ha hecho ${registro.numeroCacas} deposiciones", 
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            
+                            if (!registro.observacionesCaca.isNullOrEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Observaciones: ${registro.observacionesCaca}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            }
+                        }
+                    }
+                )
+            }
+            
+            // Materiales necesarios
+            if (registro.necesitaPanales || registro.necesitaToallitas || registro.necesitaRopaCambio || 
+                !registro.otroMaterialNecesario.isNullOrEmpty()) {
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                InfoSeccion(
+                    icon = Icons.Default.DateRange,
+                    title = "Material necesario",
+                    content = {
+                        Column {
+                            if (registro.necesitaPanales) {
+                                Text("• Pañales", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            if (registro.necesitaToallitas) {
+                                Text("• Toallitas", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            if (registro.necesitaRopaCambio) {
+                                Text("• Ropa de cambio", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            if (!registro.otroMaterialNecesario.isNullOrEmpty()) {
+                                Text("• ${registro.otroMaterialNecesario}", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                )
+            }
+            
+            // Observaciones generales
+            if (!registro.observacionesGenerales.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                InfoSeccion(
+                    icon = Icons.AutoMirrored.Filled.Subject,
+                    title = "Observaciones generales",
+                    content = {
+                        Text(
+                            text = registro.observacionesGenerales ?: "",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                )
+            }
+            
+            // Indicador de lectura por familiares
+            if (registro.lecturasPorFamiliar.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                InfoSeccion(
+                    icon = Icons.Default.CheckCircle,
+                    title = "Estado de lectura",
+                    content = {
+                        LecturaFamiliaresIndicador(
+                            lecturasPorFamiliar = registro.lecturasPorFamiliar
+                        )
+                    }
+                )
             }
         }
+    }
+}
+
+@Composable
+fun InfoSeccion(
+    icon: ImageVector,
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = FamiliarColor,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Box(modifier = Modifier.padding(start = 28.dp)) {
+            content()
+        }
+    }
+}
+
+@Composable
+fun ComidaItem(nombre: String, estado: EstadoComida) {
+    Row(
+        modifier = Modifier.padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val (color, texto) = when (estado) {
+            EstadoComida.COMPLETO -> Pair(Color.Green, "Completo")
+            EstadoComida.PARCIAL -> Pair(Color.Yellow, "Parcial")
+            EstadoComida.RECHAZADO -> Pair(Color.Red, "Rechazado")
+            EstadoComida.NO_SERVIDO -> Pair(Color.Gray, "No servido")
+            EstadoComida.NO_APLICABLE -> Pair(Color.Gray, "No aplicable")
+            EstadoComida.SIN_DATOS -> Pair(Color.Gray, "Sin datos")
+        }
+        
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(color, CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "$nombre: $texto",
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+@Composable
+fun LecturaFamiliaresIndicador(
+    lecturasPorFamiliar: Map<String, com.tfg.umeegunero.data.model.LecturaFamiliar>
+) {
+    var mostrarDialogo by remember { mutableStateOf(false) }
+    
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { mostrarDialogo = true }
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Visibility,
+                contentDescription = "Lecturas",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Leído por ${lecturasPorFamiliar.size} familiar(es)",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = "Ver detalles",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        
+        // Mostrar nombres de familiares que han leído
+        lecturasPorFamiliar.values.take(2).forEach { lectura ->
+            Text(
+                text = "• Familiar ${lectura.familiarId.take(4)}...",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 28.dp, top = 2.dp)
+            )
+        }
+        
+        if (lecturasPorFamiliar.size > 2) {
+            Text(
+                text = "• y ${lecturasPorFamiliar.size - 2} más...",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 28.dp, top = 2.dp)
+            )
+        }
+    }
+    
+    // Diálogo con detalles de lecturas
+    if (mostrarDialogo) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogo = false },
+            title = {
+                Text(
+                    text = "Detalles de lectura",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                LazyColumn {
+                    items(lecturasPorFamiliar.values.toList()) { lectura ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = lectura.familiarId,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "Leído",
+                                        tint = Color.Green,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.height(4.dp))
+                                
+                                val fechaLectura = SimpleDateFormat(
+                                    "dd/MM/yyyy 'a las' HH:mm",
+                                    Locale.getDefault()
+                                ).format(lectura.fechaLectura.toDate())
+                                
+                                Text(
+                                    text = "Leído el $fechaLectura",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { mostrarDialogo = false }) {
+                    Text("Cerrar")
+                }
+            }
+        )
     }
 }
 
@@ -1801,6 +982,51 @@ fun FechaSelectorDropdown(
             }
         }
     }
+}
+
+// Funciones utilitarias
+fun formatDateExtended(timestamp: Timestamp): String {
+    val dateFormat = SimpleDateFormat("EEEE, dd 'de' MMMM 'de' yyyy", Locale("es", "ES"))
+    return dateFormat.format(timestamp.toDate()).replaceFirstChar { it.uppercase() }
+}
+
+fun formatTime(timestamp: Timestamp): String {
+    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    return timeFormat.format(timestamp.toDate())
+}
+
+fun formatDuracion(minutos: Int): String {
+    val horas = minutos / 60
+    val minutosRestantes = minutos % 60
+
+    return if (horas > 0) {
+        "$horas h $minutosRestantes min"
+    } else {
+        "$minutosRestantes min"
+    }
+}
+
+/**
+ * Calcula la duración en minutos entre dos horas en formato "HH:mm"
+ */
+fun calcularDuracionSiesta(horaInicio: String, horaFin: String): Int {
+    if (horaInicio.isBlank() || horaFin.isBlank()) return 0
+    
+    try {
+        val formatoHora = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val inicio = formatoHora.parse(horaInicio)
+        val fin = formatoHora.parse(horaFin)
+        
+        if (inicio != null && fin != null) {
+            // Calcular la diferencia en minutos
+            val diferenciaMillis = fin.time - inicio.time
+            return (diferenciaMillis / (1000 * 60)).toInt()
+        }
+    } catch (e: Exception) {
+        return 0
+    }
+    
+    return 0
 }
 
 // Función para determinar si una fecha es hoy

@@ -199,10 +199,14 @@ class EventoRepository @Inject constructor(
             val eventoMap = evento.toMap().toMutableMap()
             eventoMap["creadorId"] = creadorId
             
+            // Log para verificar los destinatarios
+            val destinatarios = eventoMap["destinatarios"] as? List<*> ?: emptyList<String>()
+            Timber.d("Guardando evento con ${destinatarios.size} destinatarios: $destinatarios")
+            
             // Guardar el evento usando los datos del map actualizado
             nuevoEventoRef.set(eventoMap).await()
             
-            Timber.d("Evento creado con ID: $eventoId, creador (DNI): $creadorId")
+            Timber.d("Evento creado con ID: $eventoId, creador (DNI): $creadorId, destinatarios: ${destinatarios.size}")
             Result.Success(eventoId)
         } catch (e: Exception) {
             Timber.e(e, "Error al crear evento")
@@ -313,6 +317,45 @@ class EventoRepository @Inject constructor(
             // Aquí se podría implementar una caché local con Room
         } catch (e: Exception) {
             Timber.e(e, "Error al sincronizar eventos")
+        }
+    }
+
+    /**
+     * Obtiene todos los eventos destinados a un usuario específico
+     * @param usuarioId ID del usuario (DNI)
+     * @param centroId ID del centro educativo
+     * @return Lista de eventos destinados al usuario
+     */
+    suspend fun obtenerEventosParaUsuario(usuarioId: String, centroId: String): List<Evento> {
+        return try {
+            // Obtener todos los eventos del centro
+            val eventosSnapshot = firestore.collection(COLLECTION_EVENTOS)
+                .whereEqualTo("centroId", centroId)
+                .get()
+                .await()
+            
+            val eventos = mutableListOf<Evento>()
+            
+            for (doc in eventosSnapshot.documents) {
+                val data = doc.data ?: continue
+                val evento = Evento.fromMap(data, doc.id) ?: continue
+                
+                // Incluir el evento si:
+                // 1. Es público
+                // 2. El usuario es destinatario
+                // 3. El usuario es el creador
+                if (evento.publico || 
+                    evento.destinatarios.contains(usuarioId) || 
+                    evento.creadorId == usuarioId) {
+                    eventos.add(evento)
+                }
+            }
+            
+            // Ordenar eventos por fecha
+            eventos.sortedBy { it.fecha.seconds }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener eventos para usuario $usuarioId en centro $centroId")
+            emptyList()
         }
     }
 } 

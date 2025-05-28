@@ -6,6 +6,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.Query
 import com.tfg.umeegunero.data.model.Mensaje
 import com.tfg.umeegunero.data.model.MessagePriority
 import com.tfg.umeegunero.data.model.MessageStatus
@@ -63,22 +66,29 @@ class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val unifiedMessageRepository: UnifiedMessageRepository,
     private val notificacionRepository: NotificacionRepository,
-    private val notificationService: NotificationService
+    private val notificationService: NotificationService,
+    private val firestore: FirebaseFirestore
 ) : ViewModel() {
 
     private val TAG = "ChatViewModel"
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
+    
+    // Listener para mensajes en tiempo real
+    private var messagesListener: ListenerRegistration? = null
 
     /**
      * Inicializa el ViewModel con los datos necesarios
      */
     fun inicializar(conversacionId: String, participanteId: String, alumnoId: String? = null) {
+        Timber.d("Inicializando ChatViewModel - conversacionId: '$conversacionId', participanteId: '$participanteId', alumnoId: '$alumnoId'")
+        
         _uiState.update { it.copy(
             isLoading = true,
             conversacionId = conversacionId,
             participanteId = participanteId,
-            alumnoId = alumnoId
+            alumnoId = alumnoId,
+            error = null
         ) }
         
         viewModelScope.launch {
@@ -86,17 +96,30 @@ class ChatViewModel @Inject constructor(
                 // Cargar usuario actual
                 cargarUsuarioActual()
                 
+                // Si el participanteId es temporal o vacío, intentar obtenerlo de la conversación
+                val realParticipanteId = if (participanteId.isEmpty() || participanteId == "loading") {
+                    Timber.d("ParticipanteId temporal o vacío, intentando obtener de la conversación")
+                    obtenerParticipanteDeConversacion(conversacionId)
+                } else {
+                    participanteId
+                }
+                
+                if (realParticipanteId.isEmpty()) {
+                    throw Exception("No se pudo determinar el participante de la conversación")
+                }
+                
+                // Actualizar el participanteId real
+                _uiState.update { it.copy(participanteId = realParticipanteId) }
+                
                 // Cargar participante
-                cargarParticipante(participanteId)
+                cargarParticipante(realParticipanteId)
                 
                 // Cargar mensajes
                 cargarMensajesUnificados(conversacionId)
                 
-                // Marcar mensajes como leídos
-                if (conversacionId.isNotEmpty()) {
-                    marcarMensajesComoLeidos(conversacionId)
-                }
+                // Ya no necesitamos marcar mensajes aquí porque se hace automáticamente en el listener
             } catch (e: Exception) {
+                Timber.e(e, "Error al inicializar chat: ${e.message}")
                 _uiState.update { it.copy(
                     error = "Error al cargar la conversación: ${e.message}",
                     isLoading = false
@@ -160,64 +183,99 @@ class ChatViewModel @Inject constructor(
     /**
      * Carga los mensajes de la conversación desde el repositorio unificado
      */
-    private suspend fun cargarMensajesUnificados(conversacionId: String) {
+    private fun cargarMensajesUnificados(conversacionId: String) {
         if (conversacionId.isEmpty()) {
             _uiState.update { it.copy(mensajes = emptyList(), isLoading = false) }
             return
         }
         
+        // Cancelar listener anterior si existe
+        messagesListener?.remove()
+        
         try {
-            val result = unifiedMessageRepository.getMessagesFromConversation(conversacionId).collect { result ->
-                when (result) {
-                    is Result.Success<List<UnifiedMessage>> -> {
-                        val messages = result.data
+            // Configurar listener en tiempo real para los mensajes
+            messagesListener = firestore.collection("unifiedMessages")
+                .whereEqualTo("conversationId", conversacionId)
+                .whereEqualTo("type", MessageType.CHAT.name)
+                .orderBy("timestamp", Query.Direction.ASCENDING)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        Timber.e(error, "Error al escuchar mensajes: ${error.message}")
+                        
+                        // Si es un error de permisos o red, intentar reconectar después de un tiempo
+                        if (error.message?.contains("permission", ignoreCase = true) == true ||
+                            error.message?.contains("network", ignoreCase = true) == true ||
+                            error.message?.contains("unavailable", ignoreCase = true) == true) {
+                            
+                            viewModelScope.launch {
+                                kotlinx.coroutines.delay(5000) // Esperar 5 segundos
+                                if (_uiState.value.conversacionId == conversacionId) {
+                                    Timber.d("Intentando reconectar al chat...")
+                                    cargarMensajesUnificados(conversacionId)
+                                }
+                            }
+                        }
+                        
+                        _uiState.update { it.copy(
+                            error = "Error al cargar mensajes: ${error.message}",
+                            isLoading = false
+                        ) }
+                        return@addSnapshotListener
+                    }
+                    
+                    if (snapshot != null) {
+                        val messages = snapshot.documents.mapNotNull { doc ->
+                            try {
+                                val data = doc.data ?: return@mapNotNull null
+                                UnifiedMessage.fromMap(doc.id, data)
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al parsear mensaje: ${doc.id}")
+                                null
+                            }
+                        }
+                        
                         _uiState.update { it.copy(
                             mensajes = messages.sortedBy { mensaje -> mensaje.timestamp },
-                            isLoading = false
+                            isLoading = false,
+                            error = null // Limpiar error si la conexión se restableció
                         ) }
-                    }
-                    is Result.Error -> {
-                        _uiState.update { it.copy(
-                            error = "Error al cargar los mensajes: ${result.message}",
-                            isLoading = false
-                        ) }
-                        Timber.e("Error al cargar mensajes unificados: ${result.message}")
-                    }
-                    is Result.Loading -> {
-                        _uiState.update { it.copy(isLoading = true) }
+                        
+                        // Marcar mensajes nuevos como leídos
+                        viewModelScope.launch {
+                            marcarMensajesNuevosComoLeidos(messages)
+                        }
+                        
+                        Timber.d("Mensajes actualizados: ${messages.size} mensajes en la conversación")
                     }
                 }
-            }
+                
+            Timber.d("Listener de mensajes configurado para conversación: $conversacionId")
         } catch (e: Exception) {
             _uiState.update { it.copy(
-                error = "Error al cargar los mensajes: ${e.message}",
+                error = "Error al configurar listener de mensajes: ${e.message}",
                 isLoading = false
             ) }
-            Timber.e(e, "Error al cargar mensajes")
+            Timber.e(e, "Error al configurar listener de mensajes")
         }
     }
-
+    
     /**
-     * Marca los mensajes como leídos
+     * Marca solo los mensajes nuevos como leídos
      */
-    private suspend fun marcarMensajesComoLeidos(conversacionId: String) {
+    private suspend fun marcarMensajesNuevosComoLeidos(messages: List<UnifiedMessage>) {
         val currentUser = _uiState.value.usuario ?: return
         
         try {
-            // Marcar todos los mensajes no leídos como leídos
-            val mensajesNoLeidos = _uiState.value.mensajes.filter { 
+            // Filtrar solo mensajes no leídos que no son del usuario actual
+            val mensajesNoLeidos = messages.filter { 
                 it.status == MessageStatus.UNREAD && it.senderId != currentUser.dni 
             }
             
             mensajesNoLeidos.forEach { mensaje ->
                 unifiedMessageRepository.markAsRead(mensaje.id)
             }
-            
-            // También actualizar en el repositorio local (compatibilidad)
-            chatRepository.marcarTodosComoLeidos(conversacionId, currentUser.dni)
         } catch (e: Exception) {
-            _uiState.update { it.copy(error = "Error al marcar mensajes como leídos: ${e.message}") }
-            Timber.e(e, "Error al marcar mensajes como leídos")
+            Timber.e(e, "Error al marcar mensajes como leídos: ${e.message}")
         }
     }
 
@@ -281,8 +339,7 @@ class ChatViewModel @Inject constructor(
                 
                 when (result) {
                     is Result.Success -> {
-                        // Recargar mensajes
-                        cargarMensajesUnificados(_uiState.value.conversacionId)
+                        // No necesitamos recargar mensajes porque el listener lo hará automáticamente
                         
                         // Limpiar adjuntos
                         _uiState.update { it.copy(
@@ -318,5 +375,67 @@ class ChatViewModel @Inject constructor(
      */
     fun borrarError() {
         _uiState.update { it.copy(error = null) }
+    }
+    
+    /**
+     * Reconecta el listener de mensajes manualmente
+     */
+    fun reconectarChat() {
+        val conversacionId = _uiState.value.conversacionId
+        if (conversacionId.isNotEmpty()) {
+            Timber.d("Reconectando chat manualmente...")
+            _uiState.update { it.copy(error = null, isLoading = true) }
+            cargarMensajesUnificados(conversacionId)
+        }
+    }
+
+    /**
+     * Intenta obtener el ID del participante desde la conversación
+     */
+    private suspend fun obtenerParticipanteDeConversacion(conversacionId: String): String {
+        return try {
+            val currentUser = _uiState.value.usuario
+            val currentUserId = currentUser?.dni ?: ""
+            
+            // Obtener participantes de la conversación
+            val result = unifiedMessageRepository.getConversationParticipants(conversacionId)
+            
+            when (result) {
+                is Result.Success -> {
+                    val participants = result.data
+                    Timber.d("Participantes encontrados en conversación: $participants")
+                    
+                    // Filtrar el usuario actual para obtener el otro participante
+                    val otherParticipant = participants.firstOrNull { it != currentUserId }
+                    
+                    if (otherParticipant != null) {
+                        Timber.d("Participante encontrado: $otherParticipant")
+                        otherParticipant
+                    } else {
+                        // Si no hay otro participante, usar el primer participante disponible
+                        participants.firstOrNull() ?: ""
+                    }
+                }
+                is Result.Error -> {
+                    Timber.e("Error al obtener participantes: ${result.message}")
+                    ""
+                }
+                else -> ""
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener participante de conversación")
+            ""
+        }
+    }
+
+    /**
+     * Limpia los recursos cuando el ViewModel se destruye
+     */
+    override fun onCleared() {
+        super.onCleared()
+        // Cancelar el listener de mensajes
+        messagesListener?.remove()
+        messagesListener = null
+        Timber.d("ChatViewModel: Listener de mensajes cancelado")
     }
 } 

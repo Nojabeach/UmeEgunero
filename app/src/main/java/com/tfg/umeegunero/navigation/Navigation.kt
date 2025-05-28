@@ -67,6 +67,7 @@ import com.tfg.umeegunero.feature.common.comunicacion.screen.ComunicadoDetailScr
 import com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen
 import com.tfg.umeegunero.feature.centro.screen.VincularAlumnoClaseScreen
 import android.widget.Toast
+import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.MessageDetailViewModel
 
 /**
  * Sistema de navegación principal de la aplicación UmeEgunero.
@@ -1112,19 +1113,24 @@ fun Navigation(
         ) { backStackEntry ->
             val messageId = backStackEntry.arguments?.getString("messageId") ?: ""
             
-            val onNavigateToConversation: (String) -> Unit = { conversationId ->
+            val onNavigateToConversation: (String) -> Unit = { combinedParams ->
                 try {
-                    // El viewModel no está directamente disponible aquí, por lo que tenemos que obtener el usuario de otra manera
+                    // Extraer conversationId y participantId del string combinado
+                    val params = combinedParams.split("/")
+                    val conversationId = params.getOrNull(0) ?: ""
+                    val participantId = params.getOrNull(1) ?: ""
+                    
+                    // Obtener el usuario actual para determinar el tipo
                     val currentUser = FirebaseAuth.getInstance().currentUser
                     val isProfesor = currentUser?.email?.contains("profesor") == true
                     
-                    // Navegar directamente - los parámetros se obtendrán en la pantalla de destino
+                    // Navegar con los parámetros correctos
                     val route = if (isProfesor) {
                         // Para profesores
-                        AppScreens.ChatProfesor.createRoute(conversationId, "")
+                        AppScreens.ChatProfesor.createRoute(conversationId, participantId)
                     } else {
                         // Para familiares
-                        AppScreens.ChatFamilia.createRoute(conversationId, "")
+                        AppScreens.ChatFamilia.createRoute(conversationId, participantId)
                     }
                     
                     Timber.d("Navegando a chat: $route")

@@ -7,6 +7,7 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.CalendarioRepository
+import com.tfg.umeegunero.data.repository.EventoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -48,7 +49,8 @@ data class CalendarioUiState(
 class CalendarioFamiliaViewModel @Inject constructor(
     private val calendarioRepository: CalendarioRepository,
     private val authRepository: AuthRepository,
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val eventoRepository: EventoRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(CalendarioUiState())
@@ -78,12 +80,17 @@ class CalendarioFamiliaViewModel @Inject constructor(
                 // Obtener el centro del familiar desde el primer perfil
                 val perfil = usuario.perfiles.firstOrNull()
                 val centroId = perfil?.centroId ?: ""
+                val familiarId = usuario.dni
                 
-                // Obtener eventos del centro
-                val eventosResult = calendarioRepository.getEventosByCentro(centroId)
+                // Usar el nuevo método para obtener eventos específicos para el usuario
+                val eventos = if (centroId.isNotEmpty() && familiarId.isNotEmpty()) {
+                    eventoRepository.obtenerEventosParaUsuario(familiarId, centroId)
+                } else {
+                    emptyList()
+                }
                 
                 _uiState.update { it.copy(
-                    eventos = eventosResult,
+                    eventos = eventos,
                     isLoading = false
                 ) }
             } catch (e: Exception) {

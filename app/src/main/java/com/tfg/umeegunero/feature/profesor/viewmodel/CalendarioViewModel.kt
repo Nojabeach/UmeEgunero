@@ -3,6 +3,7 @@ package com.tfg.umeegunero.feature.profesor.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestore
 import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
 import com.tfg.umeegunero.data.model.TipoUsuario
@@ -10,6 +11,7 @@ import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.data.repository.EventoRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.data.repository.FamiliarRepository
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.util.toLocalDate
 import com.tfg.umeegunero.util.toTimestamp
@@ -18,8 +20,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import timber.log.Timber
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -50,7 +54,8 @@ data class CalendarioUiState(
 class CalendarioViewModel @Inject constructor(
     private val eventoRepository: EventoRepository,
     private val authRepository: AuthRepository,
-    private val usuarioRepository: UsuarioRepository
+    private val usuarioRepository: UsuarioRepository,
+    private val familiarRepository: com.tfg.umeegunero.data.repository.FamiliarRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalendarioUiState())
@@ -102,8 +107,9 @@ class CalendarioViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true) }
                 
-                val eventos = if (centroId != null) {
-                    eventoRepository.obtenerEventosPorCentro(centroId!!)
+                // Usar el nuevo método para obtener eventos específicos para el usuario
+                val eventos = if (centroId != null && profesorId != null) {
+                    eventoRepository.obtenerEventosParaUsuario(profesorId!!, centroId!!)
                 } else {
                     emptyList()
                 }
@@ -217,49 +223,33 @@ class CalendarioViewModel @Inject constructor(
         
         // Validar que tenemos el ID del usuario y del centro
         if (profesorId.isNullOrEmpty() || centroId.isNullOrEmpty()) {
-            viewModelScope.launch {
-                try {
-                    // Intentar obtener los datos del usuario actual
-                    val currentUser = authRepository.getCurrentUser()
-                    if (currentUser != null) {
-                        this@CalendarioViewModel.profesorId = currentUser.dni
-                        
-                        // Buscar perfil de profesor para obtener centroId
-                        val perfilProfesor = currentUser.perfiles.find { it.tipo == TipoUsuario.PROFESOR }
-                        if (perfilProfesor != null && perfilProfesor.centroId.isNotEmpty()) {
-                            this@CalendarioViewModel.centroId = perfilProfesor.centroId
-                            // Intentar crear el evento de nuevo con los datos obtenidos
-                            crearEvento(titulo, descripcion, tipoEvento)
-                            return@launch
-                        }
-                    }
-                    
-                    // Si llegamos aquí, no se pudieron obtener los datos necesarios
-                    _uiState.update { it.copy(error = "No se puede crear el evento: no se pudo identificar al usuario o su centro") }
-                } catch (e: Exception) {
-                    Timber.e(e, "Error al obtener datos de usuario para crear evento")
-                    _uiState.update { it.copy(error = "Error al crear evento: ${e.message}") }
-                }
-            }
+            _uiState.update { it.copy(error = "No se puede crear el evento: no se pudo identificar al usuario o su centro") }
             return
         }
-        
-        // Crear objeto evento
-        val fechaHora = LocalDateTime.of(diaSeleccionado, java.time.LocalTime.of(8, 0))
-        val timestamp = fechaHora.toTimestamp()
-        val nuevoEvento = Evento(
-            id = "",  // Se asignará en el repositorio
-            titulo = titulo,
-            descripcion = descripcion,
-            fecha = timestamp,
-            tipo = tipoEvento,
-            creadorId = profesorId,
-            centroId = centroId
-        )
         
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true, mostrarDialogoEvento = false) }
+                
+                // Obtener los familiares de los alumnos del profesor
+                val destinatarios = obtenerFamiliaresDeAlumnos()
+                
+                Timber.d("Creando evento con ${destinatarios.size} destinatarios: $destinatarios")
+                
+                // Crear objeto evento
+                val fechaHora = LocalDateTime.of(diaSeleccionado, LocalTime.of(8, 0))
+                val timestamp = fechaHora.toTimestamp()
+                val nuevoEvento = Evento(
+                    id = "",  // Se asignará en el repositorio
+                    titulo = titulo,
+                    descripcion = descripcion,
+                    fecha = timestamp,
+                    tipo = tipoEvento,
+                    creadorId = profesorId,
+                    centroId = centroId,
+                    publico = true,
+                    destinatarios = destinatarios
+                )
                 
                 eventoRepository.crearEvento(nuevoEvento)
                 
@@ -279,6 +269,96 @@ class CalendarioViewModel @Inject constructor(
                         error = "Error al crear evento: ${e.message}"
                     )
                 }
+            }
+        }
+    }
+    
+    /**
+     * Obtiene los IDs de los familiares de los alumnos del profesor
+     */
+    private suspend fun obtenerFamiliaresDeAlumnos(): List<String> {
+        return try {
+            val familiaresIds = mutableSetOf<String>()
+            
+            // Obtener el usuario actual (profesor)
+            val usuarioActual = usuarioRepository.getUsuarioActual().first()
+            if (usuarioActual is Result.Success) {
+                val profesor = usuarioActual.data
+                
+                // Obtener las clases del profesor directamente desde el documento en Firestore
+                // para asegurar que tenemos los datos más actualizados
+                val firestore = FirebaseFirestore.getInstance()
+                val profesorDoc = firestore.collection("usuarios")
+                    .document(profesor.dni)
+                    .get()
+                    .await()
+                
+                // Obtenemos los IDs de las clases directamente del documento
+                val clasesIds = profesorDoc.get("clasesIds") as? List<String> ?: emptyList()
+                
+                Timber.d("Profesor ${profesor.nombre} (${profesor.dni}) tiene ${clasesIds.size} clases: $clasesIds")
+                
+                // Si no hay clases, intentamos obtenerlas del perfil del profesor
+                if (clasesIds.isEmpty()) {
+                    Timber.w("No se encontraron clasesIds en el documento del profesor. Intentando obtener del perfil...")
+                    val perfilProfesor = profesor.perfiles.find { it.tipo == TipoUsuario.PROFESOR }
+                    if (perfilProfesor != null && perfilProfesor.clasesIds.isNotEmpty()) {
+                        Timber.d("Usando clasesIds del perfil del profesor: ${perfilProfesor.clasesIds}")
+                        // Procesar cada clase para obtener sus alumnos y familiares
+                        procesarClasesParaFamiliares(perfilProfesor.clasesIds, familiaresIds)
+                    } else {
+                        Timber.w("El profesor no tiene clases asignadas.")
+                    }
+                } else {
+                    // Procesar las clases obtenidas del documento
+                    procesarClasesParaFamiliares(clasesIds, familiaresIds)
+                }
+            } else {
+                Timber.e("No se pudo obtener el usuario actual")
+            }
+            
+            Timber.d("Total de familiares encontrados: ${familiaresIds.size}, IDs: $familiaresIds")
+            familiaresIds.toList()
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener familiares de alumnos")
+            emptyList()
+        }
+    }
+    
+    /**
+     * Procesa las clases para obtener los familiares de sus alumnos
+     */
+    private suspend fun procesarClasesParaFamiliares(clasesIds: List<String>, familiaresIds: MutableSet<String>) {
+        // Para cada clase, obtener los alumnos
+        for (claseId in clasesIds) {
+            try {
+                val alumnosResult = usuarioRepository.getAlumnosByClase(claseId)
+                if (alumnosResult is Result.Success) {
+                    val alumnos = alumnosResult.data
+                    
+                    Timber.d("Clase $claseId tiene ${alumnos.size} alumnos")
+                    
+                    // Para cada alumno, obtener sus familiares
+                    for (alumno in alumnos) {
+                        try {
+                            val familiaresResult = familiarRepository.getFamiliaresByAlumnoId(alumno.id)
+                            if (familiaresResult is Result.Success) {
+                                val familiares = familiaresResult.data
+                                familiaresIds.addAll(familiares.map { it.dni })
+                                
+                                Timber.d("Alumno ${alumno.nombre} (ID: ${alumno.id}) tiene ${familiares.size} familiares: ${familiares.map { it.dni }}")
+                            } else if (familiaresResult is Result.Error) {
+                                Timber.e(familiaresResult.exception, "Error al obtener familiares para alumno ${alumno.id}")
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al procesar familiares del alumno ${alumno.id}")
+                        }
+                    }
+                } else if (alumnosResult is Result.Error) {
+                    Timber.e(alumnosResult.exception, "Error al obtener alumnos para clase $claseId")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al procesar la clase $claseId")
             }
         }
     }

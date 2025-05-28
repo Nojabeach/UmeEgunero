@@ -1022,45 +1022,34 @@ fun FamiliaDashboardScreen(
                     )
                 },
                 actions = {
-                    // Badge para mensajes no leídos
-                    val pendingCount = uiState.totalMensajesNoLeidos
-                    
-                    // Botón de mensajes con badge
-                    BadgedBox(
-                        badge = {
-                            if (pendingCount > 0) {
-                                Badge { Text(pendingCount.toString()) }
+                    // Botón de mensajes sin badge
+                    IconButton(
+                        onClick = {
+                            try {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                Timber.d("Intentando navegar a mensajes unificados directamente")
+                                scope.launch {
+                                    try {
+                                        // Navegamos directamente a la bandeja de mensajes unificados en lugar del chat
+                                        navController.navigate(AppScreens.UnifiedInbox.route)
+                                        
+                                        // Actualizamos los contadores de mensajes cuando volvamos
+                                        viewModel.marcarMensajesLeidos()
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Error al navegar a mensajes: ${e.message}")
+                                        snackbarHostState.showSnackbar("Error al abrir mensajes: ${e.message}")
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al realizar feedback háptico o navegar: ${e.message}")
                             }
                         }
                     ) {
-                        IconButton(
-                            onClick = {
-                                                                    try {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        Timber.d("Intentando navegar a mensajes unificados directamente")
-                                        scope.launch {
-                                            try {
-                                                // Navegamos directamente a la bandeja de mensajes unificados en lugar del chat
-                                                navController.navigate(AppScreens.UnifiedInbox.route)
-                                                
-                                                // Actualizamos los contadores de mensajes cuando volvamos
-                                                viewModel.marcarMensajesLeidos()
-                                            } catch (e: Exception) {
-                                                Timber.e(e, "Error al navegar a mensajes: ${e.message}")
-                                                snackbarHostState.showSnackbar("Error al abrir mensajes: ${e.message}")
-                                            }
-                                        }
-                                    } catch (e: Exception) {
-                                        Timber.e(e, "Error al realizar feedback háptico o navegar: ${e.message}")
-                                    }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Chat,
-                                contentDescription = "Ver mensajes",
-                                tint = Color.White
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Chat,
+                            contentDescription = "Ver mensajes",
+                            tint = Color.White
+                        )
                     }
                     
                     // Icono de perfil
@@ -1258,7 +1247,7 @@ fun FamiliaDashboardScreen(
                             descripcion = "Mensajes, notificaciones y comunicados del centro",
                             icono = Icons.Default.Email,
                             onClick = {
-                                                                    try {
+                                try {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     navController.navigate(AppScreens.UnifiedInbox.route)
                                     // Actualizamos los contadores de mensajes cuando se navegue a Comunicación

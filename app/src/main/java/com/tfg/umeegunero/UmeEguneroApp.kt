@@ -1,10 +1,15 @@
 package com.tfg.umeegunero
 
+import android.app.Activity
 import android.app.Application
 import android.os.Build
+import android.os.Bundle
 import androidx.hilt.work.HiltWorkerFactory
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.work.Configuration
 import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -14,42 +19,67 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.installations.FirebaseInstallations
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
 import com.google.firebase.storage.FirebaseStorage
 import com.jakewharton.threetenabp.AndroidThreeTen
+import com.tfg.umeegunero.admin.AdminTools
+import com.tfg.umeegunero.util.DebugUtils
+import com.tfg.umeegunero.data.repository.SyncRepository
 import com.tfg.umeegunero.data.worker.EventoWorker
 import com.tfg.umeegunero.data.worker.SincronizacionWorker
 import com.tfg.umeegunero.notification.AppNotificationManager
 import com.tfg.umeegunero.util.SyncManager
-import com.tfg.umeegunero.util.DebugUtils
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 /**
- * Clase principal de la aplicación UmeEgunero.
+ * Aplicación principal de UmeEgunero.
  * 
- * Se encarga de inicializar componentes principales como Firebase,
- * Timber para logging, y configurar canales de notificación.
+ * Esta clase extiende [Application] y es el punto de entrada principal de la aplicación.
+ * Se encarga de:
+ * - Inicializar las bibliotecas necesarias (Hilt, Firebase, Timber, etc.)
+ * - Configurar el manejo de errores con Crashlytics
+ * - Establecer la configuración inicial de la aplicación
+ * - Gestionar el ciclo de vida global de la aplicación
+ * 
+ * Utiliza [HiltAndroidApp] para la inyección de dependencias en toda la aplicación.
+ * 
+ * @property syncRepository Repositorio para operaciones de sincronización
+ * @property notificationManager Gestor de notificaciones de la aplicación
+ * @property syncManager Gestor del servicio de sincronización
+ * @property debugUtils Utilidades para funciones de debug y administrador
+ * @property workerFactory Factory para crear Workers con inyección de dependencias
+ * 
+ * @see Application
+ * @see HiltAndroidApp
+ * @see Configuration.Provider
+ * 
+ * @author Maitane Ibañez Irazabal (2º DAM Online)
+ * @since 2024
  */
 @HiltAndroidApp
-class UmeEguneroApp : Application(), Configuration.Provider, ImageLoaderFactory {
+class UmeEguneroApp : Application(), Configuration.Provider, DefaultLifecycleObserver, ImageLoaderFactory {
 
     @Inject
-    lateinit var notificationManager: AppNotificationManager
+    lateinit var syncRepository: SyncRepository
     
     @Inject
-    lateinit var workerFactory: HiltWorkerFactory
+    lateinit var notificationManager: AppNotificationManager
     
     @Inject
     lateinit var syncManager: SyncManager
     
     @Inject
     lateinit var debugUtils: DebugUtils
+    
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
     
     @Inject
     lateinit var imageLoader: ImageLoader
@@ -70,10 +100,10 @@ class UmeEguneroApp : Application(), Configuration.Provider, ImageLoaderFactory 
     }
 
     override fun onCreate() {
-        super.onCreate()
+        super<Application>.onCreate()
         
         // Inicializar Timber para logging solo en debug
-        if (BuildConfig.DEBUG) {
+        if (com.tfg.umeegunero.BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
         
@@ -95,28 +125,43 @@ class UmeEguneroApp : Application(), Configuration.Provider, ImageLoaderFactory 
         // Configurar tareas periódicas
         configurarSincronizacionPeriodica()
         
-        // No iniciar el servicio de sincronización aquí para evitar ForegroundServiceStartNotAllowedException
-        // El servicio se iniciará cuando la app esté en primer plano
-        // syncManager.iniciarServicioSincronizacion()
-        
-        // Programar la inicialización del servicio para cuando la app esté en primer plano
-        // usando un retraso para asegurar que la interfaz ya está visible
-        android.os.Handler(mainLooper).postDelayed({
-            try {
-                Timber.d("Intentando iniciar servicio de sincronización con retraso")
-                syncManager.iniciarServicioSincronizacion()
-            } catch (e: Exception) {
-                Timber.e(e, "Error al iniciar servicio de sincronización con retraso")
-                FirebaseCrashlytics.getInstance().recordException(e)
-            }
-        }, 5000) // 5 segundos de retraso
+        // NO iniciar el servicio de sincronización aquí para evitar ForegroundServiceStartNotAllowedException
+        // El servicio se iniciará cuando sea necesario y la app esté en primer plano
+        // Esto se puede hacer desde una Activity cuando esté visible o cuando haya trabajo pendiente
         
         // Crear admin de debug automáticamente si no existe (solo en debug)
-        if (BuildConfig.DEBUG) {
+        if (com.tfg.umeegunero.BuildConfig.DEBUG) {
             debugUtils.ensureDebugAdminApp()
             
             // Iniciar proceso de subida del avatar de administrador
             subirAvatarAdminInicio()
+        }
+        
+        // Registrar ActivityLifecycleCallbacks solo en debug
+        if (com.tfg.umeegunero.BuildConfig.DEBUG) {
+            registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+                override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+                    Timber.d("Activity created: ${activity.localClassName}")
+                }
+                override fun onActivityStarted(activity: Activity) {
+                    Timber.d("Activity started: ${activity.localClassName}")
+                }
+                override fun onActivityResumed(activity: Activity) {
+                    Timber.d("Activity resumed: ${activity.localClassName}")
+                    // Aquí es seguro iniciar servicios en primer plano si es necesario
+                    // ya que la app está visible
+                }
+                override fun onActivityPaused(activity: Activity) {
+                    Timber.d("Activity paused: ${activity.localClassName}")
+                }
+                override fun onActivityStopped(activity: Activity) {
+                    Timber.d("Activity stopped: ${activity.localClassName}")
+                }
+                override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+                override fun onActivityDestroyed(activity: Activity) {
+                    Timber.d("Activity destroyed: ${activity.localClassName}")
+                }
+            })
         }
     }
     
@@ -131,25 +176,25 @@ class UmeEguneroApp : Application(), Configuration.Provider, ImageLoaderFactory 
         Timber.d("Crashlytics habilitado explícitamente")
         
         // En modo debug, podemos activar o desactivar según sea necesario para pruebas
-        if (BuildConfig.DEBUG) {
+        if (com.tfg.umeegunero.BuildConfig.DEBUG) {
             // Para desarrollo, queremos ver los informes de errores
             crashlytics.setCustomKey("debug_mode", true)
             Timber.d("Crashlytics activado en modo DEBUG para pruebas")
             
             // Registrar un log de inicio de debug
-            crashlytics.log("Aplicación iniciada en modo DEBUG: ${BuildConfig.VERSION_NAME}")
+            crashlytics.log("Aplicación iniciada en modo DEBUG: ${com.tfg.umeegunero.BuildConfig.VERSION_NAME}")
         } else {
             // En producción, siempre activamos Crashlytics
             crashlytics.setCustomKey("debug_mode", false)
             
             // Registrar la versión de la app como clave personalizada
-            crashlytics.setCustomKey("app_version_name", BuildConfig.VERSION_NAME)
-            crashlytics.setCustomKey("app_version_code", BuildConfig.VERSION_CODE)
+            crashlytics.setCustomKey("app_version_name", com.tfg.umeegunero.BuildConfig.VERSION_NAME)
+            crashlytics.setCustomKey("app_version_code", com.tfg.umeegunero.BuildConfig.VERSION_CODE)
             
             Timber.d("Crashlytics activado en modo RELEASE")
             
             // Registrar un log de inicio en Crashlytics
-            crashlytics.log("Aplicación iniciada: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+            crashlytics.log("Aplicación iniciada: ${com.tfg.umeegunero.BuildConfig.VERSION_NAME} (${com.tfg.umeegunero.BuildConfig.VERSION_CODE})")
         }
         
         // Agregar información del dispositivo
@@ -261,7 +306,7 @@ class UmeEguneroApp : Application(), Configuration.Provider, ImageLoaderFactory 
             // Configurar Firebase Remote Config para desarrollo
             val remoteConfig: FirebaseRemoteConfig = Firebase.remoteConfig
             val configSettings = remoteConfigSettings {
-                if (BuildConfig.DEBUG) {
+                if (com.tfg.umeegunero.BuildConfig.DEBUG) {
                     minimumFetchIntervalInSeconds = 0 // Sin caché en desarrollo
                 } else {
                     minimumFetchIntervalInSeconds = 3600 // 1 hora en producción
@@ -292,7 +337,7 @@ class UmeEguneroApp : Application(), Configuration.Provider, ImageLoaderFactory 
             // Reintentar la inicialización con una configuración mínima
             try {
                 val options = FirebaseOptions.Builder()
-                    .setApplicationId(BuildConfig.APPLICATION_ID)
+                    .setApplicationId(com.tfg.umeegunero.BuildConfig.APPLICATION_ID)
                     .build()
                 
                 if (FirebaseApp.getApps(this).isEmpty()) {

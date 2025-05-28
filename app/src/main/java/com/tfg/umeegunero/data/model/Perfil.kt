@@ -23,6 +23,7 @@ package com.tfg.umeegunero.data.model
  * @property centroId Identificador del centro educativo donde se aplica este perfil
  * @property verificado Indica si el perfil ha sido verificado por un administrador
  * @property alumnos Lista de identificadores (DNI) de alumnos asociados a este perfil
+ * @property clasesIds Lista de identificadores de clases asignadas (solo para PROFESOR)
  * 
  * @see TipoUsuario Enumeración que define los posibles roles de usuario
  * @see SubtipoFamiliar Enumeración que detalla los tipos de relaciones familiares
@@ -33,5 +34,6 @@ data class Perfil(
     val subtipo: SubtipoFamiliar? = null,
     val centroId: String = "",
     val verificado: Boolean = false,
-    val alumnos: List<String> = emptyList() // Lista de DNIs de alumnos
+    val alumnos: List<String> = emptyList(), // Lista de DNIs de alumnos
+    val clasesIds: List<String> = emptyList() // Lista de IDs de clases (para profesores)
 ) 

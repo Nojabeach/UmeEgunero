@@ -122,21 +122,16 @@ fun HiltProfesorDashboardScreen(
                 },
                 actions = {
                     // Botón de mensajes con badge para notificaciones
-                    BadgedBox(
-                        badge = {
-                            if (uiState.totalMensajesNoLeidos > 0) {
-                                Badge { Text(uiState.totalMensajesNoLeidos.toString()) }
-                            }
+                    IconButton(
+                        onClick = { 
+                            navController.navigate(AppScreens.UnifiedInbox.route) 
                         }
                     ) {
-                        IconButton(onClick = {
-                            navController.navigate(AppScreens.UnifiedInbox.route)
-                        }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Chat,
-                                contentDescription = "Mensajes"
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Chat,
+                            contentDescription = "Ver mensajes",
+                            tint = Color.White
+                        )
                     }
                     
                     // Menú de opciones

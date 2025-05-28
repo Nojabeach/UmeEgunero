@@ -65,24 +65,45 @@ fun ChatFamiliaScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
     
+    // Log para diagnóstico
+    Timber.d("ChatFamiliaScreen iniciado - profesorId: '$profesorId', conversacionId: '$conversacionId', alumnoId: '$alumnoId'")
+    
     // Manejar caso donde el profesorId está vacío
     LaunchedEffect(profesorId, conversacionId) {
-        if (profesorId.isEmpty()) {
-            // Si no tenemos profesorId, intentar inferirlo del conversacionId
-            Timber.w("profesorId vacío, intentando inferir a partir de conversación: $conversacionId")
-            Toast.makeText(
-                context,
-                "Información de participante no disponible. Volviendo atrás...",
-                Toast.LENGTH_SHORT
-            ).show()
-            // Volver atrás después de mostrar el mensaje
-            delay(1500)
-            navController.popBackStack()
-            return@LaunchedEffect
+        when {
+            profesorId.isEmpty() && conversacionId.isEmpty() -> {
+                Timber.e("Tanto profesorId como conversacionId están vacíos")
+                Toast.makeText(
+                    context,
+                    "Error: No se pudo determinar la conversación",
+                    Toast.LENGTH_LONG
+                ).show()
+                delay(1500)
+                navController.popBackStack()
+            }
+            profesorId.isEmpty() && conversacionId.isNotEmpty() -> {
+                // Si no tenemos profesorId pero sí conversacionId, intentar obtenerlo
+                Timber.w("profesorId vacío, intentando obtener participante de conversación: $conversacionId")
+                try {
+                    // Intentar inicializar con un ID temporal mientras se carga el real
+                    viewModel.inicializar(conversacionId, "loading", alumnoId)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al inicializar chat con conversación: $conversacionId")
+                    Toast.makeText(
+                        context,
+                        "Error al cargar la conversación",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    delay(1500)
+                    navController.popBackStack()
+                }
+            }
+            else -> {
+                // Caso normal: tenemos profesorId
+                Timber.d("Inicializando chat normalmente con profesorId: $profesorId")
+                viewModel.inicializar(conversacionId, profesorId, alumnoId)
+            }
         }
-        
-        // Si tenemos un ID válido, inicializar normalmente
-        viewModel.inicializar(conversacionId, profesorId, alumnoId)
     }
     
     // Observar el estado de la UI
@@ -91,10 +112,27 @@ fun ChatFamiliaScreen(
     // Si hay un error, mostrarlo y volver atrás
     uiState.error?.let { error ->
         LaunchedEffect(error) {
-            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
-            if (error.contains("No se pudo cargar la conversación", ignoreCase = true)) {
+            Timber.e("Error en ChatFamiliaScreen: $error")
+            
+            // Si es un error de conexión, mostrar opción de reintentar
+            if (error.contains("Error al cargar mensajes", ignoreCase = true) ||
+                error.contains("network", ignoreCase = true) ||
+                error.contains("conexión", ignoreCase = true)) {
+                // No volver atrás automáticamente para errores de conexión
+                Toast.makeText(
+                    context, 
+                    "$error\nIntentando reconectar automáticamente...", 
+                    Toast.LENGTH_LONG
+                ).show()
+            } else if (error.contains("No se pudo cargar la conversación", ignoreCase = true) ||
+                       error.contains("Error al cargar el participante", ignoreCase = true)) {
+                // Para otros errores críticos, sí volver atrás
+                Toast.makeText(context, error, Toast.LENGTH_LONG).show()
                 delay(1500)
                 navController.popBackStack()
+            } else {
+                // Para otros errores, solo mostrar el mensaje
+                Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
             }
         }
     }

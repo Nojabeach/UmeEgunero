@@ -133,11 +133,28 @@ fun ChatProfesorScreen(
     uiState.error?.let { error ->
         val context = LocalContext.current
         LaunchedEffect(error) {
-            Toast.makeText(
-                context,
-                error,
-                Toast.LENGTH_LONG
-            ).show()
+            Timber.e("Error en ChatProfesorScreen: $error")
+            
+            // Si es un error de conexión, mostrar opción de reintentar
+            if (error.contains("Error al cargar mensajes", ignoreCase = true) ||
+                error.contains("network", ignoreCase = true) ||
+                error.contains("conexión", ignoreCase = true)) {
+                // No volver atrás automáticamente para errores de conexión
+                Toast.makeText(
+                    context, 
+                    "$error\nIntentando reconectar automáticamente...", 
+                    Toast.LENGTH_LONG
+                ).show()
+            } else if (error.contains("No se pudo cargar la conversación", ignoreCase = true) ||
+                       error.contains("Error al cargar el participante", ignoreCase = true)) {
+                // Para otros errores críticos, sí volver atrás
+                Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                kotlinx.coroutines.delay(1500)
+                navController.popBackStack()
+            } else {
+                // Para otros errores, solo mostrar el mensaje
+                Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+            }
         }
     }
     

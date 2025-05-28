@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.firebase.Timestamp
+import com.tfg.umeegunero.BuildConfig
 import com.tfg.umeegunero.data.model.MessageStatus
 import com.tfg.umeegunero.data.model.MessageType
 import com.tfg.umeegunero.data.model.UnifiedMessage
@@ -71,25 +72,49 @@ fun MessageDetailScreen(
     val navigateToChat = { conversationId: String ->
         scope.launch {
             try {
+                Timber.d("Iniciando navegación a chat con conversationId: $conversationId")
+                
+                // Validar que tenemos un conversationId válido
+                if (conversationId.isEmpty()) {
+                    Toast.makeText(
+                        context,
+                        "Error: No se encontró la conversación",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@launch
+                }
+                
                 // Intentar obtener un participante para la conversación
                 val participantId = viewModel.getParticipantId(conversationId)
                 
-                if (conversationId.isNotEmpty()) {
+                Timber.d("ParticipantId obtenido: '$participantId'")
+                
+                if (conversationId.isNotEmpty() && participantId.isNotEmpty()) {
                     Timber.d("Navegando a conversación: $conversationId con participante: $participantId")
-                    onNavigateToConversation(conversationId)
+                    // Pasar ambos parámetros a la función de navegación
+                    onNavigateToConversation("$conversationId/$participantId")
                 } else {
+                    // Dar más información sobre qué falló
+                    val errorMsg = when {
+                        conversationId.isEmpty() -> "No se pudo determinar la conversación"
+                        participantId.isEmpty() -> "No se pudo determinar el participante"
+                        else -> "Error desconocido al abrir la conversación"
+                    }
+                    
                     Toast.makeText(
                         context,
-                        "No se pudo determinar la conversación. Inténtelo de nuevo.",
-                        Toast.LENGTH_SHORT
+                        errorMsg,
+                        Toast.LENGTH_LONG
                     ).show()
+                    
+                    Timber.e("Error en navegación - conversationId: '$conversationId', participantId: '$participantId'")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error al preparar navegación a chat: ${e.message}")
                 Toast.makeText(
                     context,
-                    "No se pudo abrir la conversación. Inténtelo más tarde.",
-                    Toast.LENGTH_SHORT
+                    "Error inesperado: ${e.message}",
+                    Toast.LENGTH_LONG
                 ).show()
             }
         }
@@ -220,6 +245,17 @@ fun ChatMessageDetail(
     val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
     val formattedDate = dateFormat.format(message.timestamp.toDate())
     
+    // Logs para diagnóstico
+    LaunchedEffect(message) {
+        Timber.d("ChatMessageDetail - Datos del mensaje:")
+        Timber.d("  - ID: ${message.id}")
+        Timber.d("  - ConversationId: ${message.conversationId}")
+        Timber.d("  - SenderId: ${message.senderId}")
+        Timber.d("  - SenderName: ${message.senderName}")
+        Timber.d("  - ReceiverId: ${message.receiverId}")
+        Timber.d("  - Type: ${message.type}")
+    }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -280,10 +316,36 @@ fun ChatMessageDetail(
             modifier = Modifier.padding(bottom = 24.dp)
         )
         
+        // Información de diagnóstico en modo debug
+        if (BuildConfig.DEBUG && message.conversationId.isEmpty()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "⚠️ Información de debug",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Text(
+                        text = "ConversationId vacío. No se podrá continuar la conversación.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+        
         // Botón para continuar la conversación
         Button(
             onClick = onContinueChat,
-            modifier = Modifier.align(Alignment.End)
+            modifier = Modifier.align(Alignment.End),
+            enabled = message.conversationId.isNotEmpty()
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Message,

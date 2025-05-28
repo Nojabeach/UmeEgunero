@@ -264,18 +264,51 @@ class MessageDetailViewModel @Inject constructor(
             // Si el mensaje actual tiene el participante, usar directamente
             val currentMessage = _uiState.value.message
             if (currentMessage != null) {
+                // Para mensajes de chat, el participante es el remitente si no somos nosotros
                 if (currentMessage.senderId.isNotEmpty()) {
                     Timber.d("Usando el senderId como participante: ${currentMessage.senderId}")
                     return currentMessage.senderId
                 }
+                
+                // Si hay receiverId, usarlo
+                if (currentMessage.receiverId.isNotEmpty()) {
+                    Timber.d("Usando el receiverId como participante: ${currentMessage.receiverId}")
+                    return currentMessage.receiverId
+                }
+            }
+            
+            // Si no hay conversationId, no podemos continuar
+            if (conversationId.isEmpty()) {
+                Timber.w("ConversationId vacío, no se puede obtener participante")
+                return ""
             }
             
             // Intentar obtener el participante a través del repositorio de mensajes
             val result = messageRepository.getConversationParticipants(conversationId)
             if (result is Result.Success && result.data.isNotEmpty()) {
-                val participantId = result.data.first()
-                Timber.d("Participante encontrado en la conversación: $participantId")
-                return participantId
+                // Si hay participantes, devolver el primero que no sea el usuario actual
+                val participants = result.data
+                Timber.d("Participantes encontrados en la conversación: $participants")
+                
+                // TODO: Filtrar el usuario actual cuando tengamos acceso a él
+                val participantId = participants.firstOrNull() ?: ""
+                if (participantId.isNotEmpty()) {
+                    Timber.d("Participante encontrado: $participantId")
+                    return participantId
+                }
+            }
+            
+            // Si todo falla, intentar extraer del ID de conversación si tiene formato esperado
+            if (conversationId.contains("_")) {
+                val parts = conversationId.split("_")
+                if (parts.size >= 2) {
+                    // Asumir formato: "chat_userId1_userId2"
+                    val possibleParticipant = parts.lastOrNull() ?: ""
+                    if (possibleParticipant.isNotEmpty()) {
+                        Timber.d("Participante inferido del conversationId: $possibleParticipant")
+                        return possibleParticipant
+                    }
+                }
             }
             
             // Si no se pudo obtener, devolver un valor por defecto (vacío)

@@ -103,6 +103,7 @@ import androidx.compose.foundation.clickable
 import com.tfg.umeegunero.util.performHapticFeedbackSafely
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import kotlinx.coroutines.launch
 
 /**
  * Componente para mostrar una tarjeta en el dashboard con título, descripción e icono
@@ -541,24 +542,20 @@ private fun ProfesorDashboardTopBar(
         title = { Text("Dashboard Profesor") },
         actions = {
             // Mensajes con indicador de no leídos
-            IconButton(
-                onClick = {
-                    navController.navigate(AppScreens.UnifiedInbox.route)
+            BadgedBox(
+                badge = {
+                    // Eliminamos el badge para evitar que se muestre el globo de notificación
                 }
             ) {
-                BadgedBox(
-                    badge = {
-                        if (uiState.totalMensajesNoLeidos > 0) {
-                            Badge {
-                                Text(text = uiState.totalMensajesNoLeidos.toString())
-                            }
-                        }
+                IconButton(
+                    onClick = { 
+                        navController.navigate(AppScreens.UnifiedInbox.route)
                     }
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Email,
-                        contentDescription = "Mensajes",
-                        tint = MaterialTheme.colorScheme.onPrimary
+                        imageVector = Icons.AutoMirrored.Filled.Chat,
+                        contentDescription = "Ver mensajes",
+                        tint = Color.White
                     )
                 }
             }
