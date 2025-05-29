@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // Cualquier usuario autenticado puede leer archivos
+      allow read: if request.auth != null;
+      
+      // Solo usuarios autenticados pueden escribir archivos
+      allow write: if request.auth != null;
+    }
+    
+    // Reglas específicas para avatares
+    match /avatares/{fileName} {
+      allow read: if true; // Avatares públicos para todos
+      allow write: if request.auth != null;
+    }
+    
+    // Reglas para archivos de centro (documentos, informes, etc.)
+    match /centros/{centroId}/{allPaths=**} {
+      // Verificar si el usuario tiene permisos de admin
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        (request.auth.token.isAdmin == true || 
+         request.auth.token.isAdminApp == true || 
+         request.auth.token.isProfesor == true);
+    }
+    
+    // Reglas para fotos de actividades
+    match /actividades/{actividadId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        request.auth.token.isProfesor == true;
+    }
+  }
+} 

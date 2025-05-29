@@ -1,0 +1,306 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========== FUNCIONES AUXILIARES ==========
+    // Verificar si el usuario está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Verificar si el usuario es admin app
+    function isAdminApp() {
+      return isAuthenticated() && request.auth.token.isAdminApp == true;
+    }
+    
+    // Verificar si el usuario es admin centro
+    function isAdminCentro() {
+      return isAuthenticated() && request.auth.token.isAdmin == true;
+    }
+    
+    // Verificar si el usuario es profesor
+    function isProfesor() {
+      return isAuthenticated() && request.auth.token.isProfesor == true;
+    }
+    
+    // Verificar si el usuario es el dueño del documento (por DNI)
+    function isOwner(userId) {
+      return isAuthenticated() && 
+        (request.auth.token.dni == userId || 
+         request.auth.uid == resource.data.firebaseUid);
+    }
+    
+    // Verificar si es un admin (app o centro)
+    function isAnyAdmin() {
+      return isAdminApp() || isAdminCentro();
+    }
+    
+    // ========== USUARIOS ==========
+    match /usuarios/{dni} {
+      // Cualquier usuario autenticado puede leer
+      allow read: if isAuthenticated();
+      
+      // Permitir creación en los siguientes casos:
+      // 1. Un usuario creándose a sí mismo (autoregistro)
+      // 2. Un admin de app creando cualquier usuario
+      // 3. Un admin de centro creando profesores o familiares
+      allow create: if 
+        // Auto registro (el propio usuario se crea)
+        (isAuthenticated() && request.auth.token.dni == dni) ||
+        // Admin app puede crear cualquier usuario
+        isAdminApp() ||
+        // Admin centro puede crear profesores y familiares
+        (isAdminCentro() && 
+         (request.resource.data.perfiles.size() > 0 && 
+         (request.resource.data.perfiles[0].tipo == "PROFESOR" ||
+          request.resource.data.perfiles[0].tipo == "FAMILIAR")));
+      
+      // Permitir actualización en los siguientes casos:
+      // 1. El propio usuario actualizando sus datos
+      // 2. Un admin app actualizando cualquier usuario
+      // 3. Un admin centro actualizando profesores o familiares de su centro
+      allow update: if 
+        // El propio usuario actualizándose
+        (isAuthenticated() && request.auth.token.dni == dni) ||
+        // Admin app puede actualizar cualquier usuario
+        isAdminApp() ||
+        // Admin centro puede actualizar profesores y familiares de su centro
+        (isAdminCentro() && 
+         (resource.data.perfiles.size() > 0 && 
+         (resource.data.perfiles[0].tipo == "PROFESOR" ||
+          resource.data.perfiles[0].tipo == "FAMILIAR")));
+      
+      // Eliminar usuarios solo desde Cloud Functions
+      allow delete: if false;
+    }
+    
+    // ========== ALUMNOS ==========
+    match /alumnos/{alumnoId} {
+      allow read: if isAuthenticated();
+      
+      // Profesores y admins (centro o app) pueden crear/modificar alumnos
+      allow write: if isProfesor() || isAnyAdmin();
+    }
+    
+    // ========== MENSAJES UNIFICADOS ==========
+    match /unified_messages/{messageId} {
+      // Solo pueden leer mensajes los participantes en la conversación
+      allow read: if isAuthenticated() && (
+        resource.data.senderId == request.auth.token.dni ||
+        resource.data.receiverId == request.auth.token.dni ||
+        request.auth.token.dni in resource.data.receiversIds
+      );
+      
+      // Cualquier usuario autenticado puede crear mensajes
+      allow create: if isAuthenticated();
+      
+      // Solo los destinatarios pueden marcar como leído
+      allow update: if isAuthenticated() && (
+        resource.data.receiverId == request.auth.token.dni ||
+        request.auth.token.dni in resource.data.receiversIds
+      );
+      
+      // No se pueden eliminar mensajes
+      allow delete: if false;
+    }
+    
+    // ========== CONVERSACIONES ==========
+    match /conversaciones/{conversacionId} {
+      // Solo los participantes pueden ver la conversación
+      allow read: if isAuthenticated() && (
+        request.auth.token.dni in resource.data.participantes
+      );
+      
+      // Cualquier usuario autenticado puede crear conversaciones
+      allow create: if isAuthenticated();
+      
+      // Solo los participantes pueden actualizar la conversación
+      allow update: if isAuthenticated() && (
+        request.auth.token.dni in resource.data.participantes
+      );
+      
+      // No se pueden eliminar conversaciones
+      allow delete: if false;
+    }
+    
+    // ========== EVENTOS DE CALENDARIO ==========
+    match /eventos/{eventoId} {
+      // Todos los usuarios autenticados pueden ver eventos
+      allow read: if isAuthenticated();
+      
+      // Solo profesores y administradores pueden crear eventos
+      allow create: if isProfesor() || isAnyAdmin();
+      
+      // Solo el creador puede actualizar sus eventos
+      allow update: if isAuthenticated() && 
+        resource.data.creadorId == request.auth.token.dni;
+      
+      // Solo el creador puede eliminar sus eventos
+      allow delete: if isAuthenticated() && 
+        resource.data.creadorId == request.auth.token.dni;
+    }
+    
+    // ========== REGISTROS DE ACTIVIDAD ==========
+    match /registrosActividad/{registroId} {
+      // Todos los usuarios autenticados pueden ver registros
+      allow read: if isAuthenticated();
+      
+      // Solo profesores pueden crear registros de actividad
+      allow create: if isProfesor();
+      
+      // Solo profesores pueden actualizar registros de actividad
+      allow update: if isProfesor();
+      
+      // No se pueden eliminar registros de actividad
+      allow delete: if false;
+    }
+    
+    // ========== ASISTENCIA ==========
+    match /asistencia/{asistenciaId} {
+      // Todos los usuarios autenticados pueden ver registros de asistencia
+      allow read: if isAuthenticated();
+      
+      // Solo profesores pueden gestionar la asistencia
+      allow write: if isProfesor();
+    }
+    
+    // ========== COMUNICADOS ==========
+    match /comunicados/{comunicadoId} {
+      // Todos los usuarios autenticados pueden ver comunicados
+      allow read: if isAuthenticated();
+      
+      // Profesores y administradores pueden crear comunicados
+      allow create: if isProfesor() || isAnyAdmin();
+      
+      // Solo el creador puede actualizar sus comunicados
+      allow update: if isAuthenticated() && 
+        resource.data.creadorId == request.auth.token.dni;
+      
+      // Solo el creador puede eliminar sus comunicados
+      allow delete: if isAuthenticated() && 
+        resource.data.creadorId == request.auth.token.dni;
+    }
+    
+    // ========== NOTIFICACIONES ==========
+    match /notificaciones/{notificacionId} {
+      // Solo el destinatario puede ver sus notificaciones
+      allow read: if isAuthenticated() && 
+        resource.data.receptorId == request.auth.token.dni;
+      
+      // Cualquier usuario autenticado puede crear notificaciones
+      allow create: if isAuthenticated();
+      
+      // Solo el destinatario puede marcar como leída su notificación
+      allow update: if isAuthenticated() && 
+        resource.data.receptorId == request.auth.token.dni;
+      
+      // No se pueden eliminar notificaciones
+      allow delete: if false;
+    }
+    
+    // ========== VINCULACIONES FAMILIAR-ALUMNO ==========
+    match /vinculaciones_familiar_alumno/{vinculacionId} {
+      // Todos los usuarios autenticados pueden ver vinculaciones
+      allow read: if isAuthenticated();
+      
+      // Solo administradores pueden gestionar vinculaciones
+      allow create, update, delete: if isAnyAdmin();
+    }
+    
+    // ========== SOLICITUDES DE VINCULACIÓN ==========
+    match /solicitudes_vinculacion/{solicitudId} {
+      // El familiar solicitante y los administradores pueden ver las solicitudes
+      allow read: if isAuthenticated() && (
+        resource.data.familiarId == request.auth.token.dni ||
+        isAnyAdmin()
+      );
+      
+      // Cualquier usuario autenticado puede crear solicitudes
+      allow create: if isAuthenticated();
+      
+      // Solo los administradores pueden aprobar/rechazar solicitudes
+      allow update: if isAnyAdmin();
+      
+      // No se pueden eliminar solicitudes
+      allow delete: if false;
+    }
+    
+    // ========== CENTROS ==========
+    match /centros/{centroId} {
+      // Todos los usuarios autenticados pueden ver centros
+      allow read: if isAuthenticated();
+      
+      // Solo administradores de app pueden gestionar centros
+      allow write: if isAdminApp();
+    }
+    
+    // ========== CLASES ==========
+    match /clases/{claseId} {
+      // Todos los usuarios autenticados pueden ver clases
+      allow read: if isAuthenticated();
+      
+      // Administradores de centro y app pueden gestionar clases
+      allow write: if isAnyAdmin();
+    }
+    
+    // ========== SOLICITUDES DE ELIMINACIÓN DE USUARIOS ==========
+    match /user_deletion_requests/{requestId} {
+      // Cualquier usuario autenticado puede solicitar su eliminación
+      allow create: if isAuthenticated();
+      
+      // Solo administradores pueden ver solicitudes de eliminación
+      allow read: if isAnyAdmin();
+      
+      // Solo Cloud Functions pueden actualizar/eliminar solicitudes
+      allow update, delete: if false;
+    }
+    
+    // ========== ACTIVIDADES ==========
+    match /actividades/{actividadId} {
+      // Todos los usuarios autenticados pueden ver actividades
+      allow read: if isAuthenticated();
+      
+      // Solo profesores pueden gestionar actividades
+      allow write: if isProfesor();
+    }
+    
+    // ========== LECTURAS DE FAMILIAR ==========
+    match /lecturas_familiar/{lecturaId} {
+      // Todos los usuarios autenticados pueden ver lecturas
+      allow read: if isAuthenticated();
+      
+      // Cualquier usuario autenticado puede registrar una lectura
+      allow create: if isAuthenticated();
+      
+      // No se pueden modificar ni eliminar lecturas
+      allow update, delete: if false;
+    }
+    
+    // ========== REUNIONES ==========
+    match /reuniones/{reunionId} {
+      // Todos los usuarios autenticados pueden ver reuniones
+      allow read: if isAuthenticated();
+      
+      // Solo profesores pueden gestionar reuniones
+      allow write: if isProfesor();
+    }
+    
+    // ========== INFORMES ==========
+    match /informes/{informeId} {
+      // Todos los usuarios autenticados pueden ver informes
+      allow read: if isAuthenticated();
+      
+      // Solo profesores pueden gestionar informes
+      allow write: if isProfesor();
+    }
+    
+    // ========== CURSOS ==========
+    match /cursos/{cursoId} {
+      // Todos los usuarios autenticados pueden ver cursos
+      allow read: if isAuthenticated();
+      
+      // Solo administradores pueden gestionar cursos
+      allow write: if isAnyAdmin();
+    }
+  }
+} 
