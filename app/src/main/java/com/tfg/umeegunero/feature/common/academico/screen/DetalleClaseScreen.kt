@@ -34,6 +34,7 @@ import kotlinx.coroutines.Dispatchers
 import com.tfg.umeegunero.notification.NotificationHelper
 import kotlinx.coroutines.launch
 import com.tfg.umeegunero.navigation.AppScreens
+import timber.log.Timber
 
 /**
  * Pantalla de detalle de una clase que muestra información completa sobre:
@@ -61,7 +62,27 @@ fun DetalleClaseScreen(
             CenterAlignedTopAppBar(
                 title = { Text(uiState.clase?.nombre ?: "Detalle de Clase", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { 
+                        // En lugar de simplemente hacer popBackStack, redirigimos a la pantalla de gestión académica
+                        // manteniendo el modo CLASES y el curso seleccionado
+                        val clase = uiState.clase
+                        if (clase != null) {
+                            val centroId = clase.centroId
+                            val cursoId = clase.cursoId
+                            Timber.d("🔙 Navegando de vuelta a CLASES con centroId=$centroId, cursoId=$cursoId")
+                            navController.popBackStack()
+                            navController.navigate("gestor_academico/CLASES?centroId=$centroId&cursoId=$cursoId&selectorCentroBloqueado=true&selectorCursoBloqueado=true") {
+                                // Configuramos para que reemplace la entrada actual y no duplique pantallas
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        } else {
+                            navController.popBackStack()
+                        }
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver",

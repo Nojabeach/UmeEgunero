@@ -84,144 +84,90 @@ class UnifiedMessageRepository @Inject constructor(
     /**
      * Marca un mensaje como leído
      */
-    suspend fun markAsRead(messageId: String): Result<Boolean> {
+    suspend fun markMessageAsRead(messageId: String): Result<Boolean> {
         return try {
-            val currentUser = authRepository.getCurrentUser()
-            if (currentUser == null) {
-                return Result.Error("Usuario no autenticado")
-            }
+            val messageRef = firestore.collection(MESSAGES_COLLECTION).document(messageId)
+            val messageDoc = messageRef.get().await()
             
-            // Primero obtenemos el mensaje para saber su tipo
-            val messageDoc = firestore.collection(MESSAGES_COLLECTION)
-                .document(messageId)
-                .get()
-                .await()
-                
             if (!messageDoc.exists()) {
-                return Result.Error("Mensaje no encontrado")
+                Timber.w("El mensaje unificado $messageId no existe")
+                return Result.Error(Exception("El mensaje no existe"))
             }
             
-            val messageData = messageDoc.data ?: return Result.Error("Datos del mensaje no válidos")
-            val messageType = MessageType.valueOf(messageData["type"] as? String ?: MessageType.CHAT.name)
-            val relatedEntityId = messageData["relatedEntityId"] as? String
+            val message = createMessageFromDocument(messageDoc) ?: return Result.Error(Exception("No se pudo convertir el documento"))
             
-            // Actualizar en la colección unificada - primero los campos básicos
-            val updateFields = mapOf(
-                "status" to MessageStatus.READ.name,
-                "isRead" to true,
-                "readTimestamp" to Timestamp.now(),
-                "readBy.${currentUser.dni}" to Timestamp.now()
-            )
+            // 1. Actualizar el mensaje unificado
+            messageRef.update(
+                mapOf(
+                    "status" to MessageStatus.READ.name,
+                    "readTimestamp" to FieldValue.serverTimestamp()
+                )
+            ).await()
             
-            firestore.collection(MESSAGES_COLLECTION)
-                .document(messageId)
-                .update(updateFields)
-                .await()
-            
-            // Actualizar también en la colección original según el tipo, con manejo de errores mejorado
-            if (!relatedEntityId.isNullOrEmpty()) {
-                when (messageType) {
-                    MessageType.CHAT -> {
-                        try {
-                            firestore.collection("mensajes")
-                                .document(relatedEntityId)
-                                .update(
-                                    mapOf(
-                                        "leido" to true,
-                                        "fechaLectura" to Timestamp.now()
-                                    )
-                                )
-                                .await()
-                        } catch (e: Exception) {
-                            // Si el documento no existe, lo registramos pero no interrumpimos el flujo
-                            if (e.message?.contains("NOT_FOUND") == true || 
-                                e.message?.contains("No document to update") == true) {
-                                Timber.w(e, "Documento original no encontrado en 'mensajes'. Esto es normal si el mensaje solo existe en la colección unificada.")
-                            } else {
-                                Timber.w(e, "No se pudo actualizar el mensaje original en 'mensajes'")
-                            }
-                            // No hacemos return aquí, continuamos con el flujo
-                        }
-                    }
-                    MessageType.ANNOUNCEMENT -> {
-                        try {
-                            firestore.collection("comunicados")
-                                .document(relatedEntityId)
-                                .update(
-                                    mapOf(
-                                        "lecturasPor.${currentUser.dni}" to Timestamp.now()
-                                    )
-                                )
-                                .await()
-                        } catch (e: Exception) {
-                            if (e.message?.contains("NOT_FOUND") == true || 
-                                e.message?.contains("No document to update") == true) {
-                                Timber.w(e, "Comunicado original no encontrado. Esto es normal si el mensaje solo existe en la colección unificada.")
-                            } else {
-                                Timber.w(e, "No se pudo actualizar el comunicado original")
-                            }
-                        }
-                    }
+            // 2. Si el mensaje está relacionado con otro documento (notificación, etc.), actualizarlo también
+            val relatedEntityId = message.relatedEntityId
+            if (relatedEntityId.isNotEmpty()) {
+                when (message.type) {
                     MessageType.NOTIFICATION -> {
                         try {
-                            firestore.collection("notificaciones")
-                                .document(relatedEntityId)
-                                .update(
+                            // Verificar primero si la notificación existe
+                            val notifRef = firestore.collection("notificaciones").document(relatedEntityId)
+                            val notifDoc = notifRef.get().await()
+                            
+                            if (notifDoc.exists()) {
+                                notifRef.update(
                                     mapOf(
                                         "leida" to true,
                                         "fechaLectura" to Timestamp.now()
                                     )
-                                )
-                                .await()
-                        } catch (e: Exception) {
-                            if (e.message?.contains("NOT_FOUND") == true || 
-                                e.message?.contains("No document to update") == true) {
-                                Timber.w(e, "Notificación original no encontrada (${relatedEntityId}). Esto es normal si fue migrada.")
+                                ).await()
                             } else {
-                                Timber.w(e, "No se pudo actualizar la notificación original")
+                                Timber.w("Notificación original no encontrada (${relatedEntityId}). Esto es normal si fue migrada.")
                             }
+                        } catch (e: Exception) {
+                            Timber.w(e, "No se pudo actualizar la notificación original")
                         }
                     }
-                    MessageType.DAILY_RECORD -> {
+                    
+                    MessageType.ANNOUNCEMENT -> {
+                        // Para comunicados, actualizar los metadatos de lectura
                         try {
-                            firestore.collection("registrosActividad")
-                                .document(relatedEntityId)
-                                .update(
-                                    mapOf(
-                                        "lecturasPorFamiliar.${currentUser.dni}" to mapOf(
-                                            "familiarId" to currentUser.dni,
-                                            "fechaLectura" to Timestamp.now()
-                                        )
-                                    )
-                                )
-                                .await()
-                        } catch (e: Exception) {
-                            if (e.message?.contains("NOT_FOUND") == true || 
-                                e.message?.contains("No document to update") == true) {
-                                Timber.w(e, "Registro de actividad original no encontrado. Esto es normal si el mensaje solo existe en la colección unificada.")
+                            val currentUserId = authRepository.getCurrentUser()?.dni ?: return Result.Success(true)
+                            val comunicadoRef = firestore.collection("comunicados").document(relatedEntityId)
+                            
+                            // Verificar primero si el comunicado existe
+                            val comunicadoDoc = comunicadoRef.get().await()
+                            if (comunicadoDoc.exists()) {
+                                comunicadoRef.update(
+                                    "lecturasPor", FieldValue.arrayUnion(currentUserId),
+                                    "fechaLectura", FieldValue.serverTimestamp()
+                                ).await()
                             } else {
-                                Timber.w(e, "No se pudo actualizar el registro de actividad original")
+                                Timber.w("Comunicado original no encontrado (${relatedEntityId}). Esto es normal si fue migrado.")
                             }
+                        } catch (e: Exception) {
+                            Timber.w(e, "No se pudo actualizar el comunicado original")
                         }
                     }
-                    MessageType.GROUP_CHAT,
-                    MessageType.TASK,
-                    MessageType.EVENT,
-                    MessageType.SYSTEM,
-                    MessageType.INCIDENT,
-                    MessageType.ATTENDANCE -> {
-                        // Para estos tipos, no se requiere actualización adicional por ahora
-                        Timber.d("Tipo de mensaje $messageType marcado como leído, sin actualización adicional requerida")
+                    
+                    else -> {
+                        // Otros tipos de mensajes no requieren actualización adicional
                     }
                 }
             }
             
-            Timber.d("Mensaje $messageId marcado como leído exitosamente")
             Result.Success(true)
         } catch (e: Exception) {
-            Timber.e(e, "Error al marcar mensaje como leído: $messageId")
-            Result.Error(e.message ?: "Error al marcar como leído")
+            Timber.e(e, "Error al marcar mensaje como leído")
+            Result.Error(e)
         }
+    }
+    
+    /**
+     * Alias para markMessageAsRead por compatibilidad con código existente
+     */
+    suspend fun markAsRead(messageId: String): Result<Boolean> {
+        return markMessageAsRead(messageId)
     }
     
     /**

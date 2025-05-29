@@ -63,20 +63,8 @@ service cloud.firestore {
       // Permitir lectura a cualquiera para facilitar el arranque de la aplicación
       allow read: if true;
       
-      // Permitir creación en los siguientes casos:
-      // 1. Un usuario creándose a sí mismo (autoregistro)
-      // 2. Un admin de app creando cualquier usuario
-      // 3. Un admin de centro creando profesores o familiares
-      // 4. NUEVO: Creación del administrador por defecto al iniciar la app
-      // 5. NUEVO: Permitir cualquier creación durante arranque
-      allow create: if true;
-      
-      // Permitir actualización en los siguientes casos:
-      // 1. El propio usuario actualizando sus datos
-      // 2. Un admin app actualizando cualquier usuario
-      // 3. Un admin centro actualizando profesores o familiares de su centro
-      // 4. NUEVO: Permitir cualquier actualización durante arranque
-      allow update: if true;
+      // Permitir creación y actualización durante el arranque
+      allow create, update: if true;
       
       // Eliminar usuarios solo desde Cloud Functions
       allow delete: if false;
@@ -84,19 +72,26 @@ service cloud.firestore {
     
     // ========== ALUMNOS ==========
     match /alumnos/{alumnoId} {
-      allow read: if true;
+      // Todos los usuarios autenticados pueden ver alumnos
+      allow read: if isAuthenticated();
       
-      // Profesores y admins (centro o app) pueden crear/modificar alumnos
-      allow write: if true;
+      // Profesores y admins pueden crear/modificar alumnos
+      allow create, update: if isProfesor() || isAnyAdmin();
+      
+      // Solo admin app puede eliminar alumnos
+      allow delete: if isAdminApp();
     }
     
     // ========== CENTROS ==========
     match /centros/{centroId} {
-      // Permitir lectura a cualquiera para facilitar el arranque de la aplicación
-      allow read: if true;
+      // Todos los usuarios autenticados pueden ver centros
+      allow read: if isAuthenticated();
       
-      // Permitir escritura durante el arranque
-      allow write: if true;
+      // Solo admins pueden crear/modificar centros
+      allow create, update: if isAnyAdmin();
+      
+      // Solo admin app puede eliminar centros
+      allow delete: if isAdminApp();
     }
     
     // ========== MENSAJES UNIFICADOS ==========
@@ -116,7 +111,8 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (
         resource.data.senderId == request.auth.token.dni ||
         resource.data.receiverId == request.auth.token.dni ||
-        request.auth.token.dni in resource.data.receiversIds
+        request.auth.token.dni in resource.data.receiversIds ||
+        isAnyAdmin()
       );
       
       // No se pueden eliminar mensajes
@@ -138,7 +134,8 @@ service cloud.firestore {
       // Solo los destinatarios pueden marcar como leído
       allow update: if isAuthenticated() && (
         resource.data.receiverId == request.auth.token.dni ||
-        request.auth.token.dni in resource.data.receiversIds
+        request.auth.token.dni in resource.data.receiversIds ||
+        isAnyAdmin()
       );
       
       // No se pueden eliminar mensajes
@@ -162,13 +159,14 @@ service cloud.firestore {
 
     // ========== CONVERSACIONES UNIFICADAS ==========
     match /conversations/{conversationId} {
-      // Los participantes pueden ver y actualizar conversaciones
-      allow read, update: if isAuthenticated() && (
-        request.auth.token.dni in resource.data.participantIds
-      );
+      // Todos los usuarios autenticados pueden ver conversaciones
+      allow read: if isAuthenticated();
       
       // Cualquier usuario autenticado puede crear conversaciones
       allow create: if isAuthenticated();
+      
+      // Cualquier usuario autenticado puede actualizar conversaciones
+      allow update: if isAuthenticated();
       
       // No se pueden eliminar conversaciones
       allow delete: if false;
@@ -183,12 +181,16 @@ service cloud.firestore {
       allow create: if isProfesor() || isAnyAdmin();
       
       // Solo el creador puede actualizar sus eventos
-      allow update: if isAuthenticated() && 
-        resource.data.creadorId == request.auth.token.dni;
+      allow update: if isAuthenticated() && (
+        resource.data.creadorId == request.auth.token.dni ||
+        isAnyAdmin()
+      );
       
       // Solo el creador puede eliminar sus eventos
-      allow delete: if isAuthenticated() && 
-        resource.data.creadorId == request.auth.token.dni;
+      allow delete: if isAuthenticated() && (
+        resource.data.creadorId == request.auth.token.dni ||
+        isAnyAdmin()
+      );
     }
     
     // ========== REGISTROS DE ACTIVIDAD ==========
@@ -196,11 +198,11 @@ service cloud.firestore {
       // Todos los usuarios autenticados pueden ver registros
       allow read: if isAuthenticated();
       
-      // Solo profesores pueden crear registros de actividad
-      allow create: if isProfesor();
+      // Solo profesores y admins pueden crear registros de actividad
+      allow create: if isProfesor() || isAnyAdmin();
       
-      // Solo profesores pueden actualizar registros de actividad
-      allow update: if isProfesor();
+      // Solo profesores y admins pueden actualizar registros de actividad
+      allow update: if isProfesor() || isAnyAdmin();
       
       // No se pueden eliminar registros de actividad
       allow delete: if false;
@@ -211,8 +213,8 @@ service cloud.firestore {
       // Todos los usuarios autenticados pueden ver registros de asistencia
       allow read: if isAuthenticated();
       
-      // Solo profesores pueden gestionar la asistencia
-      allow write: if isProfesor();
+      // Solo profesores y admins pueden gestionar la asistencia
+      allow write: if isProfesor() || isAnyAdmin();
     }
     
     // ========== COMUNICADOS ==========
@@ -223,30 +225,26 @@ service cloud.firestore {
       // Profesores y administradores pueden crear comunicados
       allow create: if isProfesor() || isAnyAdmin();
       
-      // Solo el creador puede actualizar sus comunicados
-      allow update: if isAuthenticated() && 
-        resource.data.creadorId == request.auth.token.dni;
+      // Solo el creador o admin puede actualizar comunicados
+      allow update: if isAuthenticated() && (
+        resource.data.creadorId == request.auth.token.dni ||
+        isAnyAdmin()
+      );
       
-      // Solo el creador puede eliminar sus comunicados
-      allow delete: if isAuthenticated() && 
-        resource.data.creadorId == request.auth.token.dni;
+      // Solo el creador o admin puede eliminar comunicados
+      allow delete: if isAuthenticated() && (
+        resource.data.creadorId == request.auth.token.dni ||
+        isAnyAdmin()
+      );
     }
     
     // ========== NOTIFICACIONES ==========
     match /notificaciones/{notificacionId} {
-      // El destinatario o un admin del centro pueden ver sus notificaciones
-      allow read: if isAuthenticated() && (
-        resource.data.receptorId == request.auth.token.dni ||
-        hasAdminCentroPerfil() ||
-        isAnyAdmin()
-      );
+      // Cualquier usuario autenticado puede ver y actualizar notificaciones
+      allow read, update: if isAuthenticated();
       
       // Cualquier usuario autenticado puede crear notificaciones
       allow create: if isAuthenticated();
-      
-      // Solo el destinatario puede marcar como leída su notificación
-      allow update: if isAuthenticated() && 
-        resource.data.receptorId == request.auth.token.dni;
       
       // No se pueden eliminar notificaciones
       allow delete: if false;
@@ -305,8 +303,8 @@ service cloud.firestore {
       // Todos los usuarios autenticados pueden ver actividades
       allow read: if isAuthenticated();
       
-      // Solo profesores pueden gestionar actividades
-      allow write: if isProfesor();
+      // Solo profesores y admins pueden gestionar actividades
+      allow write: if isProfesor() || isAnyAdmin();
     }
     
     // ========== LECTURAS DE FAMILIAR ==========
@@ -326,8 +324,8 @@ service cloud.firestore {
       // Todos los usuarios autenticados pueden ver reuniones
       allow read: if isAuthenticated();
       
-      // Solo profesores pueden gestionar reuniones
-      allow write: if isProfesor();
+      // Solo profesores y admins pueden gestionar reuniones
+      allow write: if isProfesor() || isAnyAdmin();
     }
     
     // ========== INFORMES ==========
@@ -335,8 +333,8 @@ service cloud.firestore {
       // Todos los usuarios autenticados pueden ver informes
       allow read: if isAuthenticated();
       
-      // Solo profesores pueden gestionar informes
-      allow write: if isProfesor();
+      // Profesores y administradores pueden gestionar informes
+      allow write: if isProfesor() || isAnyAdmin();
     }
     
     // ========== CURSOS ==========
@@ -345,6 +343,15 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       
       // Solo administradores pueden gestionar cursos
+      allow write: if isAnyAdmin();
+    }
+    
+    // ========== CONFIG ==========
+    match /config/{configId} {
+      // Todos los usuarios autenticados pueden leer configuraciones
+      allow read: if isAuthenticated();
+      
+      // Solo administradores pueden modificar configuraciones
       allow write: if isAnyAdmin();
     }
   }
