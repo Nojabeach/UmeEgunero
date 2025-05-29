@@ -21,6 +21,13 @@
 -keepattributes RuntimeVisibleAnnotations
 -keepattributes RuntimeInvisibleAnnotations
 
+# ==== APLICACIÓN PRINCIPAL ====
+
+# Preservar la clase de aplicación principal
+-keep class com.tfg.umeegunero.UmeEguneroApp { *; }
+-keep public class com.tfg.umeegunero.UmeEguneroApp
+-keepnames class com.tfg.umeegunero.UmeEguneroApp
+
 # ==== FIREBASE ====
 
 # Reglas para Firebase y Firestore
@@ -56,6 +63,10 @@
 -keep class dagger.hilt.** { *; }
 -keep class javax.inject.** { *; }
 -keep class * extends dagger.hilt.android.lifecycle.HiltViewModel
+
+# Mantener las clases de generación de Hilt
+-keep class com.tfg.umeegunero.UmeEguneroApp_HiltComponents** { *; }
+-keep class com.tfg.umeegunero.di.** { *; }
 
 # ==== KOTLIN ====
 

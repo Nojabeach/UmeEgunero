@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.os.Build
 import android.os.Bundle
+import androidx.annotation.Keep
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -64,6 +65,7 @@ import javax.inject.Inject
  * @author Maitane Ibañez Irazabal (2º DAM Online)
  * @since 2024
  */
+@Keep
 @HiltAndroidApp
 class UmeEguneroApp : Application(), Configuration.Provider, DefaultLifecycleObserver, ImageLoaderFactory {
 

@@ -215,7 +215,9 @@ class AddUserViewModel @Inject constructor(
         // Prioridad: Argumento 'bloqueado' > Lógica interna (AdminCentro, Profesor creado por AdminCentro)
         val isCentroBloqueado = bloqueado || // Si el argumento lo fuerza
                                 (tipoUsuario == TipoUsuario.ADMIN_CENTRO && !isAdminAppFlag) || // Si es Admin Centro creado por otro Admin Centro
-                                (tipoUsuario == TipoUsuario.PROFESOR && !isAdminAppFlag) // Si Admin Centro crea Profesor
+                                (tipoUsuario == TipoUsuario.PROFESOR && !isAdminAppFlag) || // Si Admin Centro crea Profesor
+                                (!isAdminAppFlag) // Si es un admin de centro creando cualquier tipo de usuario
+
         Timber.d("Centro Bloqueado Determinado: $isCentroBloqueado")
 
         // 4. Actualizar estado inicial con tipos y bloqueos
@@ -225,6 +227,7 @@ class AddUserViewModel @Inject constructor(
                 isAdminApp = isAdminAppFlag,
                 isTipoUsuarioBloqueado = bloquearTipoUsuario,
                 isCentroBloqueado = isCentroBloqueado,
+                isCentroSeleccionadoBloqueado = isCentroBloqueado, // También bloquear la selección de centro
                 isLoading = true // Indicar carga
             )
         }
@@ -247,24 +250,22 @@ class AddUserViewModel @Inject constructor(
                                 // isLoading sigue true hasta que loadCentrosAndSelectInitial termine
                             )
                         }
-                        loadCentrosAndSelectInitial() // Carga la lista y selecciona este centroId
+                        loadCentrosAndSelectInitial(centroId) // Carga la lista y selecciona este centroId
                     } else {
-                        // Si no vino centroId en los argumentos, intentar obtenerlo del admin actual como fallback
-                        Timber.w("centroId del argumento es nulo/blanco. Intentando obtener centro del admin actual.")
+                        // Para administradores de centro, siempre obtener su centro asociado
+                        Timber.d("Intentando obtener centro del admin actual.")
                         val centroIdAdmin = obtenerCentroIdAdminActual() // Esta función ya actualiza el UI state
                         
                         if (!centroIdAdmin.isNullOrEmpty()) {
-                            Timber.d("✅ Centro del admin obtenido vía fallback y UI State actualizado.")
+                            Timber.d("✅ Centro del admin obtenido y UI State actualizado: $centroIdAdmin")
                             // No hacer nada más, obtenerCentroIdAdminActual ya hizo el trabajo
                         } else {
-                            Timber.e("❌ Fallback falló. No se pudo obtener centro ni por argumento ni por admin actual.")
+                            Timber.e("❌ No se pudo obtener centro del admin actual.")
                             _uiState.update { it.copy(isLoading = false, error = "No se pudo determinar el centro educativo.") }
-                            // Opcionalmente, cargar lista vacía de centros
-                            // loadCentros()
                         }
                     }
                 } else {
-                    // --- CASO CENTRO NO BLOQUEADO ---
+                    // --- CASO CENTRO NO BLOQUEADO (solo para admin app) ---
                     Timber.d("Centro no bloqueado. Usando centroId de argumento si existe: $centroId")
                     // Actualizar initialCentroId y centroId con el valor del argumento (puede ser null)
                      _uiState.update {
@@ -278,7 +279,7 @@ class AddUserViewModel @Inject constructor(
                     if (centroId != null) {
                         // Si se pasó un centroId, cargar la lista e intentar seleccionarlo
                         Timber.d("Llamando a loadCentrosAndSelectInitial con centroId: $centroId")
-                        loadCentrosAndSelectInitial()
+                        loadCentrosAndSelectInitial(centroId)
                     } else {
                         // Si no se pasó centroId y no está bloqueado, solo cargar la lista
                         Timber.d("Llamando a loadCentros (sin preselección)")
