@@ -39,7 +39,15 @@ object Constants {
      * debería obtenerse de forma segura (Firebase Remote Config, servidor propio,
      * o meta-data en AndroidManifest.xml).
      */
-    const val EMAIL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypG-79uIBV3FnP8CNRhFIx3Dt1DZ9nxAKMeg7KtFlj4Uv0O3eAQhUtSqrhGm6cJMsyVQ/exec"
+    val EMAIL_SCRIPT_URL: String
+        get() = try {
+            // Intentar obtener la URL de ApiConfig
+            ApiConfig.EMAIL_SCRIPT_URL.takeIf { it.isNotBlank() }
+                ?: "https://script.google.com/macros/s/YOUR-SCRIPT-ID-HERE/exec"
+        } catch (e: Exception) {
+            // Si hay algún error, usar URL por defecto (que no funcionará pero evita crashes)
+            "https://script.google.com/macros/s/YOUR-SCRIPT-ID-HERE/exec"
+        }
     
     /**
      * Identificador único de la aplicación.

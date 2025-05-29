@@ -251,6 +251,9 @@ class UmeEguneroApp : Application(), Configuration.Provider, DefaultLifecycleObs
             }
         }
         
+        // Guardar el handler original ANTES de establecer el nuevo
+        val originalHandler = Thread.getDefaultUncaughtExceptionHandler()
+        
         // Configurar un error handler global para la Thread por defecto
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             // Registrar información adicional antes de que la app se cierre
@@ -272,8 +275,8 @@ class UmeEguneroApp : Application(), Configuration.Provider, DefaultLifecycleObs
             // Reportar la excepción a Crashlytics y luego pasarla al manejador predeterminado del sistema
             crashlytics.recordException(throwable)
             
-            // Usar el manejador de excepciones original
-            Thread.getDefaultUncaughtExceptionHandler()?.uncaughtException(thread, throwable)
+            // Usar el manejador de excepciones original guardado
+            originalHandler?.uncaughtException(thread, throwable)
         }
         
         // Monitorizar operaciones de Firebase Storage

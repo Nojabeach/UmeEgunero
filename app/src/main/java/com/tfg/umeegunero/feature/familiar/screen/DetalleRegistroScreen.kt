@@ -195,26 +195,6 @@ fun DetalleRegistroScreen(
                             )
                         }
                     }
-                    
-                    // Botón para chatear con el profesor
-                    uiState.registro?.profesorId?.let { profesorId ->
-                        IconButton(
-                            onClick = { 
-                                try {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    navController.navigate("chat/$profesorId/${uiState.registro?.alumnoId}") 
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Error en feedback háptico: ${e.message}")
-                                }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Message,
-                                contentDescription = "Contactar al profesor",
-                                tint = Color.White
-                            )
-                        }
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = FamiliarColor,

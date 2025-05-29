@@ -48,6 +48,7 @@ UmeEgunero es una aplicación Android nativa desarrollada como Trabajo Fin de Gr
 - **Sistema de Prioridades**: Diferenciación visual entre mensajes normales, prioritarios y urgentes
 - **Arquitectura Centralizada**: Repositorio único para todas las operaciones de mensajería
 - **Personalización por Rol**: Experiencia adaptada a cada perfil de usuario (administrador, profesor, familiar)
+- **Soporte Offline**: Funcionamiento sin conexión con envío automático al recuperar la conectividad
 - **Integración con Solicitudes**: Generación automática de notificaciones para solicitudes de vinculación
 - **Soporte para FCM**: Notificaciones push en tiempo real para todos los tipos de mensajes
 - **Canal de Notificaciones Dedicado**: Canal específico para comunicaciones del sistema unificado
@@ -72,8 +73,17 @@ flowchart TD
     E --> H[Notificaciones]
     E --> I[Sistema]
     
-    J[Solicitudes] --> |Genera| H
-    K[Push Notifications] <--> A
+    F --> J[Soporte Offline]
+    F --> K[Confirmación de Lectura]
+    
+    J --> L[Cola de Mensajes Pendientes]
+    J --> M[Sincronización Automática]
+    
+    K --> N[Indicadores Visuales]
+    K --> O[Registro en Base de Datos]
+    
+    P[Solicitudes] --> |Genera| H
+    Q[Push Notifications] <--> A
 ```
 
 ### 🎯 Gestión Preescolar Especializada
@@ -86,6 +96,7 @@ flowchart TD
 - **Canales Múltiples**: Diferentes canales según importancia (general, tareas, solicitudes, incidencias)
 - **Firebase Cloud Messaging**: Implementación optimizada para entrega confiable y en tiempo real
 - **Deeplinks Inteligentes**: Navegación directa a secciones específicas al interactuar con notificaciones
+- **Soporte Offline**: Entrega garantizada incluso en dispositivos con conectividad intermitente
 
 ```mermaid
 flowchart TD
@@ -101,6 +112,10 @@ flowchart TD
     H --> I[Familiar]
     H --> J[Profesor]
     H --> K[Administrador]
+    
+    I --> L[Notificaciones en Primer Plano]
+    I --> M[Notificaciones en Segundo Plano]
+    I --> N[Deeplinks a Contenido]
     
     style A fill:#ff9900,stroke:#ff6600,stroke-width:2px
     style C fill:#EA4335,stroke:#990000,stroke-width:2px
@@ -148,6 +163,7 @@ sequenceDiagram
 - **Exportación de Documentos**: Generación de informes en formato PDF para asistencia y otros registros
 - **Componentes Avanzados**: Selectores de fecha, filtros y otros componentes UI especializados
 - **Navegación por Calendario**: Sistema avanzado de navegación temporal entre registros históricos
+- **Feedback Háptico**: Retroalimentación táctil para mejorar la interactividad en acciones importantes
 
 ## 🛠️ Arquitectura y Tecnologías
 
@@ -494,3 +510,13 @@ Para más detalles, consulta la [documentación del sistema de notificaciones](d
 - A los profesores del ciclo por su guía y apoyo
 - A los centros educativos que colaboraron en la fase de pruebas
 - A las bibliotecas open source utilizadas en el proyecto
+
+## Configuración de Claves de API
+
+Para configurar correctamente las claves de API y servicios externos, consulta el archivo [API_KEYS_README.md](docs/API_KEYS_README.md) que contiene instrucciones detalladas para:
+
+- Configuración de SendGrid para envío de emails
+- Configuración de Firebase (google-services.json)
+- Configuración de Google Apps Script para procesar emails
+
+**Importante**: Las claves de API y archivos de configuración sensibles no deben subirse a repositorios públicos.

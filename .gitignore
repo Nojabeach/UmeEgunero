@@ -24,3 +24,35 @@ google-services.json
 *.data
 traces/
 memory-dumps/
+
+# Archivos de configuración sensibles
+app/google-services.json
+google-services.json
+sendgrid.env
+.env
+app/src/main/java/com/tfg/umeegunero/util/ApiConfigLocal.java
+
+# Claves de API y credenciales
+**/apikey.properties
+**/secrets.properties
+
+# Logs
+*.log
+
+# Archivos generados
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Logs
+*.log
+
+# Archivos de respaldo
+*.bak

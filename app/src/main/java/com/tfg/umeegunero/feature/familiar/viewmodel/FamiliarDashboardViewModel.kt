@@ -789,30 +789,6 @@ class FamiliarDashboardViewModel @Inject constructor(
     }
 
     /**
-     * Función para navegar a la consulta de registros diarios de un alumno
-     * 
-     * Este método utiliza el NavController para navegar a la pantalla de
-     * consulta de registros diarios, pasando los parámetros necesarios en la ruta.
-     * 
-     * @param navController Controlador de navegación de Jetpack Compose
-     * @param alumno Objeto Alumno cuyos registros se quieren consultar
-     * @param registroId ID opcional de un registro específico para ver su detalle
-     */
-    fun navegarAConsultaRegistroDiario(
-        navController: NavController, 
-        alumno: Alumno,
-        registroId: String? = null
-    ) {
-        navController.navigate(
-            AppScreens.ConsultaRegistroDiario.createRoute(
-                alumnoId = alumno.dni,
-                alumnoNombre = "${alumno.nombre} ${alumno.apellidos}",
-                registroId = registroId
-            )
-        )
-    }
-
-    /**
      * Extrae posibles IDs de alumnos de diferentes propiedades de un usuario
      * 
      * @param usuario El usuario del que extraer información

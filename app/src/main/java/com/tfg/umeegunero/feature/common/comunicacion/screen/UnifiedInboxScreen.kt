@@ -121,16 +121,40 @@ fun UnifiedInboxScreen(
     var showFilterMenu by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
     
+    // Estado para controlar si es la primera carga
+    var isInitialLoad by remember { mutableStateOf(true) }
+    
+    // Obtener el ID del usuario actual
+    val currentUserId = viewModel.getCurrentUserId()
+    
+    // Agrupar mensajes de chat por conversación
+    val groupedChatMessages = remember(uiState.filteredMessages.ifEmpty { uiState.messages }) {
+        uiState.filteredMessages.ifEmpty { uiState.messages }
+            .filter { it.type == MessageType.CHAT }
+            .groupBy { it.conversationId }
+            .mapValues { entry -> entry.value.maxByOrNull { it.timestamp } } // Obtenemos el más reciente de cada conversación
+            .values
+            .filterNotNull()
+    }
+    
+    // Combinar mensajes agrupados de chat con el resto de mensajes
+    val messagesForDisplay = remember(uiState.filteredMessages.ifEmpty { uiState.messages }, groupedChatMessages) {
+        // Primero, filtramos para excluir los mensajes de chat (ya que los mostraremos agrupados)
+        val nonChatMessages = uiState.filteredMessages.ifEmpty { uiState.messages }
+            .filter { it.type != MessageType.CHAT }
+        
+        // Luego, combinamos con los mensajes de chat agrupados
+        (nonChatMessages + groupedChatMessages).sortedByDescending { it.timestamp }
+    }
+    
     // Efecto para cargar mensajes al entrar y configurar actualización periódica
     LaunchedEffect(Unit) {
-        Timber.d("🔄 UnifiedInboxScreen: Cargando mensajes iniciales")
-        viewModel.loadMessages()
-        
-        // Ya no marcaremos automáticamente los mensajes como leídos
-        // viewModel.markAllAsRead()
-        
-        // Actualizamos explícitamente el contador después de cargar los mensajes
-        viewModel.loadMessageCount()
+        if (isInitialLoad) {
+            Timber.d("🔄 UnifiedInboxScreen: Cargando mensajes iniciales")
+            viewModel.loadMessages()
+            viewModel.loadMessageCount()
+            isInitialLoad = false
+        }
         
         // Configurar actualización periódica mientras la pantalla esté visible
         while(true) {
@@ -168,12 +192,18 @@ fun UnifiedInboxScreen(
             addAction("com.tfg.umeegunero.ASISTENCIA")
             addAction("com.tfg.umeegunero.ACTUALIZACION_REGISTRO")
         }
-        context.registerReceiver(receiver, filter)
         
-        // Actualizar al crear el DisposableEffect
-        scope.launch {
-            viewModel.loadMessages()
+        // Para Android 14 (API 34) y superior, es obligatorio especificar si el receiver es exportado
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(receiver, filter)
         }
+        
+        // NO actualizar aquí para evitar carga duplicada
+        // scope.launch {
+        //     viewModel.loadMessages()
+        // }
         
         // Limpiar al destruir
         onDispose {
@@ -186,10 +216,13 @@ fun UnifiedInboxScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                Timber.d("🔄 UnifiedInboxScreen: Actualizando al volver a pantalla visible")
-                scope.launch {
-                    viewModel.loadMessages()
-                    viewModel.loadMessageCount()
+                // Solo actualizar si no es la carga inicial
+                if (!isInitialLoad) {
+                    Timber.d("🔄 UnifiedInboxScreen: Actualizando al volver a pantalla visible")
+                    scope.launch {
+                        viewModel.loadMessages()
+                        viewModel.loadMessageCount()
+                    }
                 }
             } else if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE) {
                 viewModel.loadMessageCount()
@@ -316,30 +349,40 @@ fun UnifiedInboxScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Box(
+        AnimatedContent(
+            targetState = when {
+                uiState.isLoading && uiState.messages.isEmpty() -> "loading"
+                uiState.error != null -> "error"
+                uiState.filteredMessages.isEmpty() && uiState.messages.isEmpty() -> "empty"
+                else -> "content"
+            },
+            transitionSpec = {
+                fadeIn(animationSpec = tween(300)) togetherWith
+                    fadeOut(animationSpec = tween(300))
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-        ) {
-            when {
-                uiState.isLoading -> {
+        ) { targetState ->
+            when (targetState) {
+                "loading" -> {
                     LoadingContent()
                 }
-                uiState.error != null -> {
+                "error" -> {
                     ErrorContent(
                         message = uiState.error ?: "Error desconocido",
                         onRetry = { viewModel.loadMessages() }
                     )
                 }
-                uiState.filteredMessages.isEmpty() && uiState.messages.isEmpty() -> {
+                "empty" -> {
                     EmptyContent(
                         title = "No hay mensajes",
                         message = "Tu bandeja de entrada está vacía"
                     )
                 }
-                else -> {
+                "content" -> {
                     MessageList(
-                        messages = uiState.filteredMessages.ifEmpty { uiState.messages },
+                        messages = messagesForDisplay,
                         onMessageClick = { message ->
                             viewModel.markAsRead(message.id)
                             onNavigateToMessage(message.id)
@@ -351,7 +394,8 @@ fun UnifiedInboxScreen(
                                     message = "Mensaje eliminado"
                                 )
                             }
-                        }
+                        },
+                        currentUserId = currentUserId
                     )
                 }
             }
@@ -373,7 +417,8 @@ fun LoadingContent() {
 fun MessageList(
     messages: List<UnifiedMessage>,
     onMessageClick: (UnifiedMessage) -> Unit,
-    onDeleteClick: (UnifiedMessage) -> Unit
+    onDeleteClick: (UnifiedMessage) -> Unit,
+    currentUserId: String
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize()
@@ -382,7 +427,8 @@ fun MessageList(
             MessageItem(
                 message = message,
                 onClick = { onMessageClick(message) },
-                onDeleteClick = { onDeleteClick(message) }
+                onDeleteClick = { onDeleteClick(message) },
+                currentUserId = currentUserId
             )
             HorizontalDivider(
                 thickness = 1.dp,
@@ -396,7 +442,8 @@ fun MessageList(
 fun MessageItem(
     message: UnifiedMessage,
     onClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    currentUserId: String
 ) {
     val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
     val formattedDate = dateFormat.format(message.timestamp.toDate())
@@ -404,6 +451,12 @@ fun MessageItem(
     
     // Determinar si el mensaje está realmente leído basándose en todos los indicadores disponibles
     val isReallyRead = message.isRead || message.status == MessageStatus.READ
+    
+    // Verificar si el usuario actual es el emisor del mensaje
+    val isCurrentUserSender = message.senderId == currentUserId
+    
+    // Solo permitir borrar si es el emisor Y el mensaje no ha sido leído por el destinatario
+    val canDelete = isCurrentUserSender && !isReallyRead
     
     Card(
         modifier = Modifier
@@ -483,32 +536,35 @@ fun MessageItem(
                             )
                         }
                         
-                        Box {
-                            IconButton(onClick = { showOptions = true }) {
-                                Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = "Más opciones",
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-                            
-                            DropdownMenu(
-                                expanded = showOptions,
-                                onDismissRequest = { showOptions = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Eliminar") },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Delete,
-                                            contentDescription = "Eliminar"
-                                        )
-                                    },
-                                    onClick = {
-                                        onDeleteClick()
-                                        showOptions = false
-                                    }
-                                )
+                        // Solo mostrar botón de opciones si puede eliminar
+                        if (canDelete) {
+                            Box {
+                                IconButton(onClick = { showOptions = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "Más opciones",
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                                
+                                DropdownMenu(
+                                    expanded = showOptions,
+                                    onDismissRequest = { showOptions = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Eliminar") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Eliminar"
+                                            )
+                                        },
+                                        onClick = {
+                                            onDeleteClick()
+                                            showOptions = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -697,31 +753,34 @@ fun MessageItem(
                         }
                     }
                     
-                    Box {
-                        IconButton(onClick = { showOptions = true }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Más opciones"
-                            )
-                        }
-                        
-                        DropdownMenu(
-                            expanded = showOptions,
-                            onDismissRequest = { showOptions = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Eliminar") },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Eliminar"
-                                    )
-                                },
-                                onClick = {
-                                    onDeleteClick()
-                                    showOptions = false
-                                }
-                            )
+                    // Solo mostrar botón de opciones si puede eliminar
+                    if (canDelete) {
+                        Box {
+                            IconButton(onClick = { showOptions = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "Más opciones"
+                                )
+                            }
+                            
+                            DropdownMenu(
+                                expanded = showOptions,
+                                onDismissRequest = { showOptions = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Eliminar") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Eliminar"
+                                        )
+                                    },
+                                    onClick = {
+                                        onDeleteClick()
+                                        showOptions = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }

@@ -71,19 +71,19 @@ import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.MessageDetailVie
 
 /**
  * Sistema de navegación principal de la aplicación UmeEgunero.
- * 
+ *
  * Esta función Composable implementa el sistema de navegación completo de la aplicación,
  * gestionando todas las rutas y transiciones entre pantallas. Utiliza Navigation Compose
  * para proporcionar una navegación fluida y consistente entre los diferentes módulos
  * de la aplicación educativa.
- * 
+ *
  * ## Características principales:
  * - Navegación basada en rutas definidas en [AppScreens]
  * - Animaciones de transición personalizadas según el tipo de pantalla
  * - Integración con [NavigationViewModel] para navegación basada en eventos
  * - Soporte para argumentos de navegación tipados
  * - Gestión de backstack optimizada para diferentes flujos de usuario
- * 
+ *
  * ## Flujos de navegación soportados:
  * - **Autenticación**: Welcome → Login → Dashboard específico por rol
  * - **Registro**: Welcome → Registro → Login
@@ -92,26 +92,26 @@ import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.MessageDetailVie
  * - **Comunicación**: Mensajería unificada, comunicados, notificaciones
  * - **Configuración**: Perfil, preferencias, seguridad
  * - **Soporte**: FAQ, soporte técnico, términos y condiciones
- * 
+ *
  * ## Tipos de animaciones:
  * - **DASHBOARD**: Para pantallas principales y de bienvenida
  * - **DETAIL**: Para pantallas de detalle y formularios
- * 
+ *
  * La navegación está optimizada para diferentes tipos de usuario:
  * - **ADMIN_APP**: Acceso completo al sistema
  * - **ADMIN_CENTRO**: Gestión de centro educativo
  * - **PROFESOR**: Gestión de clases y alumnos
  * - **FAMILIAR**: Seguimiento de hijos y comunicación
- * 
+ *
  * @param navController Controlador de navegación de Jetpack Navigation
  * @param startDestination Ruta inicial de la aplicación (por defecto: Welcome)
  * @param onCloseApp Función callback para cerrar la aplicación
  * @param navigationViewModel ViewModel que gestiona comandos de navegación basados en eventos
- * 
+ *
  * @see AppScreens Para las definiciones de rutas
  * @see NavigationViewModel Para la gestión de navegación basada en eventos
  * @see NavAnimations Para las animaciones de transición
- * 
+ *
  * @author Maitane Ibañez Irazabal (2º DAM Online)
  * @since 2024
  */
@@ -153,8 +153,8 @@ fun Navigation(
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        enterTransition = { 
-            val animationType = if (targetState.destination.route?.contains("dashboard") == true || 
+        enterTransition = {
+            val animationType = if (targetState.destination.route?.contains("dashboard") == true ||
                 targetState.destination.route == AppScreens.Welcome.route) {
                 NavAnimations.AnimationType.DASHBOARD
             } else {
@@ -162,8 +162,8 @@ fun Navigation(
             }
             NavAnimations.setTransitionAnimations(targetState, animationType).first
         },
-        exitTransition = { 
-            val animationType = if (initialState.destination.route?.contains("dashboard") == true || 
+        exitTransition = {
+            val animationType = if (initialState.destination.route?.contains("dashboard") == true ||
                 initialState.destination.route == AppScreens.Welcome.route) {
                 NavAnimations.AnimationType.DASHBOARD
             } else {
@@ -171,8 +171,8 @@ fun Navigation(
             }
             NavAnimations.setTransitionAnimations(initialState, animationType).second
         },
-        popEnterTransition = { 
-            val animationType = if (targetState.destination.route?.contains("dashboard") == true || 
+        popEnterTransition = {
+            val animationType = if (targetState.destination.route?.contains("dashboard") == true ||
                 targetState.destination.route == AppScreens.Welcome.route) {
                 NavAnimations.AnimationType.DASHBOARD
             } else {
@@ -180,8 +180,8 @@ fun Navigation(
             }
             NavAnimations.setTransitionAnimations(targetState, animationType).first
         },
-        popExitTransition = { 
-            val animationType = if (initialState.destination.route?.contains("dashboard") == true || 
+        popExitTransition = {
+            val animationType = if (initialState.destination.route?.contains("dashboard") == true ||
                 initialState.destination.route == AppScreens.Welcome.route) {
                 NavAnimations.AnimationType.DASHBOARD
             } else {
@@ -222,7 +222,7 @@ fun Navigation(
                 }
             )
         }
-        
+
         // Pantalla de registro de usuarios (familiar)
         composable(route = AppScreens.Registro.route) {
             RegistroScreen(
@@ -231,28 +231,28 @@ fun Navigation(
                 onNavigateToTerminosCondiciones = { navController.navigate(AppScreens.TerminosCondiciones.route) }
             )
         }
-        
+
         // Pantalla de soporte técnico
         composable(route = AppScreens.SoporteTecnico.route) {
             TechnicalSupportScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        
+
         // Pantalla de FAQ
         composable(route = AppScreens.FAQ.route) {
             FAQScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        
+
         // Pantalla de términos y condiciones
         composable(route = AppScreens.TerminosCondiciones.route) {
             TerminosCondicionesScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        
+
         // Pantalla de login
         composable(
             route = AppScreens.Login.route,
@@ -269,11 +269,11 @@ fun Navigation(
                     else -> TipoUsuario.FAMILIAR
                 }
             }
-            
+
             LoginScreen(
                 userType = userType,
                 viewModel = hiltViewModel(),
-                onNavigateBack = { 
+                onNavigateBack = {
                     navController.navigate(AppScreens.Welcome.route) {
                         popUpTo(AppScreens.Login.route) { inclusive = true }
                     }
@@ -292,23 +292,23 @@ fun Navigation(
                 }
             )
         }
-        
+
         // Pantalla de notificaciones
         composable(route = AppScreens.Notificaciones.route) {
             NotificacionesScreen(
                 navController = navController
             )
         }
-        
+
         // Pantalla de visualización de documentos
         composable(
             route = AppScreens.VisualizadorDocumento.route,
             arguments = listOf(
-                navArgument("url") { 
-                    type = NavType.StringType 
+                navArgument("url") {
+                    type = NavType.StringType
                 },
-                navArgument("nombre") { 
-                    type = NavType.StringType 
+                navArgument("nombre") {
+                    type = NavType.StringType
                     nullable = true
                     defaultValue = null
                 }
@@ -316,7 +316,7 @@ fun Navigation(
         ) { backStackEntry ->
             val url = Uri.decode(backStackEntry.arguments?.getString("url") ?: "")
             val nombre = backStackEntry.arguments?.getString("nombre")?.let { Uri.decode(it) }
-            
+
             DocumentoScreen(
                 navController = navController,
                 documentoUrl = url,
@@ -330,7 +330,7 @@ fun Navigation(
             AdminDashboardScreen(
                 navController = navController,
                 viewModel = viewModel,
-                onNavigateToGestionUsuarios = { 
+                onNavigateToGestionUsuarios = {
                     navController.navigate(AppScreens.GestionUsuarios.createRoute(true)) {
                         launchSingleTop = true
                     }
@@ -338,7 +338,7 @@ fun Navigation(
                 onNavigateToGestionCentros = { navController.navigate(AppScreens.GestionCentros.route) },
                 onNavigateToEstadisticas = { navController.navigate(AppScreens.Estadisticas.route) },
                 onNavigateToSeguridad = { navController.navigate(AppScreens.Seguridad.route) },
-                onNavigateToTema = { 
+                onNavigateToTema = {
                     navController.navigate(AppScreens.CambiarTema.route) {
                         launchSingleTop = true
                     }
@@ -373,7 +373,7 @@ fun Navigation(
         }
 
         // PANTALLAS DE ADMINISTRACIÓN
-        
+
         // Pantalla de gestión de centros
         composable(route = AppScreens.GestionCentros.route) {
             com.tfg.umeegunero.feature.admin.screen.ListCentrosScreen(
@@ -381,7 +381,7 @@ fun Navigation(
                 viewModel = hiltViewModel()
             )
         }
-        
+
         // Pantallas de gestión para el centro educativo
         composable(route = AppScreens.CrearUsuarioRapido.route) {
             com.tfg.umeegunero.feature.centro.screen.CrearUsuarioRapidoScreen(
@@ -389,13 +389,13 @@ fun Navigation(
                 viewModel = hiltViewModel()
             )
         }
-        
+
         // Pantalla para crear/editar usuarios
         composable(
             route = AppScreens.AddUser.route,
             arguments = listOf(
-                navArgument(AppScreens.AddUser.ARG_IS_ADMIN_APP) { 
-                    type = NavType.BoolType 
+                navArgument(AppScreens.AddUser.ARG_IS_ADMIN_APP) {
+                    type = NavType.BoolType
                     defaultValue = false
                 },
                 navArgument(AppScreens.AddUser.ARG_TIPO_USUARIO) {
@@ -421,7 +421,7 @@ fun Navigation(
             val centroIdParam = backStackEntry.arguments?.getString(AppScreens.AddUser.ARG_CENTRO_ID)
             val bloqueadoParam = backStackEntry.arguments?.getBoolean(AppScreens.AddUser.ARG_CENTRO_BLOQUEADO) ?: false
             val dniParam = backStackEntry.arguments?.getString(AppScreens.AddUser.ARG_DNI_USUARIO)
-            
+
             AddUserScreen(
                 navController = navController,
                 centroIdParam = centroIdParam,
@@ -431,7 +431,7 @@ fun Navigation(
                 isAdminAppParam = isAdminAppParam
             )
         }
-        
+
         // Pantalla para añadir un nuevo centro
         composable(route = AppScreens.AddCentro.route) {
             com.tfg.umeegunero.feature.admin.screen.AddCentroScreen(
@@ -439,7 +439,7 @@ fun Navigation(
                 viewModel = hiltViewModel()
             )
         }
-        
+
         // Pantalla para editar un centro existente
         composable(
             route = AppScreens.EditCentro.route,
@@ -454,7 +454,7 @@ fun Navigation(
                 viewModel = hiltViewModel()
             )
         }
-        
+
         // Pantalla de detalles de un centro educativo
         composable(
             route = AppScreens.DetalleCentro.route,
@@ -469,7 +469,7 @@ fun Navigation(
                 onNavigateToEdit = { id -> navController.navigate(AppScreens.EditCentro.createRoute(id)) }
             )
         }
-        
+
         // Pantalla de configuración de email
         composable(route = AppScreens.EmailConfig.route) {
             com.tfg.umeegunero.feature.admin.screen.EmailConfigScreen(
@@ -477,21 +477,21 @@ fun Navigation(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        
+
         // Pantalla de configuración de email de soporte
         composable(route = AppScreens.EmailConfigSoporte.route) {
             com.tfg.umeegunero.feature.admin.screen.EmailConfigScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        
+
         // Pantalla de prueba de emails
         composable(route = AppScreens.PruebaEmail.route) {
             com.tfg.umeegunero.feature.admin.screen.test.EmailTestScreen(
                 onClose = { navController.popBackStack() }
             )
         }
-        
+
         // Perfil
         composable(
             route = AppScreens.Perfil.route,
@@ -503,7 +503,7 @@ fun Navigation(
                 isAdminApp = isAdminApp
             )
         }
-        
+
         // Perfil sin parámetros (acceso directo)
         composable(route = AppScreens.PerfilScreen.route) {
             PerfilScreen(
@@ -511,7 +511,7 @@ fun Navigation(
                 isAdminApp = false
             )
         }
-        
+
         // PANTALLAS DE ESTADÍSTICAS
         composable(route = AppScreens.Estadisticas.route) {
             com.tfg.umeegunero.feature.admin.screen.EstadisticasScreen(
@@ -520,7 +520,7 @@ fun Navigation(
         }
 
         // PANTALLAS DE CENTRO
-        
+
         // Pantalla del dashboard del centro educativo
         composable(route = AppScreens.CentroDashboard.route) {
             com.tfg.umeegunero.feature.centro.screen.CentroDashboardScreen(
@@ -528,9 +528,9 @@ fun Navigation(
                 viewModel = hiltViewModel()
             )
         }
-        
+
         // PANTALLAS DE FAMILIA
-        
+
         // Pantalla del dashboard familiar
         composable(route = AppScreens.FamiliarDashboard.route) {
             com.tfg.umeegunero.feature.familiar.screen.FamiliaDashboardScreen(
@@ -538,7 +538,7 @@ fun Navigation(
                 viewModel = hiltViewModel()
             )
         }
-        
+
         // Pantalla de comunicados para familiares
         composable(route = AppScreens.ComunicadosFamilia.route) {
             ComunicadosFamiliaScreen(
@@ -546,9 +546,9 @@ fun Navigation(
                 viewModel = hiltViewModel()
             )
         }
-        
+
         // PANTALLAS DE PROFESOR
-        
+
         // Pantalla del dashboard de profesor
         composable(route = AppScreens.ProfesorDashboard.route) {
             // Muestra el dashboard del profesor directamente
@@ -569,9 +569,9 @@ fun Navigation(
                 androidx.compose.material3.Text("Pantalla de evaluación no disponible")
             }
         }
-        
+
         // PANTALLAS DE CALENDARIO Y EVENTOS
-        
+
         // Pantalla de calendario y eventos académicos
         composable(route = AppScreens.Calendario.route) {
             CalendarioScreen(
@@ -579,7 +579,7 @@ fun Navigation(
                 viewModel = hiltViewModel<CalendarioViewModel>()
             )
         }
-        
+
         // Pantalla de detalle de evento
         composable(
             route = AppScreens.DetalleEvento.route,
@@ -588,14 +588,14 @@ fun Navigation(
             )
         ) { backStackEntry ->
             val eventoId = backStackEntry.arguments?.getString("eventoId") ?: ""
-            
+
             DetalleEventoScreen(
                 eventoId = eventoId,
                 navController = navController,
                 viewModel = hiltViewModel()
             )
         }
-        
+
         // Pantalla de detalle de día con eventos
         composable(
             route = AppScreens.DetalleDiaEvento.route,
@@ -609,16 +609,16 @@ fun Navigation(
             } catch (e: Exception) {
                 LocalDate.now()
             }
-            
+
             DetalleDiaEventoScreen(
                 fecha = fecha,
                 navController = navController,
                 viewModel = hiltViewModel()
             )
         }
-        
+
         // PANTALLAS DE COMUNICACIÓN
-        
+
         // Pantalla de bandeja de entrada - Redirigir a UnifiedInbox
         composable(route = AppScreens.BandejaEntrada.route) {
             UnifiedInboxScreen(
@@ -633,7 +633,7 @@ fun Navigation(
                 }
             )
         }
-        
+
         // Pantalla de comunicados y circulares
         composable(route = AppScreens.ComunicadosCirculares.route) {
             com.tfg.umeegunero.feature.admin.screen.ComunicadosScreen(
@@ -641,20 +641,20 @@ fun Navigation(
                 viewModel = hiltViewModel()
             )
         }
-        
+
         // Pantalla para componer mensaje - Redirigir a NewMessage
         composable(
             route = AppScreens.ComponerMensaje.route,
             arguments = listOf(
-                navArgument("destinatarioId") { 
+                navArgument("destinatarioId") {
                     type = NavType.StringType
-                    nullable = true 
+                    nullable = true
                     defaultValue = null
                 }
             )
         ) { backStackEntry ->
             val destinatarioId = backStackEntry.arguments?.getString("destinatarioId")
-            
+
             com.tfg.umeegunero.feature.common.comunicacion.screen.NewMessageScreen(
                 receiverId = destinatarioId,
                 messageType = null,
@@ -665,21 +665,21 @@ fun Navigation(
         }
 
         // PANTALLAS DE TAREAS
-        
+
         // Pantalla de gestión de profesores
         composable(
             route = AppScreens.ProfesorList.route,
             arguments = AppScreens.ProfesorList.arguments
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString(AppScreens.ProfesorList.ARG_CENTRO_ID) ?: ""
-            
+
             com.tfg.umeegunero.feature.common.users.screen.ListProfesoresScreen(
                 navController = navController,
                 viewModel = hiltViewModel(),
                 centroId = centroId
             )
         }
-        
+
         // Pantalla de gestión de usuarios
         composable(
             route = AppScreens.GestionUsuarios.route,
@@ -688,7 +688,7 @@ fun Navigation(
             )
         ) { backStackEntry ->
             val isAdminApp = backStackEntry.arguments?.getBoolean("isAdminApp") ?: false
-            
+
             GestionUsuariosScreen(
                 navController = navController,
                 isAdminApp = isAdminApp,
@@ -730,7 +730,7 @@ fun Navigation(
             )
         ) { backStackEntry ->
             val title = backStackEntry.arguments?.getString("title") ?: "Pantalla en desarrollo"
-            
+
             com.tfg.umeegunero.feature.common.screen.DummyScreen(
                 title = title,
                 onNavigateBack = { navController.popBackStack() }
@@ -744,14 +744,14 @@ fun Navigation(
                 viewModel = hiltViewModel()
             )
         }
-        
+
         composable(route = AppScreens.AdminCentroList.route) {
             com.tfg.umeegunero.feature.common.users.screen.ListAdministradoresCentroScreen(
                 navController = navController,
                 viewModel = hiltViewModel()
             )
         }
-        
+
         // Lista de alumnos (ahora requiere centroId)
         composable(
             route = AppScreens.AlumnoList.route,
@@ -759,13 +759,13 @@ fun Navigation(
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString(AppScreens.AlumnoList.ARG_CENTRO_ID)
             requireNotNull(centroId) { "El ID del centro es obligatorio para esta pantalla." }
-            
+
             ListAlumnosScreen(
                 navController = navController,
                 centroId = centroId
             )
         }
-        
+
         composable(route = AppScreens.FamiliarList.route) {
             com.tfg.umeegunero.feature.common.users.screen.ListFamiliaresScreen(
                 navController = navController,
@@ -781,7 +781,7 @@ fun Navigation(
             )
         ) { backStackEntry ->
             val dni = backStackEntry.arguments?.getString("dni") ?: ""
-            
+
             // Usar el componente AddUserScreen con los parámetros correctos
             com.tfg.umeegunero.feature.common.users.screen.AddUserScreen(
                 navController = navController,
@@ -797,7 +797,7 @@ fun Navigation(
             arguments = AppScreens.DetalleAlumno.arguments
         ) { backStackEntry ->
             val dni = backStackEntry.arguments?.getString("dni") ?: ""
-            
+
             // Determinar el tipo de usuario actual
             val currentUser = FirebaseAuth.getInstance().currentUser
             if (currentUser != null) {
@@ -832,14 +832,14 @@ fun Navigation(
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString("centroId")
             val claseId = backStackEntry.arguments?.getString("claseId")
-            
+
             VincularProfesorClaseScreen(
                 onBack = { navController.popBackStack() },
                 centroId = centroId,
                 claseId = claseId
             )
         }
-        
+
         // Vinculación de alumnos a clases
         composable(
             route = AppScreens.VincularAlumnoClase.route,
@@ -847,7 +847,7 @@ fun Navigation(
         ) { backStackEntry ->
             val centroId = backStackEntry.arguments?.getString("centroId")
             val claseId = backStackEntry.arguments?.getString("claseId")
-            
+
             VincularAlumnoClaseScreen(
                 onBack = { navController.popBackStack() },
                 centroId = centroId,
@@ -1006,7 +1006,7 @@ fun Navigation(
         ) { backStackEntry ->
             val alumnosIds = backStackEntry.arguments?.getString("alumnosIds") ?: ""
             val fecha = backStackEntry.arguments?.getString("fecha")
-            
+
             if (alumnosIds.isNotBlank()) {
                 com.tfg.umeegunero.feature.profesor.registros.screen.HiltRegistroDiarioScreen(
                     alumnosIds = alumnosIds,
@@ -1065,6 +1065,24 @@ fun Navigation(
             )
         }
 
+        // Añadir ruta para calendario_profesor con parámetros
+        composable(
+            route = "calendario_profesor/{profesorId}/{centroId}",
+            arguments = listOf(
+                navArgument("profesorId") { type = NavType.StringType },
+                navArgument("centroId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val profesorId = backStackEntry.arguments?.getString("profesorId") ?: ""
+            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
+            
+            com.tfg.umeegunero.feature.profesor.screen.CalendarioProfesorScreen(
+                navController = navController,
+                profesorId = profesorId,
+                centroId = centroId
+            )
+        }
+
         // Pantallas específicas de familiar
         composable(route = AppScreens.CalendarioFamilia.route) {
             com.tfg.umeegunero.feature.familiar.screen.CalendarioFamiliaScreen(
@@ -1079,7 +1097,7 @@ fun Navigation(
                 }
             )
         }
-        
+
         // Añadir ruta para pantalla de nuevo mensaje
         composable(
             route = AppScreens.NewMessage.route,
@@ -1087,7 +1105,7 @@ fun Navigation(
         ) { backStackEntry ->
             val receiverId = backStackEntry.arguments?.getString("receiverId")
             val messageType = backStackEntry.arguments?.getString("messageType")
-            
+
             com.tfg.umeegunero.feature.common.comunicacion.screen.NewMessageScreen(
                 receiverId = receiverId,
                 messageType = messageType,
@@ -1105,18 +1123,18 @@ fun Navigation(
             )
         ) { backStackEntry ->
             val messageId = backStackEntry.arguments?.getString("messageId") ?: ""
-            
+
             val onNavigateToConversation: (String) -> Unit = { combinedParams ->
                 try {
                     // Extraer conversationId y participantId del string combinado
                     val params = combinedParams.split("/")
                     val conversationId = params.getOrNull(0) ?: ""
                     val participantId = params.getOrNull(1) ?: ""
-                    
+
                     // Obtener el usuario actual para determinar el tipo
                     val currentUser = FirebaseAuth.getInstance().currentUser
                     val isProfesor = currentUser?.email?.contains("profesor") == true
-                    
+
                     // Navegar con los parámetros correctos
                     val route = if (isProfesor) {
                         // Para profesores
@@ -1125,7 +1143,7 @@ fun Navigation(
                         // Para familiares
                         AppScreens.ChatFamilia.createRoute(conversationId, participantId)
                     }
-                    
+
                     Timber.d("Navegando a chat: $route")
                     navController.navigate(route)
                 } catch (e: Exception) {
@@ -1137,21 +1155,21 @@ fun Navigation(
                     ).show()
                 }
             }
-            
+
             MessageDetailScreen(
                 messageId = messageId,
                 onBack = { navController.popBackStack() },
                 onNavigateToConversation = onNavigateToConversation
             )
         }
-        
+
         // Pantalla de chat (utilizando UnifiedMessage)
         composable(
             route = AppScreens.Chat.route,
             arguments = listOf(
                 navArgument("conversacionId") { type = NavType.StringType },
                 navArgument("participanteId") { type = NavType.StringType },
-                navArgument("alumnoId") { 
+                navArgument("alumnoId") {
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
@@ -1161,7 +1179,7 @@ fun Navigation(
             val conversacionId = backStackEntry.arguments?.getString("conversacionId") ?: ""
             val participanteId = backStackEntry.arguments?.getString("participanteId") ?: ""
             val alumnoId = backStackEntry.arguments?.getString("alumnoId")
-            
+
             // Determinar si el usuario es profesor o familiar y redirigir a la pantalla apropiada
             val currentUser = FirebaseAuth.getInstance().currentUser
             if (currentUser != null) {
@@ -1179,14 +1197,14 @@ fun Navigation(
                 navController.popBackStack()
             }
         }
-        
+
         // Pantalla de contactos para iniciar un chat nuevo
         composable(
             route = AppScreens.ChatContacts.route,
             arguments = AppScreens.ChatContacts.arguments
         ) { backStackEntry ->
             val chatRouteName = backStackEntry.arguments?.getString("chatRouteName") ?: ""
-            
+
             com.tfg.umeegunero.feature.profesor.screen.ChatContactsScreen(
                 navController = navController,
                 chatRouteName = chatRouteName
@@ -1217,14 +1235,14 @@ fun Navigation(
         ) { backStackEntry ->
             val conversacionId = backStackEntry.arguments?.getString("conversacionId") ?: ""
             val participanteId = backStackEntry.arguments?.getString("participanteId") ?: ""
-            
+
             com.tfg.umeegunero.feature.profesor.screen.ChatProfesorScreen(
                 navController = navController,
                 familiarId = participanteId,
                 conversacionId = conversacionId
             )
         }
-        
+
         // Pantalla de chat para familiares
         composable(
             route = AppScreens.ChatFamilia.route,
@@ -1235,7 +1253,7 @@ fun Navigation(
         ) { backStackEntry ->
             val conversacionId = backStackEntry.arguments?.getString("conversacionId") ?: ""
             val participanteId = backStackEntry.arguments?.getString("participanteId") ?: ""
-            
+
             com.tfg.umeegunero.feature.familiar.screen.ChatFamiliaScreen(
                 navController = navController,
                 profesorId = participanteId,
@@ -1264,30 +1282,11 @@ fun Navigation(
                 viewModel = hiltViewModel()
             )
         }
-        
+
         // Pantalla de configuración de tema
         composable(route = AppScreens.CambiarTema.route) {
             com.tfg.umeegunero.feature.common.theme.CambiarTemaScreen(
                 navController = navController
-            )
-        }
-
-        // Pantalla de consulta de registros diarios para familiares
-        composable(
-            route = AppScreens.ConsultaRegistroDiario.route,
-            arguments = AppScreens.ConsultaRegistroDiario.arguments
-        ) { backStackEntry ->
-            val alumnoId = backStackEntry.arguments?.getString("alumnoId") ?: ""
-            val alumnoNombre = backStackEntry.arguments?.getString("alumnoNombre") ?: "Alumno"
-            val registroId = backStackEntry.arguments?.getString("registroId")
-            
-            Timber.d("Navegando a ConsultaRegistroDiario para alumno: $alumnoId, nombre: $alumnoNombre, registroId: $registroId")
-            
-            com.tfg.umeegunero.feature.familiar.registros.screen.HiltConsultaRegistroDiarioScreen(
-                alumnoId = alumnoId,
-                alumnoNombre = alumnoNombre,
-                registroId = registroId,
-                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -1305,20 +1304,22 @@ fun Navigation(
             )
         }
 
-        // Pantalla de calendario de profesor con argumentos
+        // Buscar la sección de navegación de familiar y añadir una nueva ruta para DetalleEventoScreen
         composable(
-            route = "calendario_profesor/{profesorId}/{centroId}",
+            route = "detalleEvento/{eventoId}",
             arguments = listOf(
-                navArgument("profesorId") { type = NavType.StringType },
-                navArgument("centroId") { type = NavType.StringType }
+                navArgument("eventoId") {
+                    type = NavType.StringType
+                }
             )
         ) { backStackEntry ->
-            val profesorId = backStackEntry.arguments?.getString("profesorId") ?: ""
-            val centroId = backStackEntry.arguments?.getString("centroId") ?: ""
-            com.tfg.umeegunero.feature.profesor.screen.CalendarioProfesorScreen(
+            // Obtener el ID del evento de los argumentos
+            val eventoId = backStackEntry.arguments?.getString("eventoId") ?: ""
+            
+            // Llamar a la pantalla de detalle de evento
+            DetalleEventoScreen(
                 navController = navController,
-                profesorId = profesorId,
-                centroId = centroId
+                eventoId = eventoId
             )
         }
     }

@@ -83,6 +83,15 @@ class ChatViewModel @Inject constructor(
     fun inicializar(conversacionId: String, participanteId: String, alumnoId: String? = null) {
         Timber.d("Inicializando ChatViewModel - conversacionId: '$conversacionId', participanteId: '$participanteId', alumnoId: '$alumnoId'")
         
+        // Si ya está inicializado con los mismos datos, evitar reinicialización
+        if (_uiState.value.conversacionId == conversacionId && 
+            _uiState.value.participanteId == participanteId &&
+            _uiState.value.alumnoId == alumnoId &&
+            messagesListener != null) {
+            Timber.d("ChatViewModel ya inicializado con estos datos, omitiendo reinicialización")
+            return
+        }
+        
         _uiState.update { it.copy(
             isLoading = true,
             conversacionId = conversacionId,
@@ -189,100 +198,222 @@ class ChatViewModel @Inject constructor(
             return
         }
         
+        // Si ya tenemos un listener para esta conversación, no hacer nada
+        if (messagesListener != null && _uiState.value.conversacionId == conversacionId) {
+            Timber.d("Ya existe un listener activo para la conversación: $conversacionId")
+            _uiState.update { it.copy(isLoading = false) }
+            return
+        }
+        
         // Cancelar listener anterior si existe
         messagesListener?.remove()
+        messagesListener = null
         
         try {
             Timber.d("Configurando listener para conversación: $conversacionId en collection unified_messages")
             
-            // Configurar listener en tiempo real para los mensajes
-            messagesListener = firestore.collection("unified_messages")
-                .whereEqualTo("conversationId", conversacionId)
-                .whereEqualTo("type", MessageType.CHAT.name)
-                .orderBy("timestamp", Query.Direction.ASCENDING)
-                .addSnapshotListener { snapshot, error ->
-                    if (error != null) {
-                        Timber.e(error, "Error al escuchar mensajes: ${error.message}")
-                        
-                        // Si es un error de permisos o red, intentar reconectar después de un tiempo
-                        if (error.message?.contains("permission", ignoreCase = true) == true ||
-                            error.message?.contains("network", ignoreCase = true) == true ||
-                            error.message?.contains("unavailable", ignoreCase = true) == true) {
+            // Variable para controlar si es la primera carga de mensajes
+            val isInitialLoad = _uiState.value.mensajes.isEmpty()
+            
+            // Cargar usuario actual para verificar permisos
+            viewModelScope.launch {
+                try {
+                    // Obtener el usuario actual mediante Result
+                    var currentUserId = ""
+                    usuarioRepository.getUsuarioActual().collect { result ->
+                        if (result is Result.Success<*>) {
+                            val usuario = result.data as Usuario
+                            currentUserId = usuario.dni
+                        }
+                    }
+                    
+                    if (currentUserId.isEmpty()) {
+                        _uiState.update { it.copy(
+                            error = "No se pudo verificar la identidad del usuario actual",
+                            isLoading = false
+                        ) }
+                        return@launch
+                    }
+                    
+                    // Configurar listener en tiempo real para los mensajes
+                    messagesListener = firestore.collection("unified_messages")
+                        .whereEqualTo("conversationId", conversacionId)
+                        .whereEqualTo("type", MessageType.CHAT.name)
+                        .orderBy("timestamp", Query.Direction.ASCENDING)
+                        .addSnapshotListener { snapshot, error ->
+                            if (error != null) {
+                                Timber.e(error, "Error al escuchar mensajes: ${error.message}")
+                                
+                                // Si es un error de permisos o red, intentar reconectar después de un tiempo
+                                if (error.message?.contains("permission", ignoreCase = true) == true ||
+                                    error.message?.contains("network", ignoreCase = true) == true ||
+                                    error.message?.contains("unavailable", ignoreCase = true) == true) {
+                                    
+                                    viewModelScope.launch {
+                                        kotlinx.coroutines.delay(5000) // Esperar 5 segundos
+                                        if (_uiState.value.conversacionId == conversacionId) {
+                                            Timber.d("Intentando reconectar al chat...")
+                                            
+                                            // Reset listener para forzar reconexión
+                                            messagesListener?.remove()
+                                            messagesListener = null
+                                            cargarMensajesUnificados(conversacionId)
+                                        }
+                                    }
+                                }
+                                
+                                // Solo mostrar error si es la carga inicial
+                                if (isInitialLoad) {
+                                    _uiState.update { it.copy(
+                                        error = "Error al cargar mensajes: ${error.message}",
+                                        isLoading = false
+                                    ) }
+                                }
+                                return@addSnapshotListener
+                            }
                             
-                            viewModelScope.launch {
-                                kotlinx.coroutines.delay(5000) // Esperar 5 segundos
-                                if (_uiState.value.conversacionId == conversacionId) {
-                                    Timber.d("Intentando reconectar al chat...")
-                                    cargarMensajesUnificados(conversacionId)
+                            if (snapshot == null) {
+                                if (isInitialLoad) {
+                                    _uiState.update { it.copy(isLoading = false) }
+                                }
+                                return@addSnapshotListener
+                            }
+                            
+                            try {
+                                val mensajesNuevos = snapshot.documents.mapNotNull { doc ->
+                                    val data = doc.data ?: return@mapNotNull null
+                                    val message = UnifiedMessage.fromMap(doc.id, data)
+                                    
+                                    // Verificar que el usuario actual sea parte de la conversación
+                                    val canAccess = message.senderId == currentUserId || 
+                                                   message.receiverId == currentUserId ||
+                                                   message.receiversIds.contains(currentUserId)
+                                    
+                                    if (!canAccess) {
+                                        Timber.w("⚠️ Intento de acceso no autorizado a mensaje: ${message.id}")
+                                        
+                                        // Solo mostrar error si es la carga inicial
+                                        if (isInitialLoad) {
+                                            _uiState.update { it.copy(
+                                                error = "No tienes permiso para acceder a esta conversación",
+                                                isLoading = false
+                                            ) }
+                                            messagesListener?.remove()
+                                            messagesListener = null
+                                        }
+                                        return@addSnapshotListener
+                                    }
+                                    
+                                    message
+                                }
+                                
+                                Timber.d("Mensajes recibidos: ${mensajesNuevos.size}")
+                                
+                                // Obtener mensajes actuales
+                                val mensajesActuales = _uiState.value.mensajes
+                                
+                                // Verificar si hay mensajes nuevos o cambios significativos
+                                val tieneNuevosMensajes = mensajesNuevos.size != mensajesActuales.size ||
+                                      mensajesNuevos.any { nuevoMensaje -> 
+                                          mensajesActuales.none { it.id == nuevoMensaje.id } 
+                                      }
+                                
+                                // Solo actualizar si hay cambios o es la primera carga
+                                if (isInitialLoad || tieneNuevosMensajes) {
+                                    Timber.d("Actualizando lista de mensajes - inicial: $isInitialLoad, nuevos mensajes: $tieneNuevosMensajes")
+                                    
+                                    _uiState.update { state ->
+                                        state.copy(
+                                            mensajes = mensajesNuevos,
+                                            isLoading = false,
+                                            error = null
+                                        )
+                                    }
+                                } else {
+                                    // Si no hay cambios, solo quitar el estado de carga
+                                    if (_uiState.value.isLoading) {
+                                        _uiState.update { it.copy(isLoading = false) }
+                                    }
+                                }
+                                
+                                // Marcar mensajes como leídos automáticamente (solo los nuevos)
+                                val mensajesParaMarcar = if (tieneNuevosMensajes) {
+                                    // Si hay mensajes nuevos, solo marcar los que no están en la lista actual
+                                    mensajesNuevos.filter { nuevoMensaje ->
+                                        mensajesActuales.none { it.id == nuevoMensaje.id }
+                                    }
+                                } else {
+                                    // Si es la carga inicial, marcar todos
+                                    if (isInitialLoad) mensajesNuevos else emptyList()
+                                }
+                                
+                                if (mensajesParaMarcar.isNotEmpty()) {
+                                    marcarMensajesComoLeidos(mensajesParaMarcar, currentUserId)
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al procesar mensajes: ${e.message}")
+                                
+                                // Solo mostrar error si es la carga inicial
+                                if (isInitialLoad) {
+                                    _uiState.update { it.copy(
+                                        error = "Error al procesar mensajes: ${e.message}",
+                                        isLoading = false
+                                    ) }
                                 }
                             }
                         }
-                        
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener el usuario actual: ${e.message}")
+                    
+                    // Solo mostrar error y actualizar UI si es la carga inicial
+                    if (isInitialLoad) {
                         _uiState.update { it.copy(
-                            error = "Error al cargar mensajes: ${error.message}",
+                            error = "Error al obtener el usuario actual: ${e.message}",
                             isLoading = false
                         ) }
-                        return@addSnapshotListener
-                    }
-                    
-                    if (snapshot != null) {
-                        Timber.d("Snapshot recibido para conversación $conversacionId. Documentos: ${snapshot.documents.size}")
-                        
-                        val messages = snapshot.documents.mapNotNull { doc ->
-                            try {
-                                val data = doc.data ?: return@mapNotNull null
-                                Timber.d("Procesando mensaje ${doc.id}: $data")
-                                UnifiedMessage.fromMap(doc.id, data)
-                            } catch (e: Exception) {
-                                Timber.e(e, "Error al parsear mensaje: ${doc.id}")
-                                null
-                            }
-                        }
-                        
-                        _uiState.update { it.copy(
-                            mensajes = messages.sortedBy { mensaje -> mensaje.timestamp },
-                            isLoading = false,
-                            error = null // Limpiar error si la conexión se restableció
-                        ) }
-                        
-                        // Marcar mensajes nuevos como leídos
-                        viewModelScope.launch {
-                            marcarMensajesNuevosComoLeidos(messages)
-                        }
-                        
-                        Timber.d("Mensajes actualizados: ${messages.size} mensajes en la conversación")
-                    } else {
-                        Timber.d("Snapshot nulo recibido para conversación $conversacionId")
                     }
                 }
-                
-            Timber.d("Listener de mensajes configurado para conversación: $conversacionId")
+            }
         } catch (e: Exception) {
-            _uiState.update { it.copy(
-                error = "Error al configurar listener de mensajes: ${e.message}",
-                isLoading = false
-            ) }
-            Timber.e(e, "Error al configurar listener de mensajes")
+            Timber.e(e, "Error al configurar listener: ${e.message}")
+            
+            // Solo mostrar error y actualizar UI si es la carga inicial
+            if (_uiState.value.mensajes.isEmpty()) {
+                _uiState.update { it.copy(
+                    error = "Error al cargar mensajes: ${e.message}",
+                    isLoading = false
+                ) }
+            }
         }
     }
     
     /**
-     * Marca solo los mensajes nuevos como leídos
+     * Marca los mensajes como leídos
      */
-    private suspend fun marcarMensajesNuevosComoLeidos(messages: List<UnifiedMessage>) {
-        val currentUser = _uiState.value.usuario ?: return
-        
-        try {
-            // Filtrar solo mensajes no leídos que no son del usuario actual
-            val mensajesNoLeidos = messages.filter { 
-                it.status == MessageStatus.UNREAD && it.senderId != currentUser.dni 
+    private fun marcarMensajesComoLeidos(mensajes: List<UnifiedMessage>, currentUserId: String) {
+        viewModelScope.launch {
+            try {
+                // Filtrar mensajes no leídos donde el usuario actual es el receptor
+                val mensajesNoLeidos = mensajes.filter { 
+                    !it.isRead && 
+                    (it.receiverId == currentUserId || it.receiversIds.contains(currentUserId)) &&
+                    it.senderId != currentUserId 
+                }
+                
+                if (mensajesNoLeidos.isEmpty()) return@launch
+                
+                // Marcar cada mensaje como leído
+                for (mensaje in mensajesNoLeidos) {
+                    try {
+                        Timber.d("Marcando mensaje ${mensaje.id} como leído")
+                        unifiedMessageRepository.markAsRead(mensaje.id)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al marcar mensaje ${mensaje.id} como leído: ${e.message}")
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al marcar mensajes como leídos: ${e.message}")
             }
-            
-            mensajesNoLeidos.forEach { mensaje ->
-                unifiedMessageRepository.markAsRead(mensaje.id)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error al marcar mensajes como leídos: ${e.message}")
         }
     }
 

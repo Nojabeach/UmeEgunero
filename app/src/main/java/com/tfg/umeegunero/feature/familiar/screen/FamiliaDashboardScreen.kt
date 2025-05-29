@@ -695,7 +695,6 @@ fun FamiliaDashboardScreen(
     var showNavigateToCalendarioDialog by remember { mutableStateOf(false) }
     var showNavigateToMensajesDialog by remember { mutableStateOf(false) }
     var showNavigateToConfiguracionDialog by remember { mutableStateOf(false) }
-    var showNavigateToHistorialDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     
     // Estado para controlar el diálogo de notificación de ausencia
@@ -888,62 +887,6 @@ fun FamiliaDashboardScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showNavigateToConfiguracionDialog = false }) {
-                    Text("No")
-                }
-            }
-        )
-    }
-    
-    if (showNavigateToHistorialDialog) {
-        AlertDialog(
-            onDismissRequest = { showNavigateToHistorialDialog = false },
-            title = { Text("Historial") },
-            text = { 
-                uiState.hijoSeleccionado?.let { hijo ->
-                    Text(
-                        text = "¿Quieres ver el historial completo de ${hijo.nombre}?",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center
-                    )
-                } ?: Text("Necesitas seleccionar un hijo primero")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        try {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error al realizar feedback háptico")
-                        }
-                        showNavigateToHistorialDialog = false
-                        uiState.hijoSeleccionado?.let { hijo ->
-                            val alumnoId = hijo.dni
-                            val alumnoNombre = hijo.nombre
-                            scope.launch {
-                                try {
-                                    navController.navigate(AppScreens.ConsultaRegistroDiario.createRoute(
-                                        alumnoId = alumnoId,
-                                        alumnoNombre = alumnoNombre
-                                    ))
-                                    Timber.d("Navegando a historial completo para alumno: $alumnoId, nombre: $alumnoNombre")
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Error al navegar a historial completo: ${e.message}")
-                                    snackbarHostState.showSnackbar("Error al navegar al historial completo. Intente de nuevo.")
-                                }
-                            }
-                        } ?: run {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("No hay hijos registrados para mostrar el historial.")
-                            }
-                        }
-                    },
-                    enabled = uiState.hijoSeleccionado != null
-                ) {
-                    Text("Sí")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNavigateToHistorialDialog = false }) {
                     Text("No")
                 }
             }
@@ -1277,42 +1220,6 @@ fun FamiliaDashboardScreen(
                                     }
                                 } catch (e: Exception) {
                                     Timber.e(e, "Error al abrir diálogo de ausencia: ${e.message}")
-                                }
-                            }
-                        )
-                    }
-                    
-                    // Historial Completo
-                    item {
-                        OpcionDashboardCard(
-                            titulo = "Historial Completo",
-                            descripcion = "Consulta todos los registros diarios de actividad de tu hijo/a",
-                            icono = Icons.Default.History,
-                            onClick = {
-                                try {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    // Usar el hijo seleccionado actual
-                                    val hijoSeleccionado = uiState.hijoSeleccionado
-                                    if (hijoSeleccionado != null) {
-                                        try {
-                                            navController.navigate(AppScreens.ConsultaRegistroDiario.createRoute(
-                                                alumnoId = hijoSeleccionado.dni,
-                                                alumnoNombre = hijoSeleccionado.nombre
-                                            ))
-                                            Timber.d("Navegando a ConsultaRegistroDiario para alumno: ${hijoSeleccionado.dni}, nombre: ${hijoSeleccionado.nombre}")
-                                        } catch (e: Exception) {
-                                            Timber.e(e, "Error al navegar a historial completo: ${e.message}")
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Error al navegar al historial completo. Intente de nuevo.")
-                                            }
-                                        }
-                                    } else {
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Por favor, selecciona un hijo primero")
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Error al navegar a Historial Completo: ${e.message}")
                                 }
                             }
                         )
@@ -1882,14 +1789,11 @@ fun ResumenActividadCard(
                         onClick = { 
                             try {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                Timber.d("Navegando a ConsultaRegistroDiario con registroId: ${ultimoRegistro.id}")
+                                Timber.d("Navegando a DetalleRegistroScreen con registroId: ${ultimoRegistro.id}")
                                 
-                                // Usar la función navegarADetalleRegistro del viewModel
-                                viewModel.navegarAConsultaRegistroDiario(
-                                    navController = navController,
-                                    alumno = alumno,
-                                    registroId = ultimoRegistro.id
-                                )
+                                // Navegar directamente a DetalleRegistroScreen con el ID del registro
+                                navController.navigate(AppScreens.DetalleRegistro.createRoute(ultimoRegistro.id))
+                                
                                 // Mostrar Toast como indicador de que se está procesando
                                 Toast.makeText(context, "Abriendo detalle del registro...", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {

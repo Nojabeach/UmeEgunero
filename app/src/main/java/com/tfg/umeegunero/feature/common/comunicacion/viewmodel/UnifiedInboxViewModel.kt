@@ -16,12 +16,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import kotlinx.coroutines.runBlocking
 
 /**
  * Estado de la UI para la bandeja de entrada unificada
  */
 data class UnifiedInboxUiState(
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val messages: List<UnifiedMessage> = emptyList(),
     val filteredMessages: List<UnifiedMessage> = emptyList(),
     val selectedFilter: MessageType? = null,
@@ -43,10 +44,23 @@ class UnifiedInboxViewModel @Inject constructor(
     val uiState: StateFlow<UnifiedInboxUiState> = _uiState.asStateFlow()
     
     /**
+     * Obtiene el ID del usuario actualmente autenticado
+     * @return ID del usuario actual o cadena vacía si no hay usuario
+     */
+    fun getCurrentUserId(): String {
+        return runBlocking {
+            authRepository.getCurrentUserId() ?: ""
+        }
+    }
+    
+    /**
      * Carga todos los mensajes del usuario actual
      */
     fun loadMessages() {
-        _uiState.update { it.copy(isLoading = true, error = null) }
+        // Solo mostrar loading si no hay mensajes cargados previamente
+        if (_uiState.value.messages.isEmpty()) {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+        }
         
         viewModelScope.launch {
             Timber.d("⚠️ [INBOX] Iniciando carga de mensajes unificados...")
@@ -83,8 +97,11 @@ class UnifiedInboxViewModel @Inject constructor(
                         }
                     }
                     is Result.Loading -> {
-                        Timber.d("⚠️ [INBOX] 🔄 Cargando mensajes...")
-                        _uiState.update { it.copy(isLoading = true) }
+                        // Solo actualizar a loading si es la primera carga
+                        if (_uiState.value.messages.isEmpty()) {
+                            Timber.d("⚠️ [INBOX] 🔄 Cargando mensajes...")
+                            _uiState.update { it.copy(isLoading = true) }
+                        }
                     }
                 }
             }
@@ -164,6 +181,33 @@ class UnifiedInboxViewModel @Inject constructor(
     fun deleteMessage(messageId: String) {
         viewModelScope.launch {
             try {
+                // Encontrar el mensaje en la lista actual
+                val message = _uiState.value.messages.find { it.id == messageId }
+                
+                if (message == null) {
+                    _uiState.update { it.copy(error = "Mensaje no encontrado") }
+                    return@launch
+                }
+                
+                // Verificar si el usuario actual es el emisor del mensaje
+                val currentUserId = authRepository.getCurrentUserId()
+                val isCurrentUserSender = message.senderId == currentUserId
+                
+                // Verificar si el mensaje ha sido leído
+                val isMessageRead = message.isRead || message.status == com.tfg.umeegunero.data.model.MessageStatus.READ
+                
+                // Solo permitir eliminar si es el emisor y el mensaje no ha sido leído
+                if (!isCurrentUserSender) {
+                    _uiState.update { it.copy(error = "Solo el emisor puede eliminar este mensaje") }
+                    return@launch
+                }
+                
+                if (isMessageRead) {
+                    _uiState.update { it.copy(error = "No se puede eliminar un mensaje que ya ha sido leído") }
+                    return@launch
+                }
+                
+                // Proceder con la eliminación
                 val result = messageRepository.deleteMessage(messageId)
                 
                 if (result is Result.Success) {

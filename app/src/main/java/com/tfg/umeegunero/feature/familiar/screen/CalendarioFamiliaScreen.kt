@@ -264,7 +264,8 @@ fun CalendarioFamiliaScreen(
                             EventoItem(
                                 evento = evento,
                                 onClick = {
-                                    // Aquí iría la navegación al detalle del evento
+                                    // Navegar a la pantalla de detalle de evento
+                                    navController.navigate("detalleEvento/${evento.id}")
                                 }
                             )
                         }

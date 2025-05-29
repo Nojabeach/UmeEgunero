@@ -6,22 +6,37 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -51,12 +66,15 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -65,10 +83,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -85,10 +106,14 @@ import com.tfg.umeegunero.feature.common.mensajeria.ChatViewModel
 import com.tfg.umeegunero.feature.profesor.screen.AttachmentType
 import com.tfg.umeegunero.ui.theme.FamiliarColor
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusProperties
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -108,8 +133,57 @@ fun ChatFamiliaScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
     
-    // Log para diagnóstico
-    Timber.d("ChatFamiliaScreen iniciado - profesorId: '$profesorId', conversacionId: '$conversacionId', alumnoId: '$alumnoId'")
+    // Estado para controlar si es la primera carga
+    var isInitialLoad by remember { mutableStateOf(true) }
+    
+    // Estado para mensajes pendientes (soporte offline)
+    var pendingMessages by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isOnline by remember { mutableStateOf(true) }
+    
+    // Coroutine scope para manejar efectos secundarios
+    val scope = rememberCoroutineScope()
+    
+    // Estado para controlar el foco del TextField
+    val focusRequester = remember { FocusRequester() }
+    
+    // Asegurar que el teclado permanezca oculto inicialmente
+    LaunchedEffect(Unit) {
+        keyboardController?.hide()
+    }
+    
+    // Función para enviar mensajes con soporte offline
+    fun sendMessageWithOfflineSupport(text: String) {
+        if (isOnline) {
+            // Si estamos online, intentar enviar directamente
+            viewModel.sendMessage(text)
+        } else {
+            // Si estamos offline, guardar en mensajes pendientes
+            pendingMessages = pendingMessages + text
+            // Mostrar mensaje al usuario
+            Toast.makeText(
+                context,
+                "Mensaje guardado. Se enviará cuando haya conexión.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+    
+    // Observar el estado de la UI
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    
+    // Usamos un estado para la lista para poder hacer scroll
+    val listState = rememberLazyListState()
+    
+    // Desplazar la lista al último mensaje cuando lleguen nuevos mensajes
+    LaunchedEffect(uiState.mensajes.size) {
+        if (uiState.mensajes.isNotEmpty()) {
+            // Si hay mensajes nuevos, desplazar al último mensaje
+            listState.animateScrollToItem(
+                index = uiState.mensajes.size - 1, 
+                scrollOffset = 0
+            )
+        }
+    }
     
     // Manejar caso donde el profesorId está vacío
     LaunchedEffect(profesorId, conversacionId) {
@@ -129,7 +203,10 @@ fun ChatFamiliaScreen(
                 Timber.w("profesorId vacío, intentando obtener participante de conversación: $conversacionId")
                 try {
                     // Intentar inicializar con un ID temporal mientras se carga el real
-                    viewModel.inicializar(conversacionId, "loading", alumnoId)
+                    if (isInitialLoad) {
+                        viewModel.inicializar(conversacionId, "loading", alumnoId)
+                        isInitialLoad = false
+                    }
                 } catch (e: Exception) {
                     Timber.e(e, "Error al inicializar chat con conversación: $conversacionId")
                     Toast.makeText(
@@ -143,16 +220,59 @@ fun ChatFamiliaScreen(
             }
             else -> {
                 // Caso normal: tenemos profesorId
-                Timber.d("🔄 ChatFamiliaScreen: Inicializando chat con profesorId=$profesorId, conversacionId=$conversacionId")
-                viewModel.inicializar(conversacionId, profesorId, alumnoId)
-                
-                // Actualización periódica mientras la pantalla esté visible
-                while(true) {
-                    // Esperar 15 segundos antes de la siguiente actualización
-                    delay(15000)
-                    Timber.d("🔄 ChatFamiliaScreen: Actualización periódica de mensajes")
+                if (isInitialLoad) {
+                    Timber.d("🔄 ChatFamiliaScreen: Inicializando chat")
                     viewModel.inicializar(conversacionId, profesorId, alumnoId)
+                    isInitialLoad = false
                 }
+            }
+        }
+    }
+    
+    // Efecto para comprobar la conectividad
+    val connectivityManager = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+    val networkCallback = remember {
+        object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                isOnline = true
+                // Si tenemos mensajes pendientes, intentamos enviarlos
+                if (pendingMessages.isNotEmpty()) {
+                    scope.launch {
+                        pendingMessages.forEach { message ->
+                            try {
+                                viewModel.sendMessage(message)
+                                // Eliminar mensaje de la lista de pendientes
+                                pendingMessages = pendingMessages.filter { it != message }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al enviar mensaje pendiente")
+                            }
+                        }
+                    }
+                }
+            }
+            
+            override fun onLost(network: android.net.Network) {
+                isOnline = false
+            }
+        }
+    }
+    
+    // Registrar callback y establecer estado inicial
+    LaunchedEffect(Unit) {
+        val networkRequest = android.net.NetworkRequest.Builder().build()
+        connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
+        
+        // Comprobación inicial
+        isOnline = connectivityManager.activeNetworkInfo?.isConnected == true
+    }
+    
+    // Deregistrar callback cuando se destruya
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                connectivityManager.unregisterNetworkCallback(networkCallback)
+            } catch (e: Exception) {
+                Timber.e(e, "Error al deregistrar networkCallback")
             }
         }
     }
@@ -187,7 +307,13 @@ fun ChatFamiliaScreen(
             addAction("com.tfg.umeegunero.NUEVO_MENSAJE_UNIFICADO")
             addAction("com.tfg.umeegunero.NUEVO_MENSAJE_CHAT")
         }
-        context.registerReceiver(receiver, filter)
+        
+        // Para Android 14 (API 34) y superior, es obligatorio especificar si el receiver es exportado
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(receiver, filter)
+        }
         
         // Limpiar al destruir
         onDispose {
@@ -204,8 +330,11 @@ fun ChatFamiliaScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                Timber.d("🔄 ChatFamiliaScreen: Actualizando al volver a pantalla visible")
-                viewModel.inicializar(conversacionId, profesorId, alumnoId)
+                // Solo actualizar si no es la carga inicial
+                if (!isInitialLoad) {
+                    Timber.d("🔄 ChatFamiliaScreen: Actualizando al volver a pantalla visible")
+                    viewModel.inicializar(conversacionId, profesorId, alumnoId)
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -213,9 +342,6 @@ fun ChatFamiliaScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
-    
-    // Observar el estado de la UI
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
     // Si hay un error, mostrarlo y volver atrás
     uiState.error?.let { error ->
@@ -293,7 +419,7 @@ fun ChatFamiliaScreen(
                         
                         Column {
                             Text(
-                                text = uiState.participante?.nombre ?: "Profesor",
+                                text = uiState.participante?.nombre ?: if (uiState.isLoading) "Cargando..." else "Profesor",
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
@@ -341,146 +467,299 @@ fun ChatFamiliaScreen(
                     }
                 }
             )
-        }
+        },
+        // Configuramos el comportamiento de los insets para manejar mejor el teclado
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                // Usamos nestedScroll con el interop para mejor comportamiento con el teclado
+                .nestedScroll(rememberNestedScrollInteropConnection())
         ) {
-            // Lista de mensajes
-            LazyColumn(
+            // Lista de mensajes con indicador de carga integrado
+            Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                reverseLayout = true
             ) {
-                // Iterar sobre los mensajes agrupados por fecha
-                for ((date, messagesForDate) in groupedMessages) {
-                    // Mostrar los mensajes de la fecha
-                    items(messagesForDate.sortedByDescending { it.timestamp }) { message ->
-                        val isFromMe = message.senderId == uiState.usuario?.dni
-                        
-                        MessageItem(
-                            message = message,
-                            isFromMe = isFromMe,
-                            onAttachmentClick = { url, type ->
-                                previewAttachmentUrl = url
-                                previewAttachmentType = type
-                                showAttachmentPreview = true
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    reverseLayout = false,
+                    state = listState
+                ) {
+                    item {
+                        // Fecha de inicio de conversación
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Surface(
+                                modifier = Modifier.clip(RoundedCornerShape(16.dp)),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                            ) {
+                                Text(
+                                    text = "Inicio de conversación",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                     
-                    // Mostrar el encabezado de la fecha
+                    // Iterar sobre los mensajes agrupados por fecha
+                    for ((date, messagesForDate) in groupedMessages.toSortedMap(compareBy { it.first })) {
+                        // Mostrar el encabezado de la fecha
+                        item {
+                            // Añadir encabezado de fecha directamente, sin AnimatedVisibility
+                            DateHeader(date = getFormattedDate(date))
+                        }
+                        
+                        // Agrupar mensajes consecutivos del mismo remitente
+                        val groupedBySender = messagesForDate.sortedBy { it.timestamp }
+                            .groupBy { it.senderId }
+                            .values
+                            .flatMap { messages ->
+                                val result = mutableListOf<Pair<UnifiedMessage, Boolean>>()
+                                for (i in messages.indices) {
+                                    // Marcar si es el último mensaje de un grupo consecutivo
+                                    val isLastInGroup = i == messages.size - 1 || 
+                                        messages[i+1].timestamp.seconds - messages[i].timestamp.seconds > 60  // Más de 1 minuto de diferencia
+                                    result.add(Pair(messages[i], isLastInGroup))
+                                }
+                                result
+                            }
+                            .sortedBy { it.first.timestamp }
+                        
+                        // Mostrar los mensajes de la fecha, agrupados
+                        var lastSenderId: String? = null
+                        
+                        items(groupedBySender) { (message, isLastInGroup) ->
+                            val isFromMe = message.senderId == uiState.usuario?.dni
+                            val isFirstInGroup = message.senderId != lastSenderId
+                            
+                            // Mensaje con información de agrupación
+                            GroupedMessageItem(
+                                message = message,
+                                isFromMe = isFromMe,
+                                isFirstInGroup = isFirstInGroup,
+                                isLastInGroup = isLastInGroup,
+                                onAttachmentClick = { url, type ->
+                                    previewAttachmentUrl = url
+                                    previewAttachmentType = type
+                                    showAttachmentPreview = true
+                                }
+                            )
+                            
+                            lastSenderId = message.senderId
+                            
+                            if (isLastInGroup) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                            } else {
+                                Spacer(modifier = Modifier.height(2.dp))
+                            }
+                        }
+                    }
+                    
+                    // Espacio adicional al final para evitar que el último mensaje quede detrás del campo de texto
                     item {
-                        DateHeader(date = getFormattedDate(date))
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
                 
-                item {
-                    // Fecha de inicio de conversación
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
-                            modifier = Modifier.clip(RoundedCornerShape(16.dp)),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                        ) {
-                            Text(
-                                text = "Inicio de conversación",
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                // Mostrar indicador de carga de dos formas distintas según el contexto
+                AnimatedContent(
+                    targetState = if (uiState.isLoading) {
+                        if (uiState.mensajes.isEmpty()) "inicial" else "recarga"
+                    } else {
+                        "nada"
+                    },
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(durationMillis = 300)) togetherWith 
+                        fadeOut(animationSpec = tween(durationMillis = 150))
+                    },
+                    label = "LoadingIndicator"
+                ) { estado ->
+                    when (estado) {
+                        "inicial" -> {
+                            // Indicador grande para carga inicial
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = FamiliarColor,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                        }
+                        "recarga" -> {
+                            // Indicador pequeño y más sutil para recargas
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                contentAlignment = Alignment.TopCenter
+                            ) {
+                                CircularProgressIndicator(
+                                    color = FamiliarColor.copy(alpha = 0.3f),
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 1.5.dp
+                                )
+                            }
+                        }
+                        else -> {
+                            // No mostrar nada
                         }
                     }
                 }
             }
             
-            // Campo de texto para escribir el mensaje
+            // Campo de texto para escribir el mensaje con imePadding para que no sea empujado por el teclado
             Surface(
-                modifier = Modifier.fillMaxWidth(),
-                tonalElevation = 3.dp
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding(),
+                tonalElevation = 3.dp,
+                shadowElevation = 4.dp // Añade una sombra para mejor visibilidad
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { 
-                            try {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            } catch (e: Exception) {
-                                Timber.e(e, "Error al realizar feedback háptico")
-                            }
-                            showAttachmentOptions = true
+                Column {
+                    // Indicador de estado de conexión - usar if en lugar de AnimatedVisibility
+                    if (!isOnline) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Sin conexión. Los mensajes se enviarán cuando se restablezca la conexión.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                textAlign = TextAlign.Center
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AttachFile,
-                            contentDescription = "Adjuntar",
-                            tint = FamiliarColor
-                        )
                     }
                     
-                    TextField(
-                        value = inputMessage,
-                        onValueChange = { inputMessage = it },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text("Escribe un mensaje...") },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                        keyboardActions = KeyboardActions(
-                            onSend = {
+                    // Indicador de mensajes pendientes - usar if en lugar de AnimatedVisibility
+                    if (pendingMessages.isNotEmpty()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "${pendingMessages.size} mensaje(s) pendiente(s) de envío",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                    
+                    // Campo de texto para escribir el mensaje
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = { 
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error al realizar feedback háptico")
+                                }
+                                showAttachmentOptions = true
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AttachFile,
+                                contentDescription = "Adjuntar",
+                                tint = FamiliarColor
+                            )
+                        }
+                        
+                        TextField(
+                            value = inputMessage,
+                            onValueChange = { inputMessage = it },
+                            modifier = Modifier
+                                .weight(1f)
+                                .focusRequester(focusRequester),
+                            placeholder = { Text("Escribe un mensaje...") },
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                            keyboardActions = KeyboardActions(
+                                onSend = {
+                                    try {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Error al realizar feedback háptico")
+                                    }
+                                    if (inputMessage.isNotEmpty()) {
+                                        if (isOnline) {
+                                            viewModel.sendMessage(inputMessage)
+                                        } else {
+                                            // Si estamos offline, guardar en mensajes pendientes
+                                            pendingMessages = pendingMessages + inputMessage
+                                            // Mostrar mensaje al usuario
+                                            Toast.makeText(
+                                                context,
+                                                "Mensaje guardado. Se enviará cuando haya conexión.",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                        inputMessage = ""
+                                        keyboardController?.hide()
+                                    }
+                                }
+                            ),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                disabledContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            maxLines = 3
+                        )
+                        
+                        IconButton(
+                            onClick = {
                                 try {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 } catch (e: Exception) {
                                     Timber.e(e, "Error al realizar feedback háptico")
                                 }
                                 if (inputMessage.isNotEmpty()) {
-                                    viewModel.sendMessage(inputMessage)
+                                    if (isOnline) {
+                                        viewModel.sendMessage(inputMessage)
+                                    } else {
+                                        // Si estamos offline, guardar en mensajes pendientes
+                                        pendingMessages = pendingMessages + inputMessage
+                                        // Mostrar mensaje al usuario
+                                        Toast.makeText(
+                                            context,
+                                            "Mensaje guardado. Se enviará cuando haya conexión.",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                     inputMessage = ""
                                     keyboardController?.hide()
                                 }
                             }
-                        ),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            disabledContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
-                        ),
-                        maxLines = 3
-                    )
-                    
-                    IconButton(
-                        onClick = {
-                            try {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            } catch (e: Exception) {
-                                Timber.e(e, "Error al realizar feedback háptico")
-                            }
-                            if (inputMessage.isNotEmpty()) {
-                                viewModel.sendMessage(inputMessage)
-                                inputMessage = ""
-                                keyboardController?.hide()
-                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Enviar",
+                                tint = FamiliarColor
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Enviar",
-                            tint = FamiliarColor
-                        )
                     }
                 }
             }
@@ -873,6 +1152,108 @@ fun getFormattedDate(date: Triple<Int, Int, Int>): String {
         else -> {
             val formatter = SimpleDateFormat("d 'de' MMMM, yyyy", Locale("es", "ES"))
             formatter.format(calendar.time)
+        }
+    }
+}
+
+// Nuevo componente para mensajes agrupados
+@Composable
+fun GroupedMessageItem(
+    message: UnifiedMessage,
+    isFromMe: Boolean,
+    isFirstInGroup: Boolean,
+    isLastInGroup: Boolean,
+    onAttachmentClick: (String, AttachmentType) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = if (isFromMe) Alignment.End else Alignment.Start
+    ) {
+        // Si es el primer mensaje del grupo, mostrar el nombre del remitente
+        if (isFirstInGroup && !isFromMe) {
+            Text(
+                text = message.senderName.split(" ").first(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 16.dp, bottom = 2.dp)
+            )
+        }
+        
+        // Burbuja del mensaje con esquinas ajustadas según posición en el grupo
+        Box(
+            modifier = Modifier
+                .widthIn(max = 280.dp)
+                .clip(
+                    RoundedCornerShape(
+                        topStart = if (isFirstInGroup || isFromMe) 16.dp else 4.dp,
+                        topEnd = if (isFirstInGroup || !isFromMe) 16.dp else 4.dp,
+                        bottomStart = if (isLastInGroup && !isFromMe) 4.dp else 16.dp,
+                        bottomEnd = if (isLastInGroup && isFromMe) 4.dp else 16.dp
+                    )
+                )
+                .background(
+                    if (isFromMe) FamiliarColor
+                    else MaterialTheme.colorScheme.surfaceVariant
+                )
+                .padding(12.dp)
+        ) {
+            Column {
+                Text(
+                    text = message.content,
+                    color = if (isFromMe) Color.White
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                // Mostrar adjunto si existe
+                if (message.attachments.isNotEmpty()) {
+                    val url = message.attachments.first()
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    val attachmentType = when {
+                        url.endsWith(".jpg", true) || 
+                        url.endsWith(".jpeg", true) || 
+                        url.endsWith(".png", true) -> AttachmentType.IMAGE
+                        url.endsWith(".pdf", true) -> AttachmentType.PDF
+                        else -> AttachmentType.DOCUMENT
+                    }
+                    
+                    AttachmentItem(
+                        attachmentUrl = url,
+                        attachmentType = attachmentType,
+                        onAttachmentClick = { onAttachmentClick(url, attachmentType) }
+                    )
+                }
+            }
+        }
+        
+        // Mostrar hora y estado solo para el último mensaje del grupo
+        if (isLastInGroup) {
+            Row(
+                modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Formato de la hora
+                val timestamp = message.timestamp.toDate()
+                val dateFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+                val horaFormateada = dateFormatter.format(timestamp)
+                
+                Text(
+                    text = horaFormateada,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+                
+                if (isFromMe) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    
+                    Icon(
+                        imageVector = if (message.status == MessageStatus.READ) Icons.Default.DoneAll else Icons.Default.Done,
+                        contentDescription = if (message.status == MessageStatus.READ) "Leído" else "Enviado",
+                        modifier = Modifier.size(16.dp),
+                        tint = if (message.status == MessageStatus.READ) FamiliarColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
         }
     }
 } 

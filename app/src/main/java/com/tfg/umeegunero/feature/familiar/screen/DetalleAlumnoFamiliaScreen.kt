@@ -328,12 +328,8 @@ fun DetalleAlumnoFamiliaScreen(
                 // Botón para ver registros diarios
                 Button(
                     onClick = { 
-                        navController.navigate(
-                            AppScreens.ConsultaRegistroDiario.createRoute(
-                                alumnoId = alumnoId,
-                                alumnoNombre = "${alumno.nombre} ${alumno.apellidos}"
-                            )
-                        )
+                        // Por ahora no navegar a ningún lado ya que no tenemos un registro específico
+                        // TODO: Implementar lógica para obtener el último registro del alumno
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -343,7 +339,7 @@ fun DetalleAlumnoFamiliaScreen(
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Ver registros diarios")
+                    Text(text = "Ver último registro diario")
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
