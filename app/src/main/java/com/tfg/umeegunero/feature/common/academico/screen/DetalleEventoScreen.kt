@@ -91,20 +91,23 @@ fun DetalleEventoScreen(
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
-                    // Botón para editar
-                    IconButton(onClick = { viewModel.mostrarDialogoEdicion() }) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Editar evento"
-                        )
-                    }
-                    
-                    // Botón para eliminar
-                    IconButton(onClick = { dialogoConfirmacionVisible.value = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Eliminar evento"
-                        )
+                    // Solo mostrar botones si el usuario puede editar
+                    if (uiState.puedeEditar) {
+                        // Botón para editar
+                        IconButton(onClick = { viewModel.mostrarDialogoEdicion() }) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Editar evento"
+                            )
+                        }
+                        
+                        // Botón para eliminar
+                        IconButton(onClick = { dialogoConfirmacionVisible.value = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Eliminar evento"
+                            )
+                        }
                     }
                 }
             )
@@ -245,7 +248,11 @@ fun DetalleEventoScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     
                     Text(
-                        text = "Creado por: Profesor",
+                        text = if (uiState.puedeEditar) {
+                            "Creado por ti"
+                        } else {
+                            "Creado por: Profesor"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )

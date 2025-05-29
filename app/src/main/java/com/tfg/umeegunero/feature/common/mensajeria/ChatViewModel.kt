@@ -460,7 +460,7 @@ class ChatViewModel @Inject constructor(
                     senderId = currentUser.dni,
                     senderName = currentUser.nombre + " " + currentUser.apellidos,
                     receiverId = participanteId,
-                    receiversIds = emptyList(),  // Es un mensaje directo, no grupal
+                    receiversIds = if (participanteId.isNotEmpty()) listOf(participanteId) else emptyList(),  // Incluir también en receiversIds para la Cloud Function
                     timestamp = Timestamp.now(),
                     type = MessageType.CHAT,
                     priority = MessagePriority.NORMAL,

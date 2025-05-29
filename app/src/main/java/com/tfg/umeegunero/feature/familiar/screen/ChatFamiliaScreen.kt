@@ -468,15 +468,13 @@ fun ChatFamiliaScreen(
                 }
             )
         },
-        // Configuramos el comportamiento de los insets para manejar mejor el teclado
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        // Usamos WindowInsets.ime para manejar mejor el teclado
+        contentWindowInsets = WindowInsets.ime
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                // Usamos nestedScroll con el interop para mejor comportamiento con el teclado
-                .nestedScroll(rememberNestedScrollInteropConnection())
         ) {
             // Lista de mensajes con indicador de carga integrado
             Box(
@@ -624,8 +622,7 @@ fun ChatFamiliaScreen(
             // Campo de texto para escribir el mensaje con imePadding para que no sea empujado por el teclado
             Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .imePadding(),
+                    .fillMaxWidth(),
                 tonalElevation = 3.dp,
                 shadowElevation = 4.dp // Añade una sombra para mejor visibilidad
             ) {

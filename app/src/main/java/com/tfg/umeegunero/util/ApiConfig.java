@@ -65,8 +65,8 @@ public class ApiConfig {
         }
         
         // Valor por defecto (placeholder que no funcionará)
-        return "https://script.google.com/macros/s/YOUR-SCRIPT-ID-HERE/exec";
-    }
+            return "https://script.google.com/macros/s/YOUR-SCRIPT-ID-HERE/exec";
+        }
     
     /**
      * Obtiene la clave de API de Firebase.

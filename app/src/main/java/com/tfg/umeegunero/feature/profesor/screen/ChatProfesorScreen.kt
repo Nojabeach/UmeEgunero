@@ -330,8 +330,8 @@ fun ChatProfesorScreen(
                 }
             )
         },
-        // Configuramos el comportamiento de los insets para manejar mejor el teclado
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        // Usamos WindowInsets.ime para manejar mejor el teclado
+        contentWindowInsets = WindowInsets.ime
     ) { paddingValues ->
         // Usamos un estado para la lista para poder hacer scroll
         val listState = rememberLazyListState()
@@ -351,8 +351,6 @@ fun ChatProfesorScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                // Usamos nestedScroll con el interop para mejor comportamiento con el teclado
-                .nestedScroll(rememberNestedScrollInteropConnection())
         ) {
             // Lista de mensajes con indicador de carga integrado
             Box(
@@ -500,7 +498,6 @@ fun ChatProfesorScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .imePadding()
                     .wrapContentHeight(), // Asegura que solo ocupe el alto necesario
                 tonalElevation = 3.dp,
                 shadowElevation = 4.dp // Añade una sombra para mejor visibilidad

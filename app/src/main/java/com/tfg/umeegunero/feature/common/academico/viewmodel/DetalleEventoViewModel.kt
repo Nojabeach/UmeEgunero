@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.Evento
 import com.tfg.umeegunero.data.model.TipoEvento
 import com.tfg.umeegunero.data.repository.CalendarioRepository
+import com.tfg.umeegunero.data.repository.AuthRepository
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.util.toLocalDate
 import com.tfg.umeegunero.util.toLocalTime
@@ -31,7 +32,9 @@ data class DetalleEventoUiState(
     val error: String? = null,
     val dialogoEdicionVisible: Boolean = false,
     val navegarAtras: Boolean = false,
-    val mensajeExito: String? = null
+    val mensajeExito: String? = null,
+    val usuarioActualId: String? = null,
+    val puedeEditar: Boolean = false  // Nueva propiedad para controlar si puede editar/eliminar
 )
 
 /**
@@ -41,7 +44,8 @@ data class DetalleEventoUiState(
  */
 @HiltViewModel
 class DetalleEventoViewModel @Inject constructor(
-    private val calendarioRepository: CalendarioRepository
+    private val calendarioRepository: CalendarioRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(DetalleEventoUiState())
@@ -49,6 +53,25 @@ class DetalleEventoViewModel @Inject constructor(
     
     private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    
+    init {
+        obtenerUsuarioActual()
+    }
+    
+    /**
+     * Obtiene el usuario actual
+     */
+    private fun obtenerUsuarioActual() {
+        viewModelScope.launch {
+            val usuario = authRepository.getUsuarioActual()
+            _uiState.update { 
+                it.copy(
+                    usuarioActualId = usuario?.dni
+                ) 
+            }
+            Timber.d("Usuario actual: ${usuario?.dni}")
+        }
+    }
     
     /**
      * Carga un evento por su ID
@@ -63,14 +86,21 @@ class DetalleEventoViewModel @Inject constructor(
                 
                 when (resultado) {
                     is Result.Success -> {
+                        val evento = resultado.data
+                        val usuarioActualId = _uiState.value.usuarioActualId
+                        
+                        // Verificar si el usuario actual puede editar/eliminar el evento
+                        val puedeEditar = usuarioActualId != null && evento.creadorId == usuarioActualId
+                        
                         _uiState.update { 
                             it.copy(
-                                evento = resultado.data,
+                                evento = evento,
                                 cargando = false,
-                                error = null
+                                error = null,
+                                puedeEditar = puedeEditar
                             ) 
                         }
-                        Timber.d("Evento cargado: ${resultado.data.id}")
+                        Timber.d("Evento cargado: ${evento.id}, creadorId: ${evento.creadorId}, usuarioActualId: $usuarioActualId, puedeEditar: $puedeEditar")
                     }
                     is Result.Error -> {
                         _uiState.update { 
