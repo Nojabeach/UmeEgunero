@@ -1,0 +1,32 @@
+## Este archivo sirve como plantilla para local.properties
+## Por favor, copia este archivo como "local.properties" y completa los valores
+## NO subas local.properties al control de versiones
+## Contiene información específica de tu configuración local y claves API sensibles
+
+# Ubicación del SDK de Android (será autodetectado por Android Studio)
+sdk.dir=/path/to/your/android/sdk
+
+# ImgBB
+IMGBB_API_KEY=tu_clave_api_aqui
+
+# SendGrid
+SENDGRID_API_KEY=tu_clave_api_aqui
+SENDGRID_FROM_EMAIL=tu_email_aqui
+SENDGRID_FROM_NAME=Centro Educativo UmeEgunero
+
+# URL del script de Google Apps Script
+EMAIL_SCRIPT_URL=url_del_script_aqui
+
+# Google Maps
+GOOGLE_MAPS_API_KEY=tu_clave_api_aqui
+
+# Firebase (obtener del google-services.json)
+FIREBASE_API_KEY=tu_clave_api_aqui
+FIREBASE_APPLICATION_ID=tu_id_aplicacion_aqui
+FIREBASE_PROJECT_ID=umeegunero
+
+# DNI del administrador principal
+ADMIN_PRINCIPAL_DNI=dni_aqui
+
+# Remote Config Password Key
+REMOTE_CONFIG_PASSWORD_KEY=defaultAdminPassword 

@@ -228,6 +228,22 @@ UmeEgunero ha sido desarrollada siguiendo las mejores prácticas actuales en des
 - **Lint**: Análisis estático de código
 - **Proguard**: Ofuscación y optimización de código
 
+## 🔐 Gestión de Claves API y Datos Sensibles
+
+UmeEgunero implementa un sistema seguro para la gestión de claves API y datos sensibles:
+
+- **Configuración Local**: Todas las claves API se almacenan en `local.properties`, excluido del control de versiones
+- **Plantilla de Ejemplo**: Se proporciona `local.properties.example` como plantilla para configurar entornos de desarrollo
+- **BuildConfig**: Las claves se exponen de forma segura a través de campos en BuildConfig
+- **Documentación**: Consulta [docs/API_KEYS.md](docs/API_KEYS.md) para una guía completa sobre la gestión de claves API
+
+```kotlin
+// Ejemplo de uso de claves API en el código
+val apiKey = BuildConfig.FIREBASE_API_KEY
+```
+
+Esta configuración garantiza que las claves sensibles nunca se suban a repositorios Git, manteniendo la seguridad del proyecto.
+
 ## 📂 Estructura del Proyecto
 
 El proyecto sigue una estructura modular organizada por características:
@@ -513,7 +529,7 @@ Para más detalles, consulta la [documentación del sistema de notificaciones](d
 
 ## Configuración de Claves de API
 
-Para configurar correctamente las claves de API y servicios externos, consulta el archivo [API_KEYS_README.md](docs/API_KEYS_README.md) que contiene instrucciones detalladas para:
+Para configurar correctamente las claves de API y servicios externos, consulta el archivo [docs/API_KEYS.md](docs/API_KEYS.md) que contiene instrucciones detalladas para:
 
 - Configuración de SendGrid para envío de emails
 - Configuración de Firebase (google-services.json)

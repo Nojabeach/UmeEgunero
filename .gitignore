@@ -13,6 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+!local.properties.example
 google-services.json
 .qodo
 
@@ -50,6 +51,7 @@ app/src/main/java/com/tfg/umeegunero/util/ApiConfigLocal.java
 .externalNativeBuild
 .cxx
 local.properties
+!local.properties.example
 
 # Logs
 *.log
