@@ -2076,14 +2076,19 @@ open class UsuarioRepository @Inject constructor(
         try {
             val firebaseUser = getUsuarioActualAuth() ?: return null
             
-            // Buscar usuario por uid
-            val usuarioDoc = usuariosCollection
-                .document(firebaseUser.uid)
+            // Buscar usuario por firebaseUid en la colección, no por ID del documento
+            val querySnapshot = usuariosCollection
+                .whereEqualTo("firebaseUid", firebaseUser.uid)
+                .limit(1)
                 .get()
                 .await()
             
-            if (!usuarioDoc.exists()) return null
+            if (querySnapshot.isEmpty) {
+                Timber.w("No se encontró usuario con firebaseUid: ${firebaseUser.uid}")
+                return null
+            }
             
+            val usuarioDoc = querySnapshot.documents.first()
             return usuarioDoc.toObject(Usuario::class.java)?.copy(dni = usuarioDoc.id)
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener usuario actual")

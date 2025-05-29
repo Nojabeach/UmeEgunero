@@ -119,7 +119,17 @@ class GestorAcademicoViewModel @Inject constructor(
             try {
                 // Primero verificamos si el usuario es ADMIN_CENTRO
                 val usuario = usuarioRepository.obtenerUsuarioActual()
-                val perfilAdminCentro = usuario?.perfiles?.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                
+                if (usuario == null) {
+                    Timber.e("❌❌ ERROR: obtenerUsuarioActual() devolvió null - No hay usuario autenticado")
+                    _uiState.update { it.copy(error = "No hay usuario autenticado", isLoadingCentros = false) }
+                    return@launch
+                }
+                
+                Timber.d("✅ Usuario obtenido: ${usuario.email}, DNI: ${usuario.dni}")
+                Timber.d("📋 Perfiles del usuario: ${usuario.perfiles.map { "${it.tipo} (centroId: ${it.centroId})" }}")
+                
+                val perfilAdminCentro = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
                 
                 if (perfilAdminCentro != null) {
                     // Si es ADMIN_CENTRO, solo cargamos su centro específico
