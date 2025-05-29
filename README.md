@@ -201,12 +201,16 @@ UmeEgunero ha sido desarrollada siguiendo las mejores prácticas actuales en des
   - **Cloud Storage**: Almacenamiento de archivos y documentos
   - **Cloud Messaging (FCM)**: Notificaciones push multiplataforma
   - **Cloud Functions**: Funciones serverless para lógica backend
+    - **Notificaciones**: Envío automático de notificaciones push
+    - **Custom Claims**: Gestión de roles y permisos en Firebase Auth
+    - **Eliminación de Usuarios**: Proceso seguro de eliminación completa
+    - **Solicitudes de Vinculación**: Gestión del flujo de vinculación familiar-alumno
   - **Crashlytics**: Monitoreo de errores en tiempo real
   - **Analytics**: Análisis de uso y comportamiento
 - **Google Apps Script**: 
-  - Microservicios serverless para operaciones administrativas
-  - Envío de correos electrónicos HTML personalizados
-  - Gestión de usuarios en Firebase Authentication
+  - **Email Service**: Envío de correos transaccionales HTML personalizados
+  - **Messaging Service**: Procesamiento avanzado de notificaciones push
+  - **User Management Service**: Operaciones de gestión de usuarios en Firebase
   - Solución gratuita para operaciones backend críticas
 
 #### 🌐 Networking & Comunicación
@@ -436,11 +440,43 @@ cp -r app/build/dokka/* docs/dokka/
 - **[Backup Código Completo](docs/cloud_functions_gas/codigo_backup/index_js_backup_completo.md)**: Backup unificado del código de Cloud Functions
 - **[Backup Google Apps Script](docs/cloud_functions_gas/codigo_backup/gas_script_backup.md)**: Backup del código de Google Apps Script
 
-### 🔧 Servicios Auxiliares
+### 🌩️ Cloud Functions Implementadas
 
-- **[Google Apps Script para Firebase Auth](docs/Google_Apps_Script_Firebase_Auth.md)**: Implementación de microservicios serverless para gestión de usuarios
-- **[Configuración Dokka](docs/Dokka_Configuration_Summary.md)**: Resumen de configuración de la documentación Dokka
-- **[README Dokka](docs/Dokka_README.md)**: Guía específica para la documentación Dokka
+- **Notificaciones**:
+  - `notifyOnNewUnifiedMessage`: Notificaciones para mensajes en bandeja unificada
+  - `notifyOnNewVinculationRequest`: Alertas de nuevas solicitudes de vinculación
+  - `notifyOnVinculationRequestUpdate`: Notificaciones de actualización de solicitudes
+
+- **Custom Claims**:
+  - `setClaimsOnNewUser`: Establece claims automáticamente al crear usuarios
+  - `syncClaimsOnUserUpdate`: Mantiene sincronizados los claims con cambios en perfiles
+  - `syncUserCustomClaims`: Sincroniza claims de todos los usuarios (HTTP)
+  - `setUserClaimsById`: Establece claims manualmente para un usuario (Callable)
+
+- **Eliminación de Usuarios**:
+  - `deleteUserByEmail`: Elimina usuarios completos de Auth y Firestore
+  - `requestUserDeletion`: Endpoint para solicitar eliminación (pruebas)
+
+### 📨 Servicios Google Apps Script
+
+La aplicación utiliza tres servicios GAS independientes:
+
+1. **Email Service**:
+   - Envío de correos transaccionales con plantillas HTML
+   - Notificaciones de registro y recuperación de contraseña
+   - Informes y comunicados oficiales
+
+2. **Messaging Service**:
+   - Procesamiento avanzado de notificaciones push
+   - Gestión de tokens FCM
+   - Personalización de mensajes por tipo de usuario
+
+3. **User Management Service**:
+   - Eliminación segura de usuarios (Auth + Firestore)
+   - Actualización de estado de usuarios
+   - Operaciones administrativas privilegiadas
+
+Estos servicios funcionan como microservicios serverless, proporcionando funcionalidades avanzadas sin costos adicionales.
 
 ### 📊 Índice de Funcionalidades Documentadas
 
@@ -449,8 +485,9 @@ cp -r app/build/dokka/* docs/dokka/
 | **Notificaciones Push** | [Sistema de Notificaciones](docs/Sistema_Notificaciones.md) | `NotificationDiagnostic.kt`, `UmeEguneroMessagingService.kt` |
 | **Confirmación de Lectura** | [Sistema de Notificaciones](docs/Sistema_Notificaciones.md) | `LecturaFamiliar.kt`, `RegistroDiarioRepository.kt` |
 | **Solicitudes de Vinculación** | [Sistema de Solicitudes](docs/Sistema_Solicitudes.md) | `SolicitudRepository.kt`, Cloud Functions |
-| **Cloud Functions** | [Cloud Functions & GAS](docs/cloud_functions_gas/README.md) | `/functions/index.js` |
-| **Google Apps Script** | [Cloud Functions & GAS](docs/cloud_functions_gas/README.md) | 3 servicios desplegados |
+| **Cloud Functions** | [Cloud Functions & GAS](docs/cloud_functions_gas/README.md) | `/functions/index.js`, `setUserCustomClaims.js` |
+| **Custom Claims** | [Cloud Functions & GAS](docs/cloud_functions_gas/README.md) | `/functions/setUserCustomClaims.js` |
+| **Google Apps Script** | [Cloud Functions & GAS](docs/cloud_functions_gas/README.md) | Email, Messaging y User Management Services |
 | **Diagnóstico del Sistema** | [Sistema de Notificaciones](docs/Sistema_Notificaciones.md) | `NotificationDiagnostic.kt` |
 | **Comunicación Unificada** | [Sistema de Comunicación Unificado](docs/Sistema_Comunicacion_Unificado.md) | `MensajeRepository.kt`, `ComunicacionViewModel.kt` |
 | **Vinculación Familiar** | [Sistema de Vinculación Familiar](docs/Sistema_Vinculacion_Familiar.md) | `SolicitudRepository.kt`, `VinculacionViewModel.kt` |
@@ -552,53 +589,3 @@ Las Cloud Functions manejan las siguientes funcionalidades:
 ## Estructura
 
 ```
-cloud-functions/
-├── functions/
-│   ├── index.js         # Código principal de las funciones
-│   ├── package.json     # Dependencias
-│   └── .eslintrc.js     # Configuración de linting
-├── firebase.json        # Configuración de Firebase
-└── .firebaserc          # Proyecto de Firebase
-```
-
-## Instalación
-
-1. Instalar dependencias:
-```bash
-cd functions
-npm install
-```
-
-2. Configurar Firebase:
-```bash
-firebase use umeegunero
-```
-
-## Despliegue
-
-Para desplegar las funciones:
-```bash
-firebase deploy --only functions
-```
-
-## Integración con servicios GAS
-
-Las funciones están integradas con Google Apps Script para:
-- Envío de emails mediante plantillas
-- Notificaciones push
-- Eliminación de usuarios (solo desde la app)
-
-Las URLs de los servicios GAS están configuradas en el código.
-
-## Desarrollo
-
-Para ejecutar las funciones localmente:
-```bash
-firebase emulators:start --only functions
-```
-
-## Notas importantes
-
-- Este es un submódulo del repositorio principal [UmeEgunero](https://github.com/Nojabeach/UmeEgunero)
-- Las funciones se ejecutan en Node.js 20
-- Se requiere Firebase CLI para el despliegue
