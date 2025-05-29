@@ -28,6 +28,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.jakewharton.threetenabp.AndroidThreeTen
 import com.tfg.umeegunero.admin.AdminTools
 import com.tfg.umeegunero.util.DebugUtils
+import com.tfg.umeegunero.util.LocalConfig
 import com.tfg.umeegunero.data.repository.SyncRepository
 import com.tfg.umeegunero.data.worker.EventoWorker
 import com.tfg.umeegunero.data.worker.SincronizacionWorker
@@ -339,13 +340,16 @@ class UmeEguneroApp : Application(), Configuration.Provider, DefaultLifecycleObs
             
             // Reintentar la inicialización con una configuración mínima
             try {
+                // Usar configuración segura desde LocalConfig
                 val options = FirebaseOptions.Builder()
-                    .setApplicationId(com.tfg.umeegunero.BuildConfig.APPLICATION_ID)
+                    .setApplicationId(LocalConfig.FIREBASE_APPLICATION_ID)
+                    .setApiKey(LocalConfig.FIREBASE_API_KEY)
+                    .setProjectId(LocalConfig.FIREBASE_PROJECT_ID)
                     .build()
                 
                 if (FirebaseApp.getApps(this).isEmpty()) {
                     FirebaseApp.initializeApp(this, options)
-                    Timber.d("Firebase reinicializado con configuración mínima")
+                    Timber.d("Firebase reinicializado con configuración segura desde LocalConfig")
                 }
             } catch (e2: Exception) {
                 Timber.e(e2, "Error fatal al inicializar Firebase con configuración mínima")

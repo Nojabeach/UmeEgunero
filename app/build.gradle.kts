@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -24,6 +26,13 @@ configurations.all {
     }
 }
 
+// Leer propiedades locales
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+
 android {
     namespace = "com.tfg.umeegunero"
     compileSdk = 34
@@ -40,6 +49,18 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Configurar BuildConfig fields desde local.properties
+        buildConfigField("String", "IMGBB_API_KEY", "\"${localProperties.getProperty("IMGBB_API_KEY", "")}\"")
+        buildConfigField("String", "SENDGRID_API_KEY", "\"${localProperties.getProperty("SENDGRID_API_KEY", "")}\"")
+        buildConfigField("String", "SENDGRID_FROM_EMAIL", "\"${localProperties.getProperty("SENDGRID_FROM_EMAIL", "umeegunero@gmail.com")}\"")
+        buildConfigField("String", "SENDGRID_FROM_NAME", "\"${localProperties.getProperty("SENDGRID_FROM_NAME", "Centro Educativo UmeEgunero")}\"")
+        buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${localProperties.getProperty("GOOGLE_MAPS_API_KEY", "")}\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"${localProperties.getProperty("FIREBASE_API_KEY", "")}\"")
+        buildConfigField("String", "FIREBASE_APPLICATION_ID", "\"${localProperties.getProperty("FIREBASE_APPLICATION_ID", "")}\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${localProperties.getProperty("FIREBASE_PROJECT_ID", "umeegunero")}\"")
+        buildConfigField("String", "ADMIN_PRINCIPAL_DNI", "\"${localProperties.getProperty("ADMIN_PRINCIPAL_DNI", "42925221E")}\"")
+        buildConfigField("String", "REMOTE_CONFIG_PASSWORD_KEY", "\"${localProperties.getProperty("REMOTE_CONFIG_PASSWORD_KEY", "defaultAdminPassword")}\"")
 
         javaCompileOptions {
             annotationProcessorOptions {

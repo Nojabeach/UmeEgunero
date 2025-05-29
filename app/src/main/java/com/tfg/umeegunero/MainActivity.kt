@@ -64,6 +64,10 @@ import android.widget.Button
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import android.os.Build
 import android.content.Context
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 
 /**
  * Clase simple para representar datos de notificación
@@ -163,6 +167,9 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         
         auth = FirebaseAuth.getInstance()
+        
+        // Solicitar permiso de notificaciones en Android 13+
+        solicitarPermisoNotificaciones()
         
         // Verificar que Firebase está inicializado
         val inicializado = FirebaseApp.getApps(this).isNotEmpty()
@@ -616,8 +623,9 @@ class MainActivity : ComponentActivity() {
                 
                 Timber.d("Contraseña obtenida de Remote Config correctamente")
                 
+                // Primer paso: Verificar si ya existe un administrador en Firestore
                 // Intentar sincronizar proactivamente el administrador protegido
-                sincronizarAdministradorProtegido(EMAIL_ADMIN_DEFAULT, password, "45678698P")
+                sincronizarAdministradorProtegido(EMAIL_ADMIN_DEFAULT, password, BuildConfig.ADMIN_PRINCIPAL_DNI)
                 
                 // Continuar con el flujo normal de verificación de administradores
                 firestore.collection("usuarios")
@@ -661,7 +669,7 @@ class MainActivity : ComponentActivity() {
                                                     // Verificar si es un administrador protegido
                                                     val doc = emailQuerySnapshot.documents.first()
                                                     val docId = doc.id
-                                                    val protectedAdminDNIs = listOf("45678698P")
+                                                    val protectedAdminDNIs = listOf(BuildConfig.ADMIN_PRINCIPAL_DNI)
                                                     
                                                     if (protectedAdminDNIs.contains(docId)) {
                                                         Timber.w("Administrador principal con DNI: $docId detectado. Intentando iniciar sesión en vez de crear una cuenta nueva.")
@@ -680,7 +688,7 @@ class MainActivity : ComponentActivity() {
                                                     // Verificar si es un administrador protegido
                                                     val doc = emailQuerySnapshot.documents.first()
                                                     val docId = doc.id
-                                                    val protectedAdminDNIs = listOf("45678698P")
+                                                    val protectedAdminDNIs = listOf(BuildConfig.ADMIN_PRINCIPAL_DNI)
                                                     
                                                     if (protectedAdminDNIs.contains(docId)) {
                                                         Timber.w("Administrador principal con DNI: $docId detectado. Intentando iniciar sesión en vez de crear una cuenta nueva.")
@@ -770,7 +778,7 @@ class MainActivity : ComponentActivity() {
                             }
                     } else {
                         Timber.e(createTask.exception, "No se pudo crear el usuario administrador en Firebase Auth: ${createTask.exception?.message}")
-                        // showErrorToast("Error al crear el usuario administrador. Verifica que SMTP_PASSWORD esté configurada correctamente en Firebase Remote Config.")
+                        // showToast("Error al crear el usuario administrador. Verifica que SMTP_PASSWORD esté configurada correctamente en Firebase Remote Config.")
                     }
                 }
             }
@@ -783,7 +791,7 @@ class MainActivity : ComponentActivity() {
         val firestore = FirebaseFirestore.getInstance()
         
         // DNI personalizado para el administrador
-        val dniAdmin = "45678698P"
+        val dniAdmin = BuildConfig.ADMIN_PRINCIPAL_DNI
         
         // Crear perfil de administrador
         val perfil = mapOf(
@@ -1031,5 +1039,24 @@ class MainActivity : ComponentActivity() {
             .addOnFailureListener { e ->
                 Timber.e(e, "❌ Error al buscar administradores: ${e.message}")
             }
+    }
+
+    private fun solicitarPermisoNotificaciones() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+                if (isGranted) {
+                    Timber.d("Permiso de notificaciones concedido")
+                } else {
+                    Timber.d("Permiso de notificaciones denegado")
+                }
+            }
+
+            val notificationPermission = Manifest.permission.POST_NOTIFICATIONS
+            val isNotificationPermissionGranted = ContextCompat.checkSelfPermission(this, notificationPermission) == PackageManager.PERMISSION_GRANTED
+
+            if (!isNotificationPermissionGranted) {
+                notificationPermissionLauncher.launch(notificationPermission)
+            }
+        }
     }
 }

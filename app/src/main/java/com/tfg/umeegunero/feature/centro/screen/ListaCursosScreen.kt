@@ -28,6 +28,7 @@ import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.feature.centro.viewmodel.ListaCursosViewModel
 import com.tfg.umeegunero.navigation.AppScreens
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /**
  * Pantalla para gestionar los cursos del centro educativo.
@@ -70,6 +71,9 @@ fun ListaCursosScreen(
     navController: NavController,
     viewModel: ListaCursosViewModel = hiltViewModel()
 ) {
+    // Log distintivo para depuración
+    Timber.e("🔵 ListaCursosScreen LANZADA")
+    
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddCursoDialog by remember { mutableStateOf(false) }
@@ -271,7 +275,9 @@ fun ListaCursosScreen(
                             },
                             onVerClasesClick = {
                                 try {
-                                navController.navigate("gestor_academico/CLASES?centroId=${curso.centroId}&cursoId=${curso.id}&selectorCentroBloqueado=true&selectorCursoBloqueado=true&perfilUsuario=ADMIN_CENTRO")
+                                // Garantizar que usamos el ID del centro correcto al navegar
+                                val centroId = curso.centroId
+                                navController.navigate("gestor_academico/CLASES?centroId=${centroId}&cursoId=${curso.id}&selectorCentroBloqueado=true&selectorCursoBloqueado=true&perfilUsuario=ADMIN_CENTRO")
                                 } catch (e: Exception) {
                                     scope.launch {
                                         snackbarHostState.showSnackbar("Error al navegar a las clases: ${e.message}")

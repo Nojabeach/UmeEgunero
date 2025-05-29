@@ -9,6 +9,7 @@ import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.repository.CentroRepository
 import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.ClaseRepository
+import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,12 +66,14 @@ data class GestorAcademicoUiState(
  * @property centroRepository Repositorio para operaciones relacionadas con centros educativos
  * @property cursoRepository Repositorio para operaciones relacionadas con cursos
  * @property claseRepository Repositorio para operaciones relacionadas con clases
+ * @property usuarioRepository Repositorio para operaciones relacionadas con usuarios
  */
 @HiltViewModel
 class GestorAcademicoViewModel @Inject constructor(
     private val centroRepository: CentroRepository,
     private val cursoRepository: CursoRepository,
-    private val claseRepository: ClaseRepository
+    private val claseRepository: ClaseRepository,
+    private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(GestorAcademicoUiState())
     
@@ -80,6 +83,30 @@ class GestorAcademicoViewModel @Inject constructor(
     val uiState: StateFlow<GestorAcademicoUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            // Verificar tipo de usuario para diagnóstico
+            try {
+                val usuario = usuarioRepository.obtenerUsuarioActual()
+                val perfilAdminCentro = usuario?.perfiles?.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                val perfilAdminApp = usuario?.perfiles?.find { it.tipo == TipoUsuario.ADMIN_APP }
+                
+                when {
+                    perfilAdminCentro != null -> {
+                        val centroId = perfilAdminCentro.centroId ?: "No asignado"
+                        Timber.d("⚠️⚠️⚠️ INICIO: Usuario detectado como ADMIN_CENTRO para centro: $centroId")
+                    }
+                    perfilAdminApp != null -> {
+                        Timber.d("⚠️⚠️⚠️ INICIO: Usuario detectado como ADMIN_APP con acceso a todos los centros")
+                    }
+                    else -> {
+                        Timber.w("⚠️⚠️⚠️ INICIO: No se pudo detectar un perfil de administrador en el usuario")
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al verificar el tipo de usuario")
+            }
+        }
+        
         cargarCentros()
     }
 
@@ -90,15 +117,62 @@ class GestorAcademicoViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingCentros = true) }
             try {
+                // Primero verificamos si el usuario es ADMIN_CENTRO
+                val usuario = usuarioRepository.obtenerUsuarioActual()
+                val perfilAdminCentro = usuario?.perfiles?.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                
+                if (perfilAdminCentro != null) {
+                    // Si es ADMIN_CENTRO, solo cargamos su centro específico
+                    val centroId = perfilAdminCentro.centroId
+                    Timber.d("👮 Usuario es ADMIN_CENTRO para centroId: $centroId - SOLO se mostrará este centro")
+                    
+                    if (!centroId.isNullOrEmpty()) {
+                        when (val centroResult = centroRepository.getCentroById(centroId)) {
+                            is Result.Success -> {
+                                // Solo actualizar con el único centro permitido
+                                val centro = centroResult.data
+                                _uiState.update { it.copy(
+                                    centros = listOf(centro), 
+                                    selectedCentro = centro,  // Preseleccionar inmediatamente
+                                    isLoadingCentros = false
+                                )}
+                                // Cargar cursos de este centro
+                                Timber.d("🔒 ADMIN_CENTRO: Seleccionando único centro permitido: ${centro.nombre} (${centro.id})")
+                                observarCursos(centroId)
+                                return@launch // Aseguramos que no continúe con la carga de todos los centros
+                            }
+                            is Result.Error -> {
+                                _uiState.update { it.copy(
+                                    error = "Error al cargar centro: ${centroResult.exception?.message}", 
+                                    isLoadingCentros = false
+                                )}
+                                return@launch
+                            }
+                            else -> { /* Loading state is handled */ }
+                        }
+                    } else {
+                        _uiState.update { it.copy(error = "ADMIN_CENTRO sin centro asignado", isLoadingCentros = false) }
+                        return@launch
+                    }
+                } 
+                
+                // Solo si NO es ADMIN_CENTRO, cargamos todos los centros (para ADMIN_APP)
+                Timber.d("👑 Usuario es ADMIN_APP: Cargando TODOS los centros")
                 when (val centrosResult = centroRepository.getAllCentros()) {
                     is Result.Success -> {
                         _uiState.update { it.copy(centros = centrosResult.data, isLoadingCentros = false) }
+                        // Solo si es ADMIN_APP seleccionamos el primer centro de la lista
                         centrosResult.data.firstOrNull()?.let { primerCentro ->
-                            onCentroSelected(primerCentro) 
+                            Timber.d("👑 ADMIN_APP seleccionando primer centro: ${primerCentro.nombre} (${primerCentro.id})")
+                            _uiState.update { it.copy(selectedCentro = primerCentro) }
+                            observarCursos(primerCentro.id)
                         }
                     }
                     is Result.Error -> {
-                        _uiState.update { it.copy(error = "Error al cargar centros: ${centrosResult.exception?.message}", isLoadingCentros = false) }
+                        _uiState.update { it.copy(
+                            error = "Error al cargar centros: ${centrosResult.exception?.message}", 
+                            isLoadingCentros = false
+                        )}
                     }
                     else -> { /* Loading state is handled */ }
                 }
@@ -111,17 +185,58 @@ class GestorAcademicoViewModel @Inject constructor(
 
     /**
      * Actualiza el centro seleccionado y carga sus cursos.
+     * Verifica los permisos del usuario antes de realizar la selección.
      * 
      * @param centro Centro a seleccionar
      */
     fun onCentroSelected(centro: Centro) {
-        Timber.d("Centro seleccionado: ${centro.nombre} (${centro.id})")
-        _uiState.update { it.copy(selectedCentro = centro, selectedCurso = null, cursos = emptyList(), clases = emptyList()) }
-        
-        // Usar el ID del centro seleccionado, no un ID fijo
-        val centroId = centro.id
-        Timber.d("🔄 Observando cursos del centro ID: $centroId")
-        observarCursos(centroId)
+        viewModelScope.launch {
+            try {
+                Timber.d("🔄 Iniciando selección de centro: ${centro.nombre} (${centro.id})")
+                
+                // Verificar permisos - Si es ADMIN_CENTRO, solo puede seleccionar su centro asignado
+                val usuario = usuarioRepository.obtenerUsuarioActual()
+                val perfilAdminCentro = usuario?.perfiles?.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                
+                if (perfilAdminCentro != null) {
+                    val centroIdPermitido = perfilAdminCentro.centroId
+                    Timber.d("🔒 Verificando permisos: Usuario ADMIN_CENTRO (centroId=${centroIdPermitido}) intenta seleccionar centro (${centro.id})")
+                    
+                    // Si es ADMIN_CENTRO intentando seleccionar otro centro, bloqueamos
+                    if (centroIdPermitido != centro.id) {
+                        Timber.w("❌ ACCESO DENEGADO: El ADMIN_CENTRO (centroId=${centroIdPermitido}) intenta seleccionar otro centro (${centro.id})")
+                        _uiState.update { it.copy(
+                            error = "No tienes permiso para seleccionar el centro ${centro.nombre}. Solo puedes gestionar tu centro asignado.",
+                            centroMenuExpanded = false
+                        )}
+                        return@launch
+                    } else {
+                        Timber.d("✅ ACCESO PERMITIDO: El usuario tiene permiso para seleccionar su centro asignado ${centro.id}")
+                    }
+                } else {
+                    Timber.d("🔓 Usuario es ADMIN_APP: Tiene permiso para seleccionar cualquier centro")
+                }
+                
+                // Continuar con la selección normal del centro
+                Timber.d("✅ Centro seleccionado: ${centro.nombre} (${centro.id})")
+                _uiState.update { it.copy(
+                    selectedCentro = centro, 
+                    selectedCurso = null, 
+                    cursos = emptyList(), 
+                    clases = emptyList(),
+                    centroMenuExpanded = false,  // Cerrar el menú desplegable
+                    error = null  // Limpiar cualquier error previo
+                )}
+                
+                // Usar el ID del centro seleccionado
+                val centroId = centro.id
+                Timber.d("🔄 Observando cursos del centro ID: $centroId")
+                observarCursos(centroId)
+            } catch (e: Exception) {
+                Timber.e(e, "❌❌ Error al seleccionar centro: ${e.message}")
+                _uiState.update { it.copy(error = "Error al seleccionar centro: ${e.message}") }
+            }
+        }
     }
 
     /**
@@ -264,11 +379,36 @@ class GestorAcademicoViewModel @Inject constructor(
 
     /**
      * Actualiza el estado de expansión del menú de centros.
+     * Para un ADMIN_CENTRO, no permite expandir el menú ya que solo tiene acceso a su centro asignado.
      * 
      * @param expanded Estado de expansión del menú
      */
     fun onCentroMenuExpandedChanged(expanded: Boolean) {
-        _uiState.update { it.copy(centroMenuExpanded = expanded) }
+        viewModelScope.launch {
+            try {
+                // Si están intentando expandir el menú (no cerrarlo), verificamos permisos
+                if (expanded) {
+                    val usuario = usuarioRepository.obtenerUsuarioActual()
+                    val perfilAdminCentro = usuario?.perfiles?.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                    
+                    if (perfilAdminCentro != null) {
+                        // Un ADMIN_CENTRO no debería poder cambiar de centro
+                        Timber.d("🔒 Bloqueando expansión del menú de centros para ADMIN_CENTRO")
+                        _uiState.update { it.copy(
+                            centroMenuExpanded = false,
+                            error = "Como administrador de centro, solo puedes gestionar tu centro asignado."
+                        )}
+                        return@launch
+                    }
+                }
+                
+                // Solo ADMIN_APP puede expandir/contraer el menú libremente
+                _uiState.update { it.copy(centroMenuExpanded = expanded) }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al cambiar estado del menú de centros")
+                _uiState.update { it.copy(centroMenuExpanded = false) }
+            }
+        }
     }
 
     /**
@@ -328,6 +468,59 @@ class GestorAcademicoViewModel @Inject constructor(
             } catch (e: Exception) {
                 Timber.e(e, "Excepción al eliminar clase")
                 _uiState.update { it.copy(error = "Error inesperado al eliminar clase: ${e.message}", isLoadingClases = false) }
+            }
+        }
+    }
+
+    /**
+     * Carga un centro específico por su ID y verifica los permisos.
+     * Si el usuario es ADMIN_CENTRO, solo puede cargar su centro asignado.
+     * 
+     * @param centroId Identificador único del centro a cargar
+     */
+    fun cargarCentroPorId(centroId: String) {
+        viewModelScope.launch {
+            try {
+                Timber.d("🔍 Cargando centro por ID: $centroId")
+                
+                // Verificar permisos - Si es ADMIN_CENTRO, solo puede ver su centro asignado
+                val usuario = usuarioRepository.obtenerUsuarioActual()
+                val perfilAdminCentro = usuario?.perfiles?.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                
+                if (perfilAdminCentro != null) {
+                    val centroPerfil = perfilAdminCentro.centroId
+                    Timber.d("🔒 Verificando permisos: Usuario ADMIN_CENTRO (centroId=${centroPerfil}) intenta acceder a centro (${centroId})")
+                    
+                    // Si es ADMIN_CENTRO intentando ver otro centro, bloqueamos
+                    if (centroPerfil != centroId) {
+                        Timber.w("❌ ACCESO DENEGADO: El ADMIN_CENTRO (centroId=${centroPerfil}) intenta ver otro centro (${centroId})")
+                        _uiState.update { it.copy(
+                            error = "No tienes permiso para acceder al centro $centroId. Solo puedes gestionar el centro $centroPerfil", 
+                            isLoadingCentros = false
+                        ) }
+                        return@launch
+                    } else {
+                        Timber.d("✅ ACCESO PERMITIDO: El usuario tiene permiso para ver el centro $centroId")
+                    }
+                }
+                
+                // Continuar con la carga del centro
+                when (val result = centroRepository.getCentroById(centroId)) {
+                    is Result.Success -> {
+                        val centro = result.data
+                        Timber.d("✅ Centro cargado exitosamente: ${centro.nombre} (${centro.id})")
+                        _uiState.update { it.copy(selectedCentro = centro, cursos = emptyList(), clases = emptyList()) }
+                        observarCursos(centroId)
+                    }
+                    is Result.Error -> {
+                        Timber.e(result.exception, "❌ Error al cargar centro por ID: $centroId")
+                        _uiState.update { it.copy(error = "Error al cargar centro: ${result.exception?.message}") }
+                    }
+                    else -> { Timber.d("⏳ Esperando resultado de consulta de centro...") }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "❌❌ Excepción al cargar centro por ID")
+                _uiState.update { it.copy(error = "Error inesperado: ${e.message}") }
             }
         }
     }

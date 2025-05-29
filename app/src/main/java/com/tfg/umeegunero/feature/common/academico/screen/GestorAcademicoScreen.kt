@@ -78,6 +78,9 @@ fun GestorAcademicoScreen(
     viewModel: GestorAcademicoViewModel = hiltViewModel(),
     onNavigate: (String) -> Unit
 ) {
+    // Log distintivo para depuración
+    Timber.e("🔴 GestorAcademicoScreen LANZADA - modo: $modo, centroId: $centroId, cursoId: $cursoId, perfilUsuario: $perfilUsuario")
+    
     val uiState by viewModel.uiState.collectAsState()
     val centros = uiState.centros
     val cursos = uiState.cursos
@@ -97,15 +100,10 @@ fun GestorAcademicoScreen(
     LaunchedEffect(centroId, cursoId, modo) {
         Timber.d("🔄 Inicializando GestorAcademicoScreen: modo=$modo, centroId=$centroId, cursoId=$cursoId")
         
-        // Si recibimos un centroId, buscamos el Centro correspondiente en la lista
+        // Si recibimos un centroId, forzar su uso y buscarlo directamente en el repositorio
         if (!centroId.isNullOrEmpty()) {
-            val centro = centros.find { it.id == centroId }
-            if (centro != null) {
-                Timber.d("📌 Seleccionando centro: ${centro.nombre} (${centro.id})")
-                viewModel.onCentroSelected(centro)
-            } else {
-                Timber.d("⚠️ Centro no encontrado en la lista, esperando carga...")
-            }
+            Timber.d("🔍 Forzando carga del centro: $centroId")
+            viewModel.cargarCentroPorId(centroId)
         }
         
         // Si estamos en modo CLASES y tenemos un cursoId, inicializamos con ese curso

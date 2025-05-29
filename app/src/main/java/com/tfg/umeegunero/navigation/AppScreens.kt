@@ -421,7 +421,13 @@ sealed class AppScreens(val route: String) {
     /** Pantalla para vincular alumnos con familiares */
     object VincularAlumnoFamiliar : AppScreens("vincular_alumno_familiar")
     
-    /** Gestión unificada de cursos y clases */
+    /** 
+     * Gestión unificada de cursos y clases
+     * 
+     * @deprecated Esta ruta está obsoleta. Usar la ruta "gestor_academico/CURSOS" o "gestor_academico/CLASES" 
+     * con los parámetros adecuados en su lugar.
+     */
+    @Deprecated("Usar gestor_academico en su lugar", ReplaceWith("Navegación directa a 'gestor_academico/CURSOS' o 'gestor_academico/CLASES'"))
     object GestionCursosYClases : AppScreens("gestion_cursos_clases")
     
     /** Gestión de notificaciones a nivel de centro */

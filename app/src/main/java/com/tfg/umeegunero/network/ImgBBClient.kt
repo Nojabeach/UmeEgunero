@@ -2,6 +2,7 @@ package com.tfg.umeegunero.network
 
 import android.content.Context
 import android.net.Uri
+import com.tfg.umeegunero.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,8 +28,8 @@ import javax.inject.Singleton
 class ImgBBClient @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    // API Key de ImgBB
-    private val API_KEY = "e64eb6fb0a5d6e7e001723871feb10a0"
+    // API Key de ImgBB - ahora se obtiene desde BuildConfig
+    private val API_KEY = BuildConfig.IMGBB_API_KEY
     private val API_URL = "https://api.imgbb.com/1/upload"
     
     // Cliente HTTP para realizar las solicitudes

@@ -37,6 +37,7 @@ import com.google.firebase.firestore.FieldValue
 import android.content.Context
 import com.tfg.umeegunero.util.DefaultAvatarsManager
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.tfg.umeegunero.BuildConfig
 
 /**
  * Repositorio para gestionar operaciones relacionadas con usuarios en la aplicación UmeEgunero.
@@ -1154,7 +1155,7 @@ open class UsuarioRepository @Inject constructor(
     suspend fun borrarUsuarioByDni(dni: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             // Protección especial para el administrador principal por DNI
-            if (dni == "45678698P") {
+            if (dni == BuildConfig.ADMIN_PRINCIPAL_DNI) {
                 Timber.w("⚠️ Intento de eliminación del administrador principal con DNI: $dni - Operación no permitida")
                 return@withContext Result.Error(Exception("No se puede eliminar al administrador principal de la aplicación"))
             }

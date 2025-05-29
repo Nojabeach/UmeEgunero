@@ -450,6 +450,7 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val currentUser = _uiState.value.usuario ?: throw Exception("Usuario no disponible")
+                val participanteId = _uiState.value.participanteId
                 
                 // Preparar mensaje unificado
                 val unifiedMessage = UnifiedMessage(
@@ -458,7 +459,7 @@ class ChatViewModel @Inject constructor(
                     content = text,
                     senderId = currentUser.dni,
                     senderName = currentUser.nombre + " " + currentUser.apellidos,
-                    receiverId = _uiState.value.participanteId,
+                    receiverId = participanteId,
                     receiversIds = emptyList(),  // Es un mensaje directo, no grupal
                     timestamp = Timestamp.now(),
                     type = MessageType.CHAT,
@@ -485,7 +486,38 @@ class ChatViewModel @Inject constructor(
                             enviandoMensaje = false
                         ) }
                         
-                        // La notificación ahora se envía automáticamente desde la Cloud Function
+                        // Enviar notificación push manualmente
+                        val nombreEmisor = "${currentUser.nombre} ${currentUser.apellidos}"
+                        val alumnoId = _uiState.value.alumnoId ?: ""
+                        val conversacionId = _uiState.value.conversacionId
+                        val titulo = "Nuevo mensaje de ${if (currentUser.esProfesor()) "profesor" else "familiar"} $nombreEmisor"
+                        val mensaje = if (text.length > 100) text.substring(0, 100) + "..." else text
+                        
+                        // Logging para diagnosticar el problema
+                        Timber.d("🔔 Enviando notificación push de chat. Receptor: $participanteId, Emisor: ${currentUser.dni}, Mensaje: $mensaje")
+                        
+                        // Procesamos el mensaje para enviar la notificación
+                        notificationService.procesarNuevoMensaje(
+                            emisorId = currentUser.dni,
+                            receptorId = participanteId,
+                            conversacionId = conversacionId,
+                            texto = text,
+                            alumnoId = alumnoId
+                        )
+                        
+                        // También intentamos con el método directo para asegurar
+                        notificationService.enviarNotificacionChat(
+                            receptorId = participanteId,
+                            conversacionId = conversacionId,
+                            titulo = titulo,
+                            mensaje = mensaje,
+                            remitente = nombreEmisor,
+                            remitenteId = currentUser.dni,
+                            alumnoId = alumnoId,
+                            onCompletion = { success, resultMessage ->
+                                Timber.d("Resultado de envío de notificación: $success, $resultMessage")
+                            }
+                        )
                     }
                     is Result.Error -> {
                         _uiState.update { it.copy(
@@ -575,5 +607,12 @@ class ChatViewModel @Inject constructor(
         messagesListener?.remove()
         messagesListener = null
         Timber.d("ChatViewModel: Listener de mensajes cancelado")
+    }
+
+    /**
+     * Extensión para verificar si un usuario es profesor
+     */
+    private fun Usuario.esProfesor(): Boolean {
+        return this.perfiles.any { it.tipo == TipoUsuario.PROFESOR }
     }
 } 

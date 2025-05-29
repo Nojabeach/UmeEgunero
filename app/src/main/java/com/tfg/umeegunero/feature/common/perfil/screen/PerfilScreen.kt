@@ -1207,13 +1207,13 @@ private fun DireccionCard(
                 
                 // Imagen del mapa usando la API estática de Google Maps
                 val context = LocalContext.current
-                val mapUrl = remember(uiState.latitud, uiState.longitud) {
-                    "https://maps.googleapis.com/maps/api/staticmap" +
-                    "?center=${uiState.latitud},${uiState.longitud}" +
-                    "&zoom=15&size=600x300&scale=2" +
-                    "&markers=color:red|${uiState.latitud},${uiState.longitud}" +
-                    "&key=YOUR_API_KEY" // Aquí iría la clave de API real
-                }
+                val url = "https://maps.googleapis.com/maps/api/staticmap?" +
+                        "center=${uiState.latitud},${uiState.longitud}&" +
+                        "zoom=15&" +
+                        "size=600x300&" +
+                        "maptype=roadmap&" +
+                        "markers=color:red%7C${uiState.latitud},${uiState.longitud}&" +
+                        "key=${com.tfg.umeegunero.util.LocalConfig.GOOGLE_MAPS_API_KEY}"
                 
                 Card(
                     modifier = Modifier
@@ -1224,7 +1224,7 @@ private fun DireccionCard(
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
-                            .data(mapUrl)
+                            .data(url)
                             .crossfade(true)
                             .build(),
                         contentDescription = "Ubicación en mapa",

@@ -681,9 +681,8 @@ class NotificationService @Inject constructor(
     /**
      * Envía un mensaje directamente a FCM usando el token del dispositivo.
      * 
-     * NOTA: Esta implementación usa notificaciones locales como simulación.
-     * Para notificaciones push reales entre dispositivos, se requiere un servidor backend
-     * o Cloud Functions que use el SDK de administrador de Firebase.
+     * Esta implementación utiliza FirebaseMessaging para enviar notificaciones
+     * directamente a otros dispositivos.
      */
     private suspend fun enviarMensajeDirectoFCM(
         token: String,
@@ -709,22 +708,32 @@ class NotificationService @Inject constructor(
                 )
                 Timber.d("📱 Notificación local mostrada (mismo dispositivo)")
             } else {
-                // Es un dispositivo diferente
-                Timber.d("📤 Notificación para dispositivo remoto (token: ${token.take(20)}...)")
-                Timber.d("📝 Título: $titulo")
-                Timber.d("📝 Mensaje: $mensaje")
-                Timber.d("📝 Datos: $datos")
+                // Es un dispositivo diferente, enviar mediante FCM
+                Timber.d("📤 Enviando notificación FCM a dispositivo remoto (token: ${token.take(20)}...)")
                 
-                // En un entorno de producción real, aquí se enviaría la notificación
-                // a través de un servidor backend que use el SDK de administrador de Firebase
-                // Por ahora, registramos que la notificación debería enviarse
+                // Crear el mensaje con los datos necesarios
+                val message = com.google.firebase.messaging.RemoteMessage.Builder(token)
+                    .setMessageId("msg_${UUID.randomUUID()}")
+                    .setTtl(3600) // Tiempo de vida: 1 hora
                 
-                // Simular éxito para que el flujo continúe
-                Timber.d("✅ Notificación registrada para envío (simulación)")
+                // Añadir los datos
+                message.addData("title", titulo)
+                message.addData("body", mensaje)
+                message.addData("channelId", channelId)
+                
+                // Añadir el resto de datos personalizados
+                for ((key, value) in datos) {
+                    message.addData(key, value)
+                }
+                
+                // Enviar el mensaje
+                FirebaseMessaging.getInstance().send(message.build())
+                
+                Timber.d("✅ Notificación FCM enviada correctamente")
             }
             
         } catch (e: Exception) {
-            Timber.e(e, "❌ Error al procesar notificación FCM")
+            Timber.e(e, "❌ Error al procesar notificación FCM: ${e.message}")
             
             // Como fallback, mostrar notificación local
             try {

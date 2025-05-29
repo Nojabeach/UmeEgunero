@@ -16,6 +16,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import timber.log.Timber
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
+import com.tfg.umeegunero.BuildConfig
 
 @Singleton
 class DebugUtils @Inject constructor(
@@ -24,7 +25,7 @@ class DebugUtils @Inject constructor(
 
     // Credenciales para el admin por defecto
     private val DEFAULT_ADMIN_EMAIL = "admin@eguneroko.com"
-    private val DEFAULT_ADMIN_DNI = "45678698P"
+    private val DEFAULT_ADMIN_DNI = BuildConfig.ADMIN_PRINCIPAL_DNI
 
     /**
      * Comprueba si hay un admin en el sistema, si no lo crea
@@ -216,7 +217,7 @@ class DebugUtils @Inject constructor(
                 }
                 
                 // Verificar también si existe algún administrador protegido por DNI
-                val protectedAdminDNIs = listOf("45678698P")
+                val protectedAdminDNIs = listOf(BuildConfig.ADMIN_PRINCIPAL_DNI)
                 for (protectedDNI in protectedAdminDNIs) {
                     try {
                         val result = usuarioRepository.getUsuarioPorDni(protectedDNI)
@@ -259,7 +260,7 @@ class DebugUtils @Inject constructor(
                 )
                 // Crear usuario admin
                 val admin = Usuario(
-                    dni = "45678698P",
+                    dni = BuildConfig.ADMIN_PRINCIPAL_DNI,
                     email = "admin@eguneroko.com",
                     nombre = "Maitane",
                     apellidos = "",
