@@ -68,6 +68,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.google.firebase.Firebase
 
 /**
  * Clase simple para representar datos de notificación
@@ -159,6 +160,9 @@ class MainActivity : ComponentActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Verificar claims de usuario para diagnóstico
+        verificarYMostrarCustomClaims()
         
         // Configurar pantalla de splash
         installSplashScreen()
@@ -1056,6 +1060,34 @@ class MainActivity : ComponentActivity() {
 
             if (!isNotificationPermissionGranted) {
                 notificationPermissionLauncher.launch(notificationPermission)
+            }
+        }
+    }
+
+    /**
+     * Método de diagnóstico para verificar y mostrar los custom claims del usuario actualmente autenticado
+     */
+    private fun verificarYMostrarCustomClaims() {
+        val user = FirebaseAuth.getInstance().currentUser
+        
+        if (user == null) {
+            Timber.w("❌ No hay usuario autenticado para verificar claims")
+            return
+        }
+        
+        user.getIdToken(true).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val claims = task.result?.claims
+                Timber.d("🔑 CUSTOM CLAIMS del usuario actual en MainActivity:")
+                Timber.d("🔑 UID: ${user.uid}")
+                Timber.d("🔑 Email: ${user.email}")
+                Timber.d("🔑 DNI: ${claims?.get("dni")}")
+                Timber.d("🔑 isProfesor: ${claims?.get("isProfesor")}")
+                Timber.d("🔑 isAdmin: ${claims?.get("isAdmin")}")
+                Timber.d("🔑 isAdminApp: ${claims?.get("isAdminApp")}")
+                Timber.d("🔑 Todos los claims: $claims")
+            } else {
+                Timber.e(task.exception, "❌ Error al obtener custom claims")
             }
         }
     }

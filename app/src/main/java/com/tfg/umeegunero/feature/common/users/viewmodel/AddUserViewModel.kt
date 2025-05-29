@@ -929,6 +929,9 @@ class AddUserViewModel @Inject constructor(
      * Crea un usuario regular (no alumno)
      */
     private suspend fun createNewRegularUser(state: AddUserUiState) {
+        // Verificar los custom claims del usuario actual antes de crear
+        comprobarCustomClaimsUsuarioActual()
+        
         try {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
@@ -1081,6 +1084,18 @@ class AddUserViewModel @Inject constructor(
             // PASO 5: Guardar en Firestore
             withContext(Dispatchers.IO) {
                 try {
+                    // Forzar refresco del token para asegurar que se tienen los claims actualizados
+                    val currentUser = FirebaseAuth.getInstance().currentUser
+                    if (currentUser != null) {
+                        try {
+                            val tokenResult = Tasks.await(currentUser.getIdToken(true))
+                            Timber.d("Token actualizado antes de guardar en Firestore. Claims: ${tokenResult.claims}")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al refrescar token: ${e.message}")
+                            // Continuar de todos modos
+                        }
+                    }
+                    
                     val task = firebaseFirestore.collection("usuarios")
                         .document(usuario.dni)
                         .set(usuario)
@@ -1121,6 +1136,34 @@ class AddUserViewModel @Inject constructor(
                 isLoading = false,
                 error = "Error al crear usuario: ${e.message}"
             )}
+        }
+    }
+    
+    /**
+     * Comprueba y registra los custom claims del usuario actualmente autenticado
+     */
+    private fun comprobarCustomClaimsUsuarioActual() {
+        val user = FirebaseAuth.getInstance().currentUser
+        
+        if (user == null) {
+            Timber.w("❌ No hay usuario autenticado para verificar claims")
+            return
+        }
+        
+        user.getIdToken(true).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val claims = task.result?.claims
+                Timber.d("🔑 CUSTOM CLAIMS del usuario actual:")
+                Timber.d("🔑 UID: ${user.uid}")
+                Timber.d("🔑 Email: ${user.email}")
+                Timber.d("🔑 DNI: ${claims?.get("dni")}")
+                Timber.d("🔑 isProfesor: ${claims?.get("isProfesor")}")
+                Timber.d("🔑 isAdmin: ${claims?.get("isAdmin")}")
+                Timber.d("🔑 isAdminApp: ${claims?.get("isAdminApp")}")
+                Timber.d("🔑 Todos los claims: $claims")
+            } else {
+                Timber.e(task.exception, "❌ Error al obtener custom claims")
+            }
         }
     }
     
