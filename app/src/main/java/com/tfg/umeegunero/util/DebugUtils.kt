@@ -24,7 +24,7 @@ class DebugUtils @Inject constructor(
 ) {
 
     // Credenciales para el admin por defecto
-    private val DEFAULT_ADMIN_EMAIL = "admin@eguneroko.com"
+    private val DEFAULT_ADMIN_EMAIL = BuildConfig.ADMIN_DEFAULT_EMAIL
     private val DEFAULT_ADMIN_DNI = BuildConfig.ADMIN_PRINCIPAL_DNI
 
     /**
@@ -261,7 +261,7 @@ class DebugUtils @Inject constructor(
                 // Crear usuario admin
                 val admin = Usuario(
                     dni = BuildConfig.ADMIN_PRINCIPAL_DNI,
-                    email = "admin@eguneroko.com",
+                    email = BuildConfig.ADMIN_DEFAULT_EMAIL,
                     nombre = "Maitane",
                     apellidos = "",
                     telefono = "944831879",

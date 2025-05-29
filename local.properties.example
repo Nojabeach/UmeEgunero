@@ -25,8 +25,9 @@ FIREBASE_API_KEY=tu_clave_api_aqui
 FIREBASE_APPLICATION_ID=tu_id_aplicacion_aqui
 FIREBASE_PROJECT_ID=umeegunero
 
-# DNI del administrador principal
+# Credenciales de administrador
 ADMIN_PRINCIPAL_DNI=dni_aqui
+ADMIN_DEFAULT_EMAIL=email_del_admin_aqui
 
 # Remote Config Password Key
 REMOTE_CONFIG_PASSWORD_KEY=defaultAdminPassword 

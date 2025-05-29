@@ -62,6 +62,7 @@ android {
         buildConfigField("String", "FIREBASE_APPLICATION_ID", "\"${localProperties.getProperty("FIREBASE_APPLICATION_ID", "")}\"")
         buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${localProperties.getProperty("FIREBASE_PROJECT_ID", "umeegunero")}\"")
         buildConfigField("String", "ADMIN_PRINCIPAL_DNI", "\"${localProperties.getProperty("ADMIN_PRINCIPAL_DNI", "42925221E")}\"")
+        buildConfigField("String", "ADMIN_DEFAULT_EMAIL", "\"${localProperties.getProperty("ADMIN_DEFAULT_EMAIL", "admin@eguneroko.com")}\"")
         buildConfigField("String", "REMOTE_CONFIG_PASSWORD_KEY", "\"${localProperties.getProperty("REMOTE_CONFIG_PASSWORD_KEY", "defaultAdminPassword")}\"")
 
         javaCompileOptions {

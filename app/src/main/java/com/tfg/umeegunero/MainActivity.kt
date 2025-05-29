@@ -462,7 +462,7 @@ class MainActivity : ComponentActivity() {
      */
     private fun checkAndCreateDefaultAdmin() {
         val firestore = FirebaseFirestore.getInstance()
-        val EMAIL_ADMIN_DEFAULT = "admin@eguneroko.com"
+        val EMAIL_ADMIN_DEFAULT = BuildConfig.ADMIN_DEFAULT_EMAIL
         
         // Intenta sincronizar de manera forzada el administrador protegido
         fun sincronizarAdministradorProtegido(email: String, password: String, dni: String) {

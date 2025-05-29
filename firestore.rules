@@ -37,6 +37,8 @@ service cloud.firestore {
     
     // Verificar si la operación es para crear el administrador por defecto
     function isCreatingDefaultAdmin(dni) {
+      // IMPORTANTE: Estos valores deben coincidir con los definidos en local.properties y BuildConfig
+      // Si se cambian en la app, deben actualizarse también aquí manualmente
       return dni == "42925221E" && 
              request.resource.data.email == "admin@eguneroko.com" &&
              request.resource.data.perfiles.size() > 0 && 
