@@ -30,6 +30,18 @@ object LocalConfig {
     val SENDGRID_FROM_NAME: String
         get() = BuildConfig.SENDGRID_FROM_NAME
     
+    // URL del script de Google Apps Script para envío de emails
+    val EMAIL_SCRIPT_URL: String
+        get() = BuildConfig.EMAIL_SCRIPT_URL.ifEmpty {
+            throw IllegalStateException("EMAIL_SCRIPT_URL no configurada en local.properties")
+        }
+    
+    // URL del script de Google Apps Script para eliminación de usuarios
+    val GAS_DELETE_USER_URL: String
+        get() = BuildConfig.GAS_DELETE_USER_URL.ifEmpty {
+            throw IllegalStateException("GAS_DELETE_USER_URL no configurada en local.properties")
+        }
+    
     // Google Maps
     val GOOGLE_MAPS_API_KEY: String
         get() = BuildConfig.GOOGLE_MAPS_API_KEY.ifEmpty {
@@ -69,6 +81,8 @@ object LocalConfig {
             // Intentar acceder a todas las claves críticas
             IMGBB_API_KEY
             SENDGRID_API_KEY
+            EMAIL_SCRIPT_URL
+            GAS_DELETE_USER_URL
             GOOGLE_MAPS_API_KEY
             FIREBASE_API_KEY
             FIREBASE_APPLICATION_ID
@@ -86,6 +100,8 @@ object LocalConfig {
         return mapOf(
             "IMGBB_API_KEY" to BuildConfig.IMGBB_API_KEY.isNotEmpty(),
             "SENDGRID_API_KEY" to BuildConfig.SENDGRID_API_KEY.isNotEmpty(),
+            "EMAIL_SCRIPT_URL" to BuildConfig.EMAIL_SCRIPT_URL.isNotEmpty(),
+            "GAS_DELETE_USER_URL" to BuildConfig.GAS_DELETE_USER_URL.isNotEmpty(),
             "GOOGLE_MAPS_API_KEY" to BuildConfig.GOOGLE_MAPS_API_KEY.isNotEmpty(),
             "FIREBASE_API_KEY" to BuildConfig.FIREBASE_API_KEY.isNotEmpty(),
             "FIREBASE_APPLICATION_ID" to BuildConfig.FIREBASE_APPLICATION_ID.isNotEmpty()

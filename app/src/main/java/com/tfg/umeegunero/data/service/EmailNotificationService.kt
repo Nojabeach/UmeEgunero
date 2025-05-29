@@ -64,7 +64,12 @@ enum class TipoPlantilla {
     /**
      * Plantilla específica para mensajes de soporte técnico
      */
-    SOPORTE
+    SOPORTE,
+    
+    /**
+     * Plantilla para notificar el procesamiento de solicitudes de vinculación
+     */
+    SOLICITUD_PROCESADA
 }
 
 /**
@@ -104,6 +109,9 @@ class EmailNotificationService @Inject constructor(
      * @param contenido Contenido personalizado del mensaje (opcional)
      * @param emailRemitente Email del remitente (para SOPORTE)
      * @param mensaje Mensaje del usuario (para SOPORTE)
+     * @param nombreAlumno Nombre del alumno (para SOLICITUD_PROCESADA)
+     * @param estado Estado de la solicitud (para SOLICITUD_PROCESADA)
+     * @param observaciones Observaciones (para SOLICITUD_PROCESADA)
      * @return true si el email se envió correctamente, false en caso contrario
      */
     suspend fun sendEmail(
@@ -113,7 +121,10 @@ class EmailNotificationService @Inject constructor(
         asuntoPersonalizado: String? = null,
         contenido: String? = null,
         emailRemitente: String? = null,
-        mensaje: String? = null
+        mensaje: String? = null,
+        nombreAlumno: String? = null,
+        estado: String? = null,
+        observaciones: String? = null
     ): Boolean {
         // Validación de parámetros
         if (destinatario.isBlank()) {
@@ -159,6 +170,13 @@ class EmailNotificationService @Inject constructor(
                     if (plantillaEfectiva == TipoPlantilla.SOPORTE) {
                         emailRemitente?.let { appendQueryParameter("email", it) }
                         mensaje?.let { appendQueryParameter("mensaje", it) }
+                    }
+                    
+                    // Añadir parámetros adicionales para SOLICITUD_PROCESADA
+                    if (plantillaEfectiva == TipoPlantilla.SOLICITUD_PROCESADA) {
+                        nombreAlumno?.let { appendQueryParameter("nombreAlumno", it) }
+                        estado?.let { appendQueryParameter("estado", it) }
+                        observaciones?.let { appendQueryParameter("observaciones", it) }
                     }
                     
                     // Añadir token de seguridad
@@ -306,7 +324,7 @@ class EmailNotificationService @Inject constructor(
         observaciones: String = "",
         contenidoHtml: String? = null
     ): Boolean {
-        val tipoPlantilla = if (esAprobacion) TipoPlantilla.APROBACION else TipoPlantilla.RECHAZO
+        val estado = if (esAprobacion) "APROBADA" else "RECHAZADA"
         val accion = if (esAprobacion) "Aprobada" else "Rechazada"
         val asunto = "Solicitud $accion en UmeEgunero - Vinculación con $nombreAlumno"
         
@@ -316,9 +334,12 @@ class EmailNotificationService @Inject constructor(
         return sendEmail(
             destinatario = destinatario,
             nombre = nombre,
-            tipoPlantilla = tipoPlantilla,
+            tipoPlantilla = TipoPlantilla.SOLICITUD_PROCESADA,
             asuntoPersonalizado = asunto,
-            contenido = contenidoHtml
+            contenido = contenidoHtml,
+            nombreAlumno = nombreAlumno,
+            estado = estado,
+            observaciones = observaciones
         )
     }
 

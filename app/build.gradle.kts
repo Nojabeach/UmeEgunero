@@ -55,6 +55,8 @@ android {
         buildConfigField("String", "SENDGRID_API_KEY", "\"${localProperties.getProperty("SENDGRID_API_KEY", "")}\"")
         buildConfigField("String", "SENDGRID_FROM_EMAIL", "\"${localProperties.getProperty("SENDGRID_FROM_EMAIL", "umeegunero@gmail.com")}\"")
         buildConfigField("String", "SENDGRID_FROM_NAME", "\"${localProperties.getProperty("SENDGRID_FROM_NAME", "Centro Educativo UmeEgunero")}\"")
+        buildConfigField("String", "EMAIL_SCRIPT_URL", "\"${localProperties.getProperty("EMAIL_SCRIPT_URL", "")}\"")
+        buildConfigField("String", "GAS_DELETE_USER_URL", "\"${localProperties.getProperty("GAS_DELETE_USER_URL", "")}\"")
         buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${localProperties.getProperty("GOOGLE_MAPS_API_KEY", "")}\"")
         buildConfigField("String", "FIREBASE_API_KEY", "\"${localProperties.getProperty("FIREBASE_API_KEY", "")}\"")
         buildConfigField("String", "FIREBASE_APPLICATION_ID", "\"${localProperties.getProperty("FIREBASE_APPLICATION_ID", "")}\"")

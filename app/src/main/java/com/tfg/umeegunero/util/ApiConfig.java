@@ -1,14 +1,14 @@
 package com.tfg.umeegunero.util;
 
+import com.tfg.umeegunero.BuildConfig;
+import timber.log.Timber;
+
 /**
  * Configuración de API para servicios externos.
- * IMPORTANTE: Este archivo contiene versiones de ejemplo de las claves.
- * Debe ser reemplazado localmente con las claves reales y no debe subirse a repositorios públicos.
+ * IMPORTANTE: Este archivo sirve como capa de abstracción para acceder a claves API.
+ * Las claves reales se obtienen desde BuildConfig (que las lee de local.properties).
  * 
- * Instrucciones para desarrolladores:
- * 1. Copia este archivo y renómbralo a ApiConfig.java
- * 2. Reemplaza las claves de ejemplo con tus claves reales
- * 3. Asegúrate de que el archivo esté en .gitignore
+ * Las claves API nunca deben estar hardcodeadas en el código.
  */
 public class ApiConfig {
     // SendGrid
@@ -17,41 +17,65 @@ public class ApiConfig {
     // URL del script de Google Apps Script que procesa y envía emails
     public static final String EMAIL_SCRIPT_URL = getEmailScriptUrl();
     
-    // Firebase (mantener este valor vacío, usar google-services.json para Firebase)
-    public static final String FIREBASE_API_KEY = "";
+    // Firebase (se obtiene de BuildConfig)
+    public static final String FIREBASE_API_KEY = getFirebaseApiKey();
     
     // Otras APIs
     public static final String OTHER_API_KEY = "";
     
     /**
-     * Intenta obtener la clave de API de SendGrid desde la configuración local.
-     * Si no existe, devuelve un valor de placeholder.
+     * Obtiene la clave de API de SendGrid.
+     * Primero intenta usar BuildConfig, luego ApiConfigLocal como fallback.
      */
     private static String getSendGridApiKey() {
+        // Prioridad 1: BuildConfig (recomendado)
+        if (BuildConfig.SENDGRID_API_KEY != null && !BuildConfig.SENDGRID_API_KEY.isEmpty()) {
+            return BuildConfig.SENDGRID_API_KEY;
+        }
+        
+        // Prioridad 2: ApiConfigLocal (fallback para compatibilidad)
         try {
-            // Intentar cargar la clase ApiConfigLocal (si existe)
             Class<?> localConfigClass = Class.forName("com.tfg.umeegunero.util.ApiConfigLocal");
-            // Obtener el campo SENDGRID_API_KEY
             return (String) localConfigClass.getField("SENDGRID_API_KEY").get(null);
         } catch (Exception e) {
-            // Si no existe, devolver un placeholder
-            return "YOUR_SENDGRID_API_KEY";
+            // Si no existe o hay error, devolver valor vacío
+            return "";
         }
     }
     
     /**
-     * Intenta obtener la URL del script de email desde la configuración local.
-     * Si no existe, devuelve un valor de placeholder.
+     * Obtiene la URL del script de email.
+     * Primero intenta usar BuildConfig, luego ApiConfigLocal como fallback.
      */
     private static String getEmailScriptUrl() {
-        try {
-            // Intentar cargar la clase ApiConfigLocal (si existe)
-            Class<?> localConfigClass = Class.forName("com.tfg.umeegunero.util.ApiConfigLocal");
-            // Obtener el campo EMAIL_SCRIPT_URL
-            return (String) localConfigClass.getField("EMAIL_SCRIPT_URL").get(null);
-        } catch (Exception e) {
-            // Si no existe, devolver un placeholder
-            return "https://script.google.com/macros/s/YOUR-SCRIPT-ID-HERE/exec";
+        // Prioridad 1: BuildConfig (recomendado)
+        if (BuildConfig.EMAIL_SCRIPT_URL != null && !BuildConfig.EMAIL_SCRIPT_URL.isEmpty()) {
+            return BuildConfig.EMAIL_SCRIPT_URL;
         }
+        
+        // Prioridad 2: ApiConfigLocal (fallback para compatibilidad)
+        try {
+            Class<?> localConfigClass = Class.forName("com.tfg.umeegunero.util.ApiConfigLocal");
+            String url = (String) localConfigClass.getField("EMAIL_SCRIPT_URL").get(null);
+            if (url != null && !url.isEmpty()) {
+                return url;
+            }
+        } catch (Exception e) {
+            // Ignorar errores
+        }
+        
+        // Valor por defecto (placeholder que no funcionará)
+        return "https://script.google.com/macros/s/YOUR-SCRIPT-ID-HERE/exec";
+    }
+    
+    /**
+     * Obtiene la clave de API de Firebase.
+     * Utiliza BuildConfig que lee desde local.properties.
+     */
+    private static String getFirebaseApiKey() {
+        if (BuildConfig.FIREBASE_API_KEY != null && !BuildConfig.FIREBASE_API_KEY.isEmpty()) {
+            return BuildConfig.FIREBASE_API_KEY;
+        }
+        return "";
     }
 } 

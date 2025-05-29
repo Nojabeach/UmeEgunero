@@ -19,6 +19,12 @@ import javax.inject.Singleton
 import org.json.JSONObject
 import com.google.firebase.Timestamp
 import javax.inject.Provider
+import com.tfg.umeegunero.util.LocalConfig
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import com.google.gson.Gson
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
  * Interfaz que define las operaciones relacionadas con la autenticación de usuarios.
@@ -149,7 +155,7 @@ interface AuthRepository {
     /**
      * Elimina un usuario de Firebase Authentication por su email.
      * 
-     * Este método utiliza Firebase Functions para eliminar de forma segura un usuario
+     * Este método utiliza Google Apps Script para eliminar de forma segura un usuario
      * mediante su correo electrónico. La eliminación se realiza en el servidor
      * para mantener la seguridad y evitar exposición de tokens o claves.
      *
@@ -516,7 +522,7 @@ class AuthRepositoryImpl @Inject constructor(
     /**
      * Elimina un usuario de Firebase Authentication por su email.
      * 
-     * Este método utiliza Firebase Functions para eliminar de forma segura un usuario
+     * Este método utiliza Google Apps Script para eliminar de forma segura un usuario
      * mediante su correo electrónico. La eliminación se realiza en el servidor
      * para mantener la seguridad y evitar exposición de tokens o claves.
      *
@@ -524,33 +530,58 @@ class AuthRepositoryImpl @Inject constructor(
      * @return Resultado de la operación
      */
     override suspend fun deleteUserByEmail(email: String): Result<Unit> = withContext(Dispatchers.IO) {
-        Timber.d("Solicitando eliminación de usuario con email: $email")
+        Timber.d("Solicitando eliminación de usuario con email: $email vía Google Apps Script")
         try {
-            // Actualizado para usar Firebase Functions en lugar de Apps Script
-            val data = hashMapOf(
-                "action" to "deleteUser",
-                "email" to email
-            )
+            // Obtener la URL del servicio GAS
+            val gasUrl = LocalConfig.GAS_DELETE_USER_URL
             
-            val functions = Firebase.functions
-            val result = functions
-                .getHttpsCallable("manageUsers")
-                .call(data)
-                .await()
+            // Crear el objeto JSON para la petición
+            val jsonData = JSONObject().apply {
+                put("action", "deleteUser")
+                put("email", email)
+                // Si tienes configurada una API key en tu GAS, agrégala aquí
+                // put("apiKey", "tu-api-key")
+            }
             
-            val resultData = result.data as? Map<*, *>
-            val success = resultData?.get("success") as? Boolean ?: false
+            // Crear cliente HTTP
+            val client = OkHttpClient()
             
-            if (success) {
-                Timber.d("Usuario eliminado correctamente: $email")
-                return@withContext Result.Success(Unit)
+            // Crear el cuerpo de la petición con tipo JSON
+            val mediaType = "application/json; charset=utf-8".toMediaType()
+            val body = jsonData.toString().toRequestBody(mediaType)
+            
+            // Crear la solicitud POST
+            val request = Request.Builder()
+                .url(gasUrl)
+                .post(body)
+                .addHeader("Content-Type", "application/json")
+                .build()
+            
+            // Ejecutar la solicitud
+            val response = client.newCall(request).execute()
+            
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string() ?: ""
+                Timber.d("Respuesta del servicio GAS: $responseBody")
+                
+                // Parsear la respuesta JSON
+                val responseJson = JSONObject(responseBody)
+                val success = responseJson.optBoolean("success", false)
+                
+                if (success) {
+                    Timber.d("Usuario eliminado correctamente vía GAS: $email")
+                    return@withContext Result.Success(Unit)
+                } else {
+                    val errorMessage = responseJson.optString("error", "Error desconocido al eliminar usuario")
+                    Timber.e("Error del servicio GAS: $errorMessage")
+                    return@withContext Result.Error(Exception(errorMessage))
+                }
             } else {
-                val errorMessage = resultData?.get("error") as? String ?: "Error desconocido al eliminar usuario"
-                Timber.e("Error al eliminar usuario: $errorMessage")
-                return@withContext Result.Error(Exception(errorMessage))
+                Timber.e("Error HTTP al llamar al servicio GAS: ${response.code} - ${response.message}")
+                return@withContext Result.Error(Exception("Error al conectar con el servicio de eliminación"))
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error al ejecutar la función para eliminar usuario: ${e.message}")
+            Timber.e(e, "Error al ejecutar el servicio GAS para eliminar usuario: ${e.message}")
             return@withContext Result.Error(e)
         }
     }

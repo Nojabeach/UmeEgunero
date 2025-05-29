@@ -35,17 +35,15 @@ object Constants {
      * Este script gestiona las plantillas de correo y el envío a través
      * de Gmail API.
      * 
-     * Nota: Para mayor seguridad, en entornos de producción esta URL
-     * debería obtenerse de forma segura (Firebase Remote Config, servidor propio,
-     * o meta-data en AndroidManifest.xml).
+     * Nota: Esta URL se obtiene de local.properties a través de LocalConfig.
      */
     val EMAIL_SCRIPT_URL: String
         get() = try {
-            // Intentar obtener la URL de ApiConfig
-            ApiConfig.EMAIL_SCRIPT_URL.takeIf { it.isNotBlank() }
-                ?: "https://script.google.com/macros/s/YOUR-SCRIPT-ID-HERE/exec"
+            // Obtener la URL desde LocalConfig (que usa BuildConfig)
+            LocalConfig.EMAIL_SCRIPT_URL
         } catch (e: Exception) {
             // Si hay algún error, usar URL por defecto (que no funcionará pero evita crashes)
+            Timber.e(e, "Error al acceder a EMAIL_SCRIPT_URL desde LocalConfig")
             "https://script.google.com/macros/s/YOUR-SCRIPT-ID-HERE/exec"
         }
     
