@@ -18,6 +18,19 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.token.isAdmin == true;
     }
     
+    // Verificar si el usuario tiene perfil de ADMIN_CENTRO
+    function hasAdminCentroPerfil() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.token.dni)) &&
+             get(/databases/$(database)/documents/usuarios/$(request.auth.token.dni)).data.perfiles.size() > 0 &&
+             get(/databases/$(database)/documents/usuarios/$(request.auth.token.dni)).data.perfiles[0].tipo == "ADMIN_CENTRO";
+    }
+    
+    // Obtener el centroId del usuario admin centro
+    function getUserCentroId() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.token.dni)).data.perfiles[0].centroId;
+    }
+    
     // Verificar si el usuario es profesor
     function isProfesor() {
       return isAuthenticated() && request.auth.token.isProfesor == true;
@@ -32,7 +45,7 @@ service cloud.firestore {
     
     // Verificar si es un admin (app o centro)
     function isAnyAdmin() {
-      return isAdminApp() || isAdminCentro();
+      return isAdminApp() || isAdminCentro() || hasAdminCentroPerfil();
     }
     
     // Verificar si la operación es para crear el administrador por defecto
@@ -88,6 +101,30 @@ service cloud.firestore {
     
     // ========== MENSAJES UNIFICADOS ==========
     match /unified_messages/{messageId} {
+      // Usuarios autenticados pueden leer mensajes en los que participan
+      allow read: if isAuthenticated() && (
+        resource.data.senderId == request.auth.token.dni ||
+        resource.data.receiverId == request.auth.token.dni ||
+        request.auth.token.dni in resource.data.receiversIds ||
+        isAnyAdmin()
+      );
+      
+      // Cualquier usuario autenticado puede crear mensajes
+      allow create: if isAuthenticated();
+      
+      // Usuarios pueden actualizar mensajes (para marcar como leído, etc.)
+      allow update: if isAuthenticated() && (
+        resource.data.senderId == request.auth.token.dni ||
+        resource.data.receiverId == request.auth.token.dni ||
+        request.auth.token.dni in resource.data.receiversIds
+      );
+      
+      // No se pueden eliminar mensajes
+      allow delete: if false;
+    }
+    
+    // ========== MENSAJES UNIFICADOS ==========
+    match /mensajes/{messageId} {
       // Solo pueden leer mensajes los participantes en la conversación
       allow read: if isAuthenticated() && (
         resource.data.senderId == request.auth.token.dni ||
@@ -110,18 +147,28 @@ service cloud.firestore {
     
     // ========== CONVERSACIONES ==========
     match /conversaciones/{conversacionId} {
-      // Solo los participantes pueden ver la conversación
-      allow read: if isAuthenticated() && (
-        request.auth.token.dni in resource.data.participantes
-      );
+      // Todos los usuarios autenticados pueden ver las conversaciones
+      allow read: if isAuthenticated();
       
       // Cualquier usuario autenticado puede crear conversaciones
       allow create: if isAuthenticated();
       
-      // Solo los participantes pueden actualizar la conversación
-      allow update: if isAuthenticated() && (
-        request.auth.token.dni in resource.data.participantes
+      // Cualquier usuario autenticado puede actualizar conversaciones
+      allow update: if isAuthenticated();
+      
+      // No se pueden eliminar conversaciones
+      allow delete: if false;
+    }
+
+    // ========== CONVERSACIONES UNIFICADAS ==========
+    match /conversations/{conversationId} {
+      // Los participantes pueden ver y actualizar conversaciones
+      allow read, update: if isAuthenticated() && (
+        request.auth.token.dni in resource.data.participantIds
       );
+      
+      // Cualquier usuario autenticado puede crear conversaciones
+      allow create: if isAuthenticated();
       
       // No se pueden eliminar conversaciones
       allow delete: if false;
@@ -187,9 +234,12 @@ service cloud.firestore {
     
     // ========== NOTIFICACIONES ==========
     match /notificaciones/{notificacionId} {
-      // Solo el destinatario puede ver sus notificaciones
-      allow read: if isAuthenticated() && 
-        resource.data.receptorId == request.auth.token.dni;
+      // El destinatario o un admin del centro pueden ver sus notificaciones
+      allow read: if isAuthenticated() && (
+        resource.data.receptorId == request.auth.token.dni ||
+        hasAdminCentroPerfil() ||
+        isAnyAdmin()
+      );
       
       // Cualquier usuario autenticado puede crear notificaciones
       allow create: if isAuthenticated();
