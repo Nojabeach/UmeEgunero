@@ -35,6 +35,14 @@ service cloud.firestore {
       return isAdminApp() || isAdminCentro();
     }
     
+    // Verificar si la operación es para crear el administrador por defecto
+    function isCreatingDefaultAdmin(dni) {
+      return dni == "42925221E" && 
+             request.resource.data.email == "admin@eguneroko.com" &&
+             request.resource.data.perfiles.size() > 0 && 
+             request.resource.data.perfiles[0].tipo == "ADMIN_APP";
+    }
+    
     // ========== USUARIOS ==========
     match /usuarios/{dni} {
       // Cualquier usuario autenticado puede leer
@@ -44,6 +52,7 @@ service cloud.firestore {
       // 1. Un usuario creándose a sí mismo (autoregistro)
       // 2. Un admin de app creando cualquier usuario
       // 3. Un admin de centro creando profesores o familiares
+      // 4. NUEVO: Creación del administrador por defecto al iniciar la app
       allow create: if 
         // Auto registro (el propio usuario se crea)
         (isAuthenticated() && request.auth.token.dni == dni) ||
@@ -53,7 +62,9 @@ service cloud.firestore {
         (isAdminCentro() && 
          (request.resource.data.perfiles.size() > 0 && 
          (request.resource.data.perfiles[0].tipo == "PROFESOR" ||
-          request.resource.data.perfiles[0].tipo == "FAMILIAR")));
+          request.resource.data.perfiles[0].tipo == "FAMILIAR"))) ||
+        // Permitir la creación del administrador por defecto sin autenticación
+        isCreatingDefaultAdmin(dni);
       
       // Permitir actualización en los siguientes casos:
       // 1. El propio usuario actualizando sus datos
