@@ -1,0 +1,3 @@
+[submodule "cloud-functions"]
+	path = cloud-functions
+	url = https://github.com/Nojabeach/UmeEgunero-CloudFunctions.git
