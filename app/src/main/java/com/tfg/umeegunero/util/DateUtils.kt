@@ -249,26 +249,23 @@ object DateUtils {
      * @param fechaNacimiento Timestamp de la fecha de nacimiento
      * @return Edad en años
      */
-    fun calcularEdad(fechaNacimiento: Timestamp): Int {
-        val fechaNacimientoDate = Date(fechaNacimiento.seconds * 1000)
-        val calendar = Calendar.getInstance()
-        val hoy = calendar.time
+    fun calcularEdad(fechaNacimiento: Timestamp?): Int {
+        if (fechaNacimiento == null) return 0
         
-        val years = calendar.get(Calendar.YEAR) - fechaNacimientoDate.year - 1900
+        val nacimiento = fechaNacimiento.toDate()
+        val hoy = Calendar.getInstance().time
         
-        calendar.time = fechaNacimientoDate
-        val nacimientoMes = calendar.get(Calendar.MONTH)
-        val nacimientoDia = calendar.get(Calendar.DAY_OF_MONTH)
+        val calNacimiento = Calendar.getInstance()
+        calNacimiento.time = nacimiento
         
-        calendar.time = hoy
-        val hoyMes = calendar.get(Calendar.MONTH)
-        val hoyDia = calendar.get(Calendar.DAY_OF_MONTH)
+        val calHoy = Calendar.getInstance()
+        calHoy.time = hoy
         
-        return if (hoyMes > nacimientoMes || (hoyMes == nacimientoMes && hoyDia >= nacimientoDia)) {
-            years + 1
-        } else {
-            years
+        var edad = calHoy.get(Calendar.YEAR) - calNacimiento.get(Calendar.YEAR)
+        if (calHoy.get(Calendar.DAY_OF_YEAR) < calNacimiento.get(Calendar.DAY_OF_YEAR)) {
+            edad--
         }
+        return edad
     }
     
     /**
@@ -326,5 +323,44 @@ object DateUtils {
         } catch (e: Exception) {
             ""
         }
+    }
+
+    /**
+     * Parsea un string de fecha en varios formatos comunes (yyyy-MM-dd, dd/MM/yyyy) a un objeto Date.
+     *
+     * @param dateString El string de la fecha.
+     * @return El objeto Date, o null si el parseo falla para todos los formatos conocidos.
+     */
+    fun parseFlexibleDateString(dateString: String?): Date? {
+        if (dateString.isNullOrBlank()) return null
+
+        val formats = listOf(
+            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()),
+            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()),
+            SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()),
+            SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
+            // Añadir más formatos si es necesario
+        )
+
+        for (format in formats) {
+            try {
+                return format.parse(dateString)
+            } catch (e: java.text.ParseException) {
+                // Intentar el siguiente formato
+            }
+        }
+        return null // No se pudo parsear con ningún formato conocido
+    }
+
+    /**
+     * Parsea un string de fecha (intentando formatos yyyy-MM-dd o dd/MM/yyyy) y lo formatea a dd/MM/yyyy.
+     *
+     * @param dateString El string de la fecha original.
+     * @return La fecha formateada como dd/MM/yyyy, o el string original si no se puede parsear/formatear, o "N/A" si es nulo/vacío.
+     */
+    fun formatStringDateToDdMmYyyy(dateString: String?): String {
+        if (dateString.isNullOrBlank()) return "N/A"
+        val parsedDate = parseFlexibleDateString(dateString)
+        return parsedDate?.formatDateShort() ?: dateString // Devuelve el original si no se pudo parsear
     }
 } 

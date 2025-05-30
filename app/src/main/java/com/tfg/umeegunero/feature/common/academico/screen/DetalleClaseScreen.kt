@@ -56,6 +56,7 @@ fun DetalleClaseScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
     
     Scaffold(
         topBar = {
@@ -63,22 +64,24 @@ fun DetalleClaseScreen(
                 title = { Text(uiState.clase?.nombre ?: "Detalle de Clase", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { 
-                        // En lugar de simplemente hacer popBackStack, redirigimos a la pantalla de gestión académica
-                        // manteniendo el modo CLASES y el curso seleccionado
+                        // En lugar de simplemente hacer popBackStack, guardamos la información
+                        // del curso y la clase antes de volver atrás
                         val clase = uiState.clase
                         if (clase != null) {
                             val centroId = clase.centroId
                             val cursoId = clase.cursoId
-                            Timber.d("🔙 Navegando de vuelta a CLASES con centroId=$centroId, cursoId=$cursoId")
+                            Timber.d("🔙 Navegando de vuelta de DetalleClaseScreen con centroId=$centroId, cursoId=$cursoId")
+                            
+                            // Guardar los IDs en las preferencias compartidas para que GestorAcademicoScreen
+                            // pueda recuperarlos al volver
+                            val prefs = context.getSharedPreferences("gestor_academico_prefs", 0)
+                            prefs.edit()
+                                .putString("last_centro_id", centroId)
+                                .putString("last_curso_id", cursoId)
+                                .apply()
+                            
+                            // Simplemente hacemos popBackStack() para volver a la pantalla anterior
                             navController.popBackStack()
-                            navController.navigate("gestor_academico/CLASES?centroId=$centroId&cursoId=$cursoId&selectorCentroBloqueado=true&selectorCursoBloqueado=true") {
-                                // Configuramos para que reemplace la entrada actual y no duplique pantallas
-                                popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
                         } else {
                             navController.popBackStack()
                         }

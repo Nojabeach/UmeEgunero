@@ -60,4 +60,8 @@
 
     <!-- Tokens de seguridad -->
     <string name="email_security_token_fallback" translatable="false">umeegunero_app_token_2023</string>
+    
+    <!-- Add User Screen -->
+    <string name="add_user_placeholder_curso">Elija el curso</string>
+    <string name="add_user_placeholder_clase">Elija la clase</string>
 </resources>

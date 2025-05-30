@@ -438,6 +438,13 @@ class AddUserViewModel @Inject constructor(
                                         isLoading = false
                                     )
                                 }
+                                
+                                // Si el tipo de usuario es ALUMNO, cargar los cursos del centro seleccionado
+                                if (_uiState.value.tipoUsuario == TipoUsuario.ALUMNO) {
+                                    Timber.d("🎓 Tipo de usuario es ALUMNO, cargando cursos para centro: ${centroSeleccionado.id}")
+                                    loadCursos(centroSeleccionado.id)
+                                }
+                                
                                 return@launch
                             }
                         }
@@ -482,10 +489,18 @@ class AddUserViewModel @Inject constructor(
             try {
                  // Usar la función suspendida que devuelve directamente la lista
                  val cursosList = cursoRepository.obtenerCursosPorCentro(centroId)
-                 Timber.d("Cursos cargados: ${cursosList.size}")
-                 cursosList.forEach { curso -> 
-                     Timber.d("Curso: ${curso.nombre}, id: ${curso.id}")
+                 Timber.d("✅ Cursos cargados para centro $centroId: ${cursosList.size}")
+                 
+                 // Registrar detalles de cada curso para debug
+                 if (cursosList.isEmpty()) {
+                    Timber.w("⚠️ No se encontraron cursos para el centro $centroId")
+                 } else {
+                    Timber.d("📋 Lista de cursos encontrados:")
+                    cursosList.forEachIndexed { index, curso -> 
+                        Timber.d("  [$index] Curso: ${curso.nombre}, id: ${curso.id}, activo: ${curso.activo}")
+                    }
                  }
+                 
                  _uiState.update { it.copy(
                     cursosDisponibles = cursosList, 
                     isLoading = false,
@@ -493,12 +508,16 @@ class AddUserViewModel @Inject constructor(
                     cursoSeleccionado = null
                  )}
                  
+                 // Verificar el estado después de la actualización
+                 val updatedCursosCount = _uiState.value.cursosDisponibles.size
+                 Timber.d("✅ Estado actualizado. Cursos disponibles: $updatedCursosCount")
+                 
                  // Ya no hacemos selección automática del primer curso
                  // para que el usuario vea "Elija el curso" y seleccione uno explícitamente
             } catch (e: Exception) {
                 Timber.e(e, "❌ Error al cargar cursos para centroId: $centroId")
                 _uiState.update { it.copy(
-                    error = "Error al cargar los cursos: ${e.message}",
+                    error = "Error al cargar cursos: ${e.message}",
                     isLoading = false
                 )}
             }
@@ -668,7 +687,39 @@ class AddUserViewModel @Inject constructor(
         )}
     }
 
-    // Actualiza el tipo de usuario
+    /**
+     * Actualiza el centro seleccionado
+     */
+    fun updateCentroSeleccionado(centroId: String) {
+        // Buscar el centro por ID
+        val centro = _uiState.value.centrosDisponibles.find { it.id == centroId }
+        
+        _uiState.update { it.copy(
+            centroId = centroId,
+            centroSeleccionado = centro,
+            // Resetear curso y clase al cambiar centro
+            cursoSeleccionado = null,
+            cursosDisponibles = emptyList(),
+            claseSeleccionada = null,
+            clasesDisponibles = emptyList(),
+             firstInvalidField = if (it.firstInvalidField == AddUserFormField.CENTRO) null else it.firstInvalidField,
+             validationAttemptFailed = false
+        ) }
+        
+        // Cargar cursos si es Alumno, Profesor o AdminCentro (aunque profesor/admin no usan curso/clase aquí, podrían en futuro)
+        if (centro != null && (_uiState.value.tipoUsuario == TipoUsuario.ALUMNO || _uiState.value.tipoUsuario == TipoUsuario.PROFESOR || _uiState.value.tipoUsuario == TipoUsuario.ADMIN_CENTRO) ) {
+            // Añadir logs adicionales para debug
+            Timber.d("🔄 Centro seleccionado: ${centro.nombre}, tipo usuario: ${_uiState.value.tipoUsuario}")
+            Timber.d("🔄 Cargando cursos para centroId: ${centro.id}")
+            loadCursos(centro.id)
+        } else {
+            Timber.d("❌ No se cargan cursos: centro=$centro, tipo=${_uiState.value.tipoUsuario}")
+        }
+    }
+
+    /**
+     * Actualiza el tipo de usuario
+     */
     fun updateTipoUsuario(tipoUsuario: TipoUsuario) {
         // Determinar si el centro debe bloquearse para este tipo de usuario
         // Si ya estaba bloqueado, mantenerlo bloqueado
@@ -713,28 +764,12 @@ class AddUserViewModel @Inject constructor(
              _uiState.value.centrosDisponibles.isEmpty()) {
             loadCentros()
         }
-    }
-
-    // Actualiza el centro seleccionado
-    fun updateCentroSeleccionado(centroId: String) {
-        // Buscar el centro por ID
-        val centro = _uiState.value.centrosDisponibles.find { it.id == centroId }
         
-        _uiState.update { it.copy(
-            centroId = centroId,
-            centroSeleccionado = centro,
-            // Resetear curso y clase al cambiar centro
-            cursoSeleccionado = null,
-            cursosDisponibles = emptyList(),
-            claseSeleccionada = null,
-            clasesDisponibles = emptyList(),
-             firstInvalidField = if (it.firstInvalidField == AddUserFormField.CENTRO) null else it.firstInvalidField,
-             validationAttemptFailed = false
-        ) }
-        
-        // Cargar cursos si es Alumno, Profesor o AdminCentro (aunque profesor/admin no usan curso/clase aquí, podrían en futuro)
-        if (centro != null && (_uiState.value.tipoUsuario == TipoUsuario.ALUMNO || _uiState.value.tipoUsuario == TipoUsuario.PROFESOR || _uiState.value.tipoUsuario == TipoUsuario.ADMIN_CENTRO) ) {
-            loadCursos(centro.id)
+        // Si el nuevo tipo es ALUMNO y ya hay un centro seleccionado, cargar sus cursos
+        if (tipoUsuario == TipoUsuario.ALUMNO && _uiState.value.centroSeleccionado != null) {
+            val centroId = _uiState.value.centroSeleccionado!!.id
+            Timber.d("Tipo cambiado a ALUMNO, cargando cursos para centro: $centroId")
+            loadCursos(centroId)
         }
     }
 
@@ -873,6 +908,7 @@ class AddUserViewModel @Inject constructor(
                 dni = state.dni,
                 nombre = state.nombre,
                 apellidos = state.apellidos,
+                telefono = state.telefono, // Añadir teléfono
                 fechaNacimiento = DateUtils.parseDateString(state.fechaNacimiento),
                 centroId = state.centroSeleccionado?.id ?: "",
                 claseId = state.claseSeleccionada?.id ?: "",
@@ -885,10 +921,11 @@ class AddUserViewModel @Inject constructor(
                 necesidadesEspeciales = state.necesidadesEspeciales,
                 observaciones = state.observaciones,
                 observacionesMedicas = state.observacionesMedicas,
-                avatarUrl = avatarUrl // URL del avatar
+                avatarUrl = avatarUrl, // URL del avatar
+                activo = true // Asegurar que el alumno esté activo
             )
             
-            Timber.d("Alumno creado: ${alumno.nombre} ${alumno.apellidos} con DNI: ${alumno.dni}, avatar: $avatarUrl")
+            Timber.d("Alumno creado: ${alumno.nombre} ${alumno.apellidos} con DNI: ${alumno.dni}, telefono: ${alumno.telefono}, avatar: $avatarUrl")
             
             // PASO 3: Guardar el alumno en Firestore
             withContext(Dispatchers.IO) {
@@ -1334,9 +1371,156 @@ class AddUserViewModel @Inject constructor(
     }
 
     private suspend fun updateExistingUser(state: AddUserUiState) {
-        // Implementación de actualización de usuario existente
-        // Código similar pero sin crear cuenta en Auth
-        // ...
+        try {
+            Timber.d("⏳ Actualizando usuario existente con DNI: ${state.dni}")
+            
+            when (state.tipoUsuario) {
+                TipoUsuario.ALUMNO -> updateExistingAlumno(state)
+                else -> updateExistingRegularUser(state)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Error al actualizar usuario existente: ${e.message}")
+            _uiState.update { it.copy(
+                error = "Error al actualizar usuario: ${e.message}",
+                isLoading = false
+            )}
+        }
+    }
+    
+    /**
+     * Actualiza un alumno existente en Firestore
+     */
+    private suspend fun updateExistingAlumno(state: AddUserUiState) {
+        try {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            Timber.d("Actualizando alumno existente con DNI: ${state.dni}")
+            
+            // Crear objeto alumno con los datos actualizados
+            val alumno = Alumno(
+                id = state.userId.ifEmpty { UUID.randomUUID().toString() },
+                dni = state.dni,
+                nombre = state.nombre,
+                apellidos = state.apellidos,
+                telefono = state.telefono,
+                fechaNacimiento = DateUtils.parseDateString(state.fechaNacimiento),
+                centroId = state.centroSeleccionado?.id ?: "",
+                claseId = state.claseSeleccionada?.id ?: "",
+                curso = state.cursoSeleccionado?.nombre ?: "",
+                clase = state.claseSeleccionada?.nombre ?: "",
+                numeroSS = state.numeroSS,
+                condicionesMedicas = state.condicionesMedicas,
+                alergias = if (state.alergias.isNotEmpty()) state.alergias.split(",").map { it.trim() } else emptyList(),
+                medicacion = if (state.medicacion.isNotEmpty()) state.medicacion.split(",").map { it.trim() } else emptyList(),
+                necesidadesEspeciales = state.necesidadesEspeciales,
+                observaciones = state.observaciones,
+                observacionesMedicas = state.observacionesMedicas,
+                // Mantener la URL del avatar existente si está disponible
+                avatarUrl = state.centroSeleccionado?.logo ?: "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40alumno.png?alt=media&token=5bdc263e-3320-4c99-b6af-6dc258c917be",
+                activo = true
+            )
+            
+            Timber.d("Alumno actualizado: ${alumno.nombre} ${alumno.apellidos} con DNI: ${alumno.dni}, telefono: ${alumno.telefono}")
+            Timber.d("Datos médicos - NumSS: ${alumno.numeroSS}, Alergias: ${alumno.alergias}, Medicación: ${alumno.medicacion}")
+            
+            // Actualizar el alumno en Firestore
+            withContext(Dispatchers.IO) {
+                try {
+                    // Obtener el contexto para pasarlo al repositorio
+                    val context = getApplication<Application>().applicationContext
+                    val result = usuarioRepository.actualizarAlumno(alumno, context)
+                    
+                    if (result is Result.Error) {
+                        throw result.exception ?: Exception("Error desconocido al actualizar alumno")
+                    }
+                    
+                    Timber.d("✅ Alumno actualizado correctamente en Firestore")
+                } catch (e: Exception) {
+                    Timber.e(e, "❌ Error al actualizar alumno en Firestore: ${e.message}")
+                    throw e
+                }
+            }
+            
+            // Actualizar UI
+            _uiState.update { it.copy(
+                isLoading = false,
+                success = true,
+                showSuccessDialog = true,
+                error = null
+            )}
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Error general al actualizar alumno: ${e.message}")
+            _uiState.update { it.copy(
+                isLoading = false,
+                error = "Error al actualizar alumno: ${e.message}"
+            )}
+        }
+    }
+    
+    /**
+     * Actualiza un usuario regular (no alumno) existente en Firestore
+     */
+    private suspend fun updateExistingRegularUser(state: AddUserUiState) {
+        try {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            Timber.d("Actualizando usuario regular existente con DNI: ${state.dni}")
+            
+            // Obtener el usuario actual para mantener datos que no se editan
+            val usuarioActualResult = usuarioRepository.getUsuarioPorDni(state.dni)
+            
+            if (usuarioActualResult !is Result.Success<*>) {
+                throw Exception("No se pudo obtener el usuario actual para actualizar")
+            }
+            
+            val usuarioActual = usuarioActualResult.data as Usuario
+            
+            // Crear objeto usuario con los datos actualizados
+            val usuario = Usuario(
+                dni = state.dni,
+                nombre = state.nombre,
+                apellidos = state.apellidos,
+                email = state.email,
+                telefono = state.telefono,
+                // Mantener los perfiles existentes
+                perfiles = usuarioActual.perfiles,
+                // Mantener otros datos que no se editan
+                avatarUrl = usuarioActual.avatarUrl,
+                firebaseUid = usuarioActual.firebaseUid,
+                fechaRegistro = usuarioActual.fechaRegistro,
+                activo = usuarioActual.activo,
+                preferencias = usuarioActual.preferencias
+            )
+            
+            Timber.d("Usuario actualizado: ${usuario.nombre} ${usuario.apellidos} con DNI: ${usuario.dni}, telefono: ${usuario.telefono}")
+            
+            // Actualizar el usuario en Firestore
+            withContext(Dispatchers.IO) {
+                try {
+                    val task = firebaseFirestore.collection("usuarios")
+                        .document(usuario.dni)
+                        .set(usuario)
+                    Tasks.await(task)
+                    
+                    Timber.d("✅ Usuario actualizado correctamente en Firestore")
+                } catch (e: Exception) {
+                    Timber.e(e, "❌ Error al actualizar usuario en Firestore: ${e.message}")
+                    throw e
+                }
+            }
+            
+            // Actualizar UI
+            _uiState.update { it.copy(
+                isLoading = false,
+                success = true,
+                showSuccessDialog = true,
+                error = null
+            )}
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Error general al actualizar usuario: ${e.message}")
+            _uiState.update { it.copy(
+                isLoading = false,
+                error = "Error al actualizar usuario: ${e.message}"
+            )}
+        }
     }
 
     /**
@@ -1581,60 +1765,34 @@ class AddUserViewModel @Inject constructor(
      */
     fun cargarUsuarioPorDni(dni: String) {
         viewModelScope.launch {
-            _uiState.update { state -> state.copy(isLoading = true) }
+            _uiState.update { state -> state.copy(isLoading = true) } // Mantenemos isLoading mientras todo carga
             
             try {
-                // Si estamos editando un alumno, primero buscamos en la colección alumnos
                 val resultadoAlumno = usuarioRepository.getAlumnoPorDni(dni)
                 
                 if (resultadoAlumno is Result.Success<*>) {
                     val alumno = resultadoAlumno.data as Alumno
-                    
-                    // Buscar el curso y la clase para este alumno
-                    val cursosResult = cursoRepository.obtenerCursosPorCentro(alumno.centroId)
-                    if (cursosResult is Result.Success<*>) {
-                        val cursos = cursosResult.data as List<Curso>
-                        _uiState.update { state -> state.copy(cursosDisponibles = cursos) }
-                        
-                        // Seleccionar curso si está disponible
-                        val cursoSeleccionado = cursos.find { curso -> curso.id == alumno.curso }
-                        if (cursoSeleccionado != null) {
-                            _uiState.update { state -> state.copy(cursoSeleccionado = cursoSeleccionado) }
-                            
-                            // Cargar clases del curso
-                            val clasesResult = cursoRepository.obtenerClasesPorCurso(cursoSeleccionado.id)
-                            if (clasesResult is Result.Success<*>) {
-                                val clases = clasesResult.data as List<Clase>
-                                _uiState.update { state -> state.copy(clasesDisponibles = clases) }
-                                
-                                // Seleccionar clase si está disponible
-                                val claseSeleccionada = clases.find { clase -> clase.id == alumno.claseId }
-                                if (claseSeleccionada != null) {
-                                    _uiState.update { state -> state.copy(claseSeleccionada = claseSeleccionada) }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Buscar el centro para este alumno
-                    val centroResult = centroRepository.getCentroById(alumno.centroId)
-                    if (centroResult is Result.Success<*>) {
-                        _uiState.update { state -> state.copy(centroSeleccionado = centroResult.data as Centro) }
-                    }
-                    
-                    // Actualizar todos los campos del formulario con los datos del alumno y usuario
+                    Timber.d("🔍 Cargando alumno: ${alumno.nombre} ${alumno.apellidos} (${alumno.dni})")
+                    // ... (otros logs de alumno)
+                    Timber.d("🎓 Curso (nombre en Alumno): ${alumno.curso}")
+                    Timber.d("🏫 Clase (nombre en Alumno): ${alumno.clase}")
+                    Timber.d("🆔 ClaseId (ID en Alumno): ${alumno.claseId}")
+                    Timber.d("📅 Fecha nacimiento (original String): ${alumno.fechaNacimiento}")
+
+                    val fechaNacimientoFormateada = DateUtils.formatStringDateToDdMmYyyy(alumno.fechaNacimiento)
+                    Timber.d("📅 Fecha nacimiento formateada para UI: $fechaNacimientoFormateada")
+
+                    // Actualización inicial del estado con datos del alumno y bloqueo de centro
                     _uiState.update { state ->
                         state.copy(
                             dni = alumno.dni,
                             nombre = alumno.nombre,
                             apellidos = alumno.apellidos,
                             telefono = alumno.telefono,
-                            email = alumno.email,
-                            fechaNacimiento = alumno.fechaNacimiento,
+                            email = alumno.email, // Aunque alumno no usa email para login, puede tenerlo
+                            fechaNacimiento = fechaNacimientoFormateada,
                             tipoUsuario = TipoUsuario.ALUMNO,
                             isEditMode = true,
-                            isLoading = false,
-                            // Información médica
                             alergias = alumno.alergias.joinToString(", "),
                             medicacion = alumno.medicacion.joinToString(", "),
                             necesidadesEspeciales = alumno.necesidadesEspeciales,
@@ -1642,102 +1800,85 @@ class AddUserViewModel @Inject constructor(
                             observacionesMedicas = alumno.observacionesMedicas,
                             numeroSS = alumno.numeroSS,
                             condicionesMedicas = alumno.condicionesMedicas,
-                            // Para administradores de centro y profesores, bloquear el cambio de tipo
-                            isCentroBloqueado = false
+                            // userId ya se establece en loadUser
+                            // isTipoUsuarioBloqueado se establece en initialize o loadUser
+                            // isCentroBloqueado también se gestiona en initialize o loadUser
+                            // No actualizamos centroSeleccionado aquí todavía, se hará después de cargarlo
+                            isLoading = true // Continuamos cargando (centro, cursos, clases)
                         )
                     }
-                    
+
+                    // Cargar el centro del alumno
+                    val centroResult = centroRepository.getCentroById(alumno.centroId)
+                    if (centroResult is Result.Success<*>) {
+                        val centroDelAlumno = centroResult.data as Centro
+                        _uiState.update { it.copy(centroSeleccionado = centroDelAlumno, centroId = centroDelAlumno.id) }
+                        Timber.d("✅ Centro del alumno cargado: ${centroDelAlumno.nombre}")
+
+                        // Cargar todos los cursos para el centro del alumno
+                        val cursosDelCentro = cursoRepository.obtenerCursosPorCentro(alumno.centroId)
+                        _uiState.update { it.copy(cursosDisponibles = cursosDelCentro) }
+                        Timber.d("📚 Cursos disponibles para el centro ${centroDelAlumno.nombre}: ${cursosDelCentro.size}")
+
+                        if (cursosDelCentro.isNotEmpty()) {
+                            // Intentar seleccionar el curso del alumno por NOMBRE
+                            val cursoPreseleccionado = cursosDelCentro.find { it.nombre.equals(alumno.curso, ignoreCase = true) }
+                            if (cursoPreseleccionado != null) {
+                                _uiState.update { it.copy(cursoSeleccionado = cursoPreseleccionado) }
+                                Timber.d("🎯 Curso preseleccionado: ${cursoPreseleccionado.nombre} (ID: ${cursoPreseleccionado.id})")
+
+                                // Cargar las clases para el curso preseleccionado
+                                val clasesDelCursoResult = cursoRepository.obtenerClasesPorCurso(cursoPreseleccionado.id)
+                                if (clasesDelCursoResult is Result.Success<*>) {
+                                    val clasesDelCurso = clasesDelCursoResult.data as List<Clase>
+                                    _uiState.update { it.copy(clasesDisponibles = clasesDelCurso) }
+                                    Timber.d("📖 Clases disponibles para ${cursoPreseleccionado.nombre}: ${clasesDelCurso.size}")
+
+                                    if (clasesDelCurso.isNotEmpty() && alumno.claseId.isNotBlank()) {
+                                        // Intentar seleccionar la clase del alumno por ID
+                                        val clasePreseleccionada = clasesDelCurso.find { it.id == alumno.claseId }
+                                        if (clasePreseleccionada != null) {
+                                            _uiState.update { it.copy(claseSeleccionada = clasePreseleccionada) }
+                                            Timber.d("🎯 Clase preseleccionada: ${clasePreseleccionada.nombre} (ID: ${clasePreseleccionada.id})")
+                                        } else {
+                                            Timber.w("⚠️ Clase con ID '${alumno.claseId}' no encontrada en el curso ${cursoPreseleccionado.nombre}. Nombre de clase en alumno: '${alumno.clase}'")
+                                        }
+                                    } else if (clasesDelCurso.isNotEmpty() && alumno.clase.isNotBlank()) {
+                                        // Fallback: Intentar seleccionar la clase por NOMBRE si no hay ID o no se encontró por ID
+                                        val clasePreseleccionadaPorNombre = clasesDelCurso.find { it.nombre.equals(alumno.clase, ignoreCase = true) }
+                                        if (clasePreseleccionadaPorNombre != null) {
+                                            _uiState.update { it.copy(claseSeleccionada = clasePreseleccionadaPorNombre) }
+                                            Timber.d("🎯 Clase preseleccionada por NOMBRE (fallback): ${clasePreseleccionadaPorNombre.nombre}")
+                                        } else {
+                                            Timber.w("⚠️ Clase con nombre '${alumno.clase}' no encontrada (fallback).")
+                                        }
+                                    }
+                                } else if (clasesDelCursoResult is Result.Error) {
+                                    Timber.e(clasesDelCursoResult.exception, "❌ Error al cargar clases del curso ${cursoPreseleccionado.nombre}")
+                                }
+                            } else {
+                                Timber.w("⚠️ Curso con nombre '${alumno.curso}' no encontrado en el centro ${centroDelAlumno.nombre}.")
+                            }
+                        }
+                    } else {
+                        Timber.e((centroResult as? Result.Error)?.exception, "❌ Error al cargar el centro del alumno con ID: ${alumno.centroId}")
+                    }
+                    // Finalizar carga, independientemente de si se encontraron todos los sub-elementos
+                    _uiState.update { it.copy(isLoading = false) }
+                    Timber.d("🏁 Finalizada carga de datos para alumno DNI: $dni. isLoading: ${_uiState.value.isLoading}")
                     return@launch
                 }
-                
-                // Si no es un alumno, intentamos cargar un usuario general
-                val resultadoUsuario = usuarioRepository.getUsuarioPorDni(dni)
-                
-                if (resultadoUsuario is Result.Success<*>) {
-                    val usuario = resultadoUsuario.data as Usuario
-                    
-                    // Determinar el tipo de usuario y el centro según los perfiles
-                    var tipoUsuario = TipoUsuario.FAMILIAR // Valor por defecto
-                    var centroId = ""
-                    
-                    if (usuario.perfiles.isNotEmpty()) {
-                        // Buscar el perfil específico según prioridad
-                        // Prioridad: ADMIN_CENTRO > PROFESOR > FAMILIAR > ADMIN_APP
-                        val perfilAdminCentro = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
-                        val perfilProfesor = usuario.perfiles.find { it.tipo == TipoUsuario.PROFESOR }
-                        val perfilAdminApp = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_APP }
-                        val perfilFamiliar = usuario.perfiles.find { it.tipo == TipoUsuario.FAMILIAR }
-                        
-                        // Asignar tipo y centroId según la prioridad encontrada
-                        when {
-                            perfilAdminCentro != null -> {
-                                tipoUsuario = TipoUsuario.ADMIN_CENTRO
-                                centroId = perfilAdminCentro.centroId
-                                Timber.d("Usuario identificado como ADMIN_CENTRO para centro: $centroId")
-                            }
-                            perfilProfesor != null -> {
-                                tipoUsuario = TipoUsuario.PROFESOR
-                                centroId = perfilProfesor.centroId
-                                Timber.d("Usuario identificado como PROFESOR para centro: $centroId")
-                            }
-                            perfilAdminApp != null -> {
-                                tipoUsuario = TipoUsuario.ADMIN_APP
-                                Timber.d("Usuario identificado como ADMIN_APP")
-                            }
-                            perfilFamiliar != null -> {
-                                tipoUsuario = TipoUsuario.FAMILIAR
-                                Timber.d("Usuario identificado como FAMILIAR")
-                            }
-                        }
-                        
-                        // Cargar el centro si tiene uno asignado
-                        if (centroId.isNotBlank()) {
-                            val centroResult = centroRepository.getCentroById(centroId)
-                            if (centroResult is Result.Success<*>) {
-                                _uiState.update { state -> state.copy(centroSeleccionado = centroResult.data as Centro) }
-                            }
-                        }
-                    }
-                    
-                    // Determinar si el centro debe estar bloqueado
-                    // - Siempre bloqueado para Admin Centro
-                    // - Bloqueado para Profesor si el usuario actual es Admin Centro (no es Admin App)
-                    val bloquearCentro = tipoUsuario == TipoUsuario.ADMIN_CENTRO || 
-                                        (tipoUsuario == TipoUsuario.PROFESOR && !_uiState.value.isAdminApp)
-                    
-                    // Actualizar el estado con los datos del usuario
-                    _uiState.update { state ->
-                        state.copy(
-                            dni = usuario.dni,
-                            email = usuario.email ?: "",
-                            nombre = usuario.nombre,
-                            apellidos = usuario.apellidos,
-                            telefono = usuario.telefono ?: "",
-                            tipoUsuario = tipoUsuario,
-                            isEditMode = true,
-                            // Para administrador de centro, bloquear el tipo de usuario
-                            isTipoUsuarioBloqueado = tipoUsuario == TipoUsuario.ADMIN_CENTRO,
-                            isCentroBloqueado = bloquearCentro,
-                            isLoading = false
-                        )
-                    }
-                    
-                    Timber.d("Usuario cargado para edición: ${usuario.dni}, tipo: $tipoUsuario, centro bloqueado: $bloquearCentro")
-                    
-                } else {
-                    // No se encontró el usuario
-                    _uiState.update { state -> 
-                        state.copy(
-                            error = "No se encontró el usuario con DNI: $dni",
-                            isLoading = false
-                        ) 
-                    }
-                }
+                // ... (lógica para cargar usuario general si no es alumno, que ya está implementada en loadUser)
+                // Esta parte no debería alcanzarse si loadUser ya determinó que es ALUMNO y llamó aquí.
+                // Por seguridad, si llegase aquí por error y no es Alumno, indicarlo y finalizar carga.
+                Timber.w("⚠️ cargarUsuarioPorDni fue llamado, pero el DNI $dni no corresponde a un Alumno conocido o hubo un error previo.")
+                _uiState.update { state -> state.copy(isLoading = false, error = "No se pudieron cargar los detalles completos del alumno.") }
+
             } catch (e: Exception) {
-                Timber.e(e, "Error al cargar usuario para edición")
+                Timber.e(e, "💥 Error general en cargarUsuarioPorDni para DNI: $dni")
                 _uiState.update { state -> 
                     state.copy(
-                        error = "Error al cargar datos: ${e.message}",
+                        error = "Error crítico al cargar datos del alumno: ${e.message}",
                         isLoading = false
                     ) 
                 }
@@ -2329,69 +2470,91 @@ class AddUserViewModel @Inject constructor(
      */
     fun loadUser(dni: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            try {
-                val result = usuarioRepository.getUsuarioById(dni)
-                when (result) {
-                    is Result.Success -> {
-                        // Usuario encontrado, actualizar estado
-                        val usuario = result.data
-                        
-                        // Determinar tipo de usuario primario (el primero en la lista de perfiles)
-                        val tipoUsuario = if (usuario.perfiles.isNotEmpty()) {
-                            usuario.perfiles[0].tipo
-                        } else {
-                            TipoUsuario.FAMILIAR // Valor por defecto
-                        }
-                        
-                        // Obtener centroId si es profesor o admin de centro
-                        var centroId = ""
-                        if (tipoUsuario == TipoUsuario.PROFESOR || tipoUsuario == TipoUsuario.ADMIN_CENTRO) {
-                            centroId = usuario.perfiles.firstOrNull { 
-                                it.tipo == tipoUsuario 
-                            }?.centroId ?: ""
+            _uiState.update { it.copy(isLoading = true, isEditMode = true, userId = dni) } // Marcar como modo edición y guardar DNI
+            Timber.d("🔄 AddUserViewModel: Iniciando loadUser para DNI: $dni")
+
+            // Determinar si es un Alumno ANTES de cargar datos generales
+            // Esto es un poco heurístico. Si dniParam está presente en AddUserScreen, y tipoUsuarioParam es ALUMNO,
+            // entonces deberíamos cargar como Alumno.
+            // La lógica actual de `initialize` ya establece `_uiState.value.tipoUsuario`.
+
+            if (_uiState.value.tipoUsuario == TipoUsuario.ALUMNO) {
+                Timber.d("🧬 AddUserViewModel: Detectado tipo ALUMNO, llamando a cargarUsuarioPorDni para DNI: $dni")
+                cargarUsuarioPorDni(dni) // Llamada directa a la función que carga todos los datos del alumno
+            } else {
+                Timber.d("👤 AddUserViewModel: Detectado tipo NO ALUMNO, procediendo con carga de usuario general para DNI: $dni")
+                try {
+                    val result = usuarioRepository.getUsuarioById(dni) // Esta es la llamada original para usuarios no-alumnos
+                    when (result) {
+                        is Result.Success -> {
+                            val usuario = result.data
+                            Timber.d("✅ Usuario general cargado: ${usuario.nombre} ${usuario.apellidos}")
                             
-                            // Cargar datos del centro si tenemos un ID
-                            if (centroId.isNotEmpty()) {
-                                loadCentrosAndSelectInitial(centroId)
+                            // Determinar tipo de usuario primario (el primero en la lista de perfiles)
+                            val tipoUsuarioActual = if (usuario.perfiles.isNotEmpty()) {
+                                usuario.perfiles[0].tipo
+                            } else {
+                                TipoUsuario.FAMILIAR // Valor por defecto si no hay perfiles (raro)
+                            }
+
+                            var centroIdDetectado = ""
+                            var centroSeleccionadoDetectado: Centro? = null
+
+                            if (tipoUsuarioActual == TipoUsuario.PROFESOR || tipoUsuarioActual == TipoUsuario.ADMIN_CENTRO) {
+                                centroIdDetectado = usuario.perfiles.firstOrNull { 
+                                    it.tipo == tipoUsuarioActual 
+                                }?.centroId ?: ""
+                                
+                                if (centroIdDetectado.isNotEmpty()) {
+                                    // Cargar la lista de centros y seleccionar el del usuario
+                                    loadCentrosAndSelectInitial(centroIdDetectado) // Esto actualizará centrosDisponibles y centroSeleccionado
+                                    // Para asegurar que el centroSeleccionado se actualiza en el estado antes del siguiente update:
+                                    val centroCargadoResult = centroRepository.getCentroById(centroIdDetectado)
+                                    if (centroCargadoResult is Result.Success<*>) {
+                                        centroSeleccionadoDetectado = centroCargadoResult.data as Centro
+                                    }
+                                }
+                            }
+                            
+                            // Actualizar estado con los datos del usuario general
+                            _uiState.update { state ->
+                                state.copy(
+                                    isLoading = false,
+                                    // isEditMode y userId ya se establecieron al inicio de loadUser
+                                    dni = usuario.dni,
+                                    nombre = usuario.nombre,
+                                    apellidos = usuario.apellidos,
+                                    email = usuario.email ?: "",
+                                    telefono = usuario.telefono ?: "",
+                                    tipoUsuario = tipoUsuarioActual,
+                                    centroId = centroIdDetectado,
+                                    centroSeleccionado = centroSeleccionadoDetectado,
+                                    isTipoUsuarioBloqueado = true, // Bloquear cambio de tipo en edición
+                                    isCentroBloqueado = (tipoUsuarioActual == TipoUsuario.ADMIN_CENTRO || (tipoUsuarioActual == TipoUsuario.PROFESOR && !state.isAdminApp))
+                                )
                             }
                         }
-                        
-                        // Actualizar estado
-                        _uiState.update { state ->
-                            state.copy(
-                                isLoading = false,
-                                isEditMode = true,
-                                userId = dni,
-                                dni = usuario.dni,
-                                nombre = usuario.nombre,
-                                apellidos = usuario.apellidos,
-                                email = usuario.email ?: "",
-                                telefono = usuario.telefono ?: "",
-                                tipoUsuario = tipoUsuario,
-                                isTipoUsuarioBloqueado = true // Bloquear cambio de tipo en edición
-                            )
+                        is Result.Error -> {
+                            Timber.e(result.exception, "❌ Error al cargar usuario general con DNI: $dni")
+                            _uiState.update { 
+                                it.copy(
+                                    isLoading = false,
+                                    error = "Error al cargar usuario: ${result.exception?.message}"
+                                )
+                            }
+                        }
+                        is Result.Loading -> {
+                            // isLoading ya es true
                         }
                     }
-                    is Result.Error -> {
-                        // Error al cargar usuario
-                        _uiState.update { 
-                            it.copy(
-                                isLoading = false,
-                                error = "Error al cargar usuario: ${result.exception?.message}"
-                            )
-                        }
+                } catch (e: Exception) {
+                    Timber.e(e, "💥 Error inesperado en carga de usuario general con DNI: $dni")
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            error = "Error inesperado: ${e.message}"
+                        )
                     }
-                    is Result.Loading -> {
-                        // Ya estamos mostrando estado de carga
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        error = "Error inesperado: ${e.message}"
-                    )
                 }
             }
         }
@@ -2437,6 +2600,7 @@ class AddUserViewModel @Inject constructor(
                     dni = state.dni,
                     nombre = state.nombre,
                     apellidos = state.apellidos,
+                    telefono = state.telefono, // Asegurar que se incluye el teléfono
                     fechaNacimiento = DateUtils.parseDateString(state.fechaNacimiento),
                     centroId = state.centroSeleccionado?.id ?: "",
                     claseId = state.claseSeleccionada?.id ?: "",
@@ -2449,7 +2613,8 @@ class AddUserViewModel @Inject constructor(
                     necesidadesEspeciales = state.necesidadesEspeciales,
                     observaciones = state.observaciones,
                     observacionesMedicas = state.observacionesMedicas,
-                    avatarUrl = avatarUrl // URL predeterminada para alumno
+                    avatarUrl = avatarUrl, // URL predeterminada para alumno
+                    activo = true // Asegurar que el alumno esté activo
                 )
             }
             else -> throw IllegalArgumentException("Tipo de usuario no soportado: ${state.tipoUsuario}")

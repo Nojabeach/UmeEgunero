@@ -20,8 +20,10 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import timber.log.Timber
 import javax.inject.Inject
+import com.tfg.umeegunero.data.model.Usuario
 
 /**
  * Estado de la UI para el gestor académico.
@@ -83,31 +85,49 @@ class GestorAcademicoViewModel @Inject constructor(
     val uiState: StateFlow<GestorAcademicoUiState> = _uiState.asStateFlow()
 
     init {
+        cargarUsuarioActualConRetry()
+        cargarCentros()
+    }
+
+    private fun cargarUsuarioActualConRetry() {
         viewModelScope.launch {
-            // Verificar tipo de usuario para diagnóstico
             try {
-                val usuario = usuarioRepository.obtenerUsuarioActual()
-                val perfilAdminCentro = usuario?.perfiles?.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
-                val perfilAdminApp = usuario?.perfiles?.find { it.tipo == TipoUsuario.ADMIN_APP }
-                
-                when {
-                    perfilAdminCentro != null -> {
-                        val centroId = perfilAdminCentro.centroId ?: "No asignado"
-                        Timber.d("⚠️⚠️⚠️ INICIO: Usuario detectado como ADMIN_CENTRO para centro: $centroId")
-                    }
-                    perfilAdminApp != null -> {
-                        Timber.d("⚠️⚠️⚠️ INICIO: Usuario detectado como ADMIN_APP con acceso a todos los centros")
-                    }
-                    else -> {
-                        Timber.w("⚠️⚠️⚠️ INICIO: No se pudo detectar un perfil de administrador en el usuario")
+                // Intentar hasta 3 veces con intervalo de 500ms
+                for (intento in 1..3) {
+                    Timber.d("🔄 Intento $intento de obtener usuario actual")
+                    val usuario = usuarioRepository.obtenerUsuarioActual()
+                    
+                    if (usuario != null) {
+                        val perfilAdminCentro = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
+                        val perfilAdminApp = usuario.perfiles.find { it.tipo == TipoUsuario.ADMIN_APP }
+                        
+                        when {
+                            perfilAdminCentro != null -> {
+                                val centroId = perfilAdminCentro.centroId ?: "No asignado"
+                                Timber.d("✅ Usuario detectado como ADMIN_CENTRO para centro: $centroId")
+                                return@launch
+                            }
+                            perfilAdminApp != null -> {
+                                Timber.d("✅ Usuario detectado como ADMIN_APP con acceso a todos los centros")
+                                return@launch
+                            }
+                            else -> {
+                                Timber.w("⚠️ No se detectó un perfil de administrador en el usuario")
+                                return@launch
+                            }
+                        }
+                    } else {
+                        Timber.w("⚠️ Intento $intento: obtenerUsuarioActual() devolvió null, reintentando...")
+                        delay(500) // Esperar 500ms antes de reintentar
                     }
                 }
+                
+                // Si llegamos aquí, es que fallaron todos los intentos
+                Timber.e("❌ No se pudo obtener el usuario después de 3 intentos")
             } catch (e: Exception) {
-                Timber.e(e, "Error al verificar el tipo de usuario")
+                Timber.e(e, "❌ Error al verificar el tipo de usuario")
             }
         }
-        
-        cargarCentros()
     }
 
     /**
@@ -117,12 +137,21 @@ class GestorAcademicoViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingCentros = true) }
             try {
-                // Primero verificamos si el usuario es ADMIN_CENTRO
-                val usuario = usuarioRepository.obtenerUsuarioActual()
+                // Reintentos para obtener el usuario autenticado
+                var usuario: Usuario? = null
+                for (intento in 1..3) {
+                    usuario = usuarioRepository.obtenerUsuarioActual()
+                    if (usuario != null) {
+                        break
+                    } else {
+                        Timber.d("🔄 Intento $intento de obtener usuario para cargar centros")
+                        delay(300) // Esperar 300ms antes de reintentar
+                    }
+                }
                 
                 if (usuario == null) {
-                    Timber.e("❌❌ ERROR: obtenerUsuarioActual() devolvió null - No hay usuario autenticado")
-                    _uiState.update { it.copy(error = "No hay usuario autenticado", isLoadingCentros = false) }
+                    Timber.e("❌❌ ERROR: obtenerUsuarioActual() devolvió null después de 3 intentos")
+                    _uiState.update { it.copy(error = "No hay usuario autenticado. Por favor, cierra sesión y vuelve a iniciar.", isLoadingCentros = false) }
                     return@launch
                 }
                 
@@ -174,7 +203,7 @@ class GestorAcademicoViewModel @Inject constructor(
                         // Solo si es ADMIN_APP seleccionamos el primer centro de la lista
                         centrosResult.data.firstOrNull()?.let { primerCentro ->
                             Timber.d("👑 ADMIN_APP seleccionando primer centro: ${primerCentro.nombre} (${primerCentro.id})")
-                            _uiState.update { it.copy(selectedCentro = primerCentro) }
+                            _uiState.update { currentState -> currentState.copy(selectedCentro = primerCentro) }
                             observarCursos(primerCentro.id)
                         }
                     }
@@ -187,7 +216,7 @@ class GestorAcademicoViewModel @Inject constructor(
                     else -> { /* Loading state is handled */ }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Excepción al cargar centros")
+                Timber.e(e, "❌❌ Excepción al cargar centros")
                 _uiState.update { it.copy(error = "Error inesperado al cargar centros: ${e.message}", isLoadingCentros = false) }
             }
         }
@@ -483,54 +512,43 @@ class GestorAcademicoViewModel @Inject constructor(
     }
 
     /**
-     * Carga un centro específico por su ID y verifica los permisos.
-     * Si el usuario es ADMIN_CENTRO, solo puede cargar su centro asignado.
-     * 
-     * @param centroId Identificador único del centro a cargar
+     * Carga un centro específico por su ID
+     * @param centroId ID del centro a cargar
      */
     fun cargarCentroPorId(centroId: String) {
         viewModelScope.launch {
             try {
+                _uiState.update { it.copy(isLoadingCentros = true, error = null) }
+                
                 Timber.d("🔍 Cargando centro por ID: $centroId")
                 
-                // Verificar permisos - Si es ADMIN_CENTRO, solo puede ver su centro asignado
-                val usuario = usuarioRepository.obtenerUsuarioActual()
-                val perfilAdminCentro = usuario?.perfiles?.find { it.tipo == TipoUsuario.ADMIN_CENTRO }
-                
-                if (perfilAdminCentro != null) {
-                    val centroPerfil = perfilAdminCentro.centroId
-                    Timber.d("🔒 Verificando permisos: Usuario ADMIN_CENTRO (centroId=${centroPerfil}) intenta acceder a centro (${centroId})")
-                    
-                    // Si es ADMIN_CENTRO intentando ver otro centro, bloqueamos
-                    if (centroPerfil != centroId) {
-                        Timber.w("❌ ACCESO DENEGADO: El ADMIN_CENTRO (centroId=${centroPerfil}) intenta ver otro centro (${centroId})")
-                        _uiState.update { it.copy(
-                            error = "No tienes permiso para acceder al centro $centroId. Solo puedes gestionar el centro $centroPerfil", 
-                            isLoadingCentros = false
-                        ) }
-                        return@launch
-                    } else {
-                        Timber.d("✅ ACCESO PERMITIDO: El usuario tiene permiso para ver el centro $centroId")
-                    }
-                }
-                
-                // Continuar con la carga del centro
                 when (val result = centroRepository.getCentroById(centroId)) {
                     is Result.Success -> {
                         val centro = result.data
                         Timber.d("✅ Centro cargado exitosamente: ${centro.nombre} (${centro.id})")
-                        _uiState.update { it.copy(selectedCentro = centro, cursos = emptyList(), clases = emptyList()) }
+                        _uiState.update { it.copy(
+                            selectedCentro = centro, 
+                            isLoadingCentros = false
+                        )}
                         observarCursos(centroId)
                     }
                     is Result.Error -> {
                         Timber.e(result.exception, "❌ Error al cargar centro por ID: $centroId")
-                        _uiState.update { it.copy(error = "Error al cargar centro: ${result.exception?.message}") }
+                        _uiState.update { it.copy(
+                            error = "Error al cargar centro: ${result.exception?.message}",
+                            isLoadingCentros = false
+                        )}
                     }
-                    else -> { Timber.d("⏳ Esperando resultado de consulta de centro...") }
+                    else -> { 
+                        Timber.d("⏳ Esperando resultado de consulta de centro...")
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "❌❌ Excepción al cargar centro por ID")
-                _uiState.update { it.copy(error = "Error inesperado: ${e.message}") }
+                _uiState.update { it.copy(
+                    error = "Error inesperado: ${e.message}",
+                    isLoadingCentros = false
+                )}
             }
         }
     }

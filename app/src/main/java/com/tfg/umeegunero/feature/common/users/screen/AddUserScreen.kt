@@ -1,12 +1,12 @@
 package com.tfg.umeegunero.feature.common.users.screen
 
-import android.content.Context
-import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,33 +25,31 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Tag
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Badge
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.Cake
-import androidx.compose.material.icons.filled.Class
-import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.ListAlt
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.ManageAccounts
-import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -76,7 +74,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -85,7 +82,6 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -93,14 +89,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -108,50 +106,22 @@ import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
+import com.tfg.umeegunero.R
 import com.tfg.umeegunero.data.model.Centro
-import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.Clase
+import com.tfg.umeegunero.data.model.Curso
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserFormField
-import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel
 import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserUiState
+import com.tfg.umeegunero.feature.common.users.viewmodel.AddUserViewModel
 import com.tfg.umeegunero.ui.components.FormProgressIndicator
-import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 import com.tfg.umeegunero.util.getUserColor
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import timber.log.Timber
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.util.Calendar
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.border
-import androidx.compose.material3.MenuDefaults
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.unit.DpOffset
-import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material.icons.filled.TextFormat
-import androidx.compose.material.icons.filled.Tag
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material.icons.filled.Event
-import androidx.compose.ui.focus.onFocusChanged
 
 /**
  * ViewModel de muestra para el preview
@@ -647,7 +617,7 @@ fun AddUserScreenContent(
                                 )
                             },
                             singleLine = true,
-                            enabled = !uiState.isEditMode,
+                            enabled = true,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .focusRequester(dniFocusRequester)
@@ -944,6 +914,8 @@ fun AddUserScreenContent(
                         observaciones = uiState.observaciones ?: "",
                         observacionesMedicas = uiState.observacionesMedicas ?: "",
                         isLoading = uiState.isLoading,
+                        isEditMode = uiState.isEditMode,
+                        isCentroBloqueado = uiState.isCentroBloqueado,
                         onUpdateFechaNacimiento = { viewModel.updateFechaNacimiento(it) },
                         onCursoSelected = { viewModel.updateCursoSeleccionado(it) },
                         onUpdateClaseSeleccionada = { viewModel.updateClaseSeleccionada(it) },
@@ -1392,13 +1364,14 @@ fun CursoDropdown(
  */
 @Composable
 fun ClaseDropdown(
+    claseSeleccionada: String,
     clases: List<Clase>,
     cursoSeleccionado: Curso?,
-    selectedClase: Clase?,
     onClaseSelected: (String) -> Unit,
     isLoading: Boolean,
     focusRequester: FocusRequester,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
     val cursoHaSidoSeleccionado = cursoSeleccionado != null
@@ -1415,23 +1388,23 @@ fun ClaseDropdown(
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         } else {
             OutlinedTextField(
-                value = selectedClase?.nombre ?: "Elija la clase",
+                value = claseSeleccionada,
                 onValueChange = { },
                 readOnly = true,
                 label = { Text("Clase") },
                 modifier = Modifier.fillMaxWidth(),
                 trailingIcon = {
-                    IconButton(onClick = { if (cursoHaSidoSeleccionado) expanded = true }) {
+                    IconButton(onClick = { if (cursoHaSidoSeleccionado && enabled) expanded = true }) {
                         Icon(
                             Icons.Default.ArrowDropDown, 
                             contentDescription = "Seleccionar clase",
-                            tint = if (cursoHaSidoSeleccionado) 
+                            tint = if (cursoHaSidoSeleccionado && enabled) 
                                    MaterialTheme.colorScheme.primary 
                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                         )
                     }
                 },
-                enabled = cursoHaSidoSeleccionado,
+                enabled = cursoHaSidoSeleccionado && enabled,
                 supportingText = {
                     if (!cursoHaSidoSeleccionado) {
                         Text("Primero seleccione un curso")
@@ -1440,7 +1413,7 @@ fun ClaseDropdown(
             )
             
             DropdownMenu(
-                expanded = expanded && cursoHaSidoSeleccionado,
+                expanded = expanded && cursoHaSidoSeleccionado && enabled,
                 onDismissRequest = { expanded = false },
                 modifier = Modifier
                     .fillMaxWidth(0.9f)
@@ -1487,6 +1460,8 @@ fun AlumnoFields(
     observaciones: String = "",
     observacionesMedicas: String = "",
     isLoading: Boolean,
+    isEditMode: Boolean,
+    isCentroBloqueado: Boolean,
     onUpdateFechaNacimiento: (String) -> Unit,
     onCursoSelected: (String) -> Unit,
     onUpdateClaseSeleccionada: (String) -> Unit,
@@ -1546,71 +1521,75 @@ fun AlumnoFields(
                 focusRequester = fechaNacimientoFocusRequester
             )
 
-            // Número de la Seguridad Social
-            Column(modifier = Modifier.fillMaxWidth()) {
-                if (isNumeroSSFocused || numeroSS.length != 12) { // Mostrar TextField si está enfocado o no tiene 12 dígitos
-                    OutlinedTextField(
-                        value = numeroSS,
-                        onValueChange = { newValue ->
-                            val newDigitsOnly = newValue.filter { it.isDigit() }.take(12)
-                            onUpdateNumeroSS(newDigitsOnly)
-                        },
-                        label = { Text("Número de Seguridad Social") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.VerifiedUser,
-                                contentDescription = null,
-                                tint = if (numeroSSError != null)
-                                    MaterialTheme.colorScheme.error
-                                else
-                                    MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = if (numeroSS.length == 12) ImeAction.Done else ImeAction.Next
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onNext = {
-                                condicionesMedicasFocusRequester.requestFocus()
-                            },
-                            onDone = {
-                                focusManager.clearFocus()
-                            }
-                        ),
-                        isError = numeroSSError != null,
-                        supportingText = {
-                            if (numeroSSError != null) {
-                                Text(text = numeroSSError)
-                            } else {
-                                Row {
-                                    Text(if (numeroSS.length == 12) "Nº SS completo" else "Introduce los 12 dígitos ")
-                                    Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
-                                }
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(numeroSSFocusRequester)
-                            .onFocusChanged { focusState ->
-                                isNumeroSSFocused = focusState.isFocused
-                            },
-                        singleLine = true,
-                        visualTransformation = VisualTransformation.None
+            // Curso
+            val cursoDisplayValue = cursoSeleccionado?.nombre ?: stringResource(id = R.string.add_user_placeholder_curso)
+            CursoDropdown(
+                cursoSeleccionado = cursoDisplayValue,
+                onCursoSelected = { cursoId -> onCursoSelected(cursoId) },
+                cursos = cursosDisponibles.map { it.nombre to it.id },
+                error = null,
+                isLoading = isLoading,
+                focusRequester = cursoFocusRequester,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading && !(isEditMode && isCentroBloqueado)
+            )
+
+            // Clase
+            val claseDisplayValue = claseSeleccionada?.nombre ?: stringResource(id = R.string.add_user_placeholder_clase)
+            val cursoRealmenteSeleccionado = cursoSeleccionado != null
+            ClaseDropdown(
+                claseSeleccionada = claseDisplayValue,
+                clases = clasesDisponibles,
+                cursoSeleccionado = cursoSeleccionado,
+                onClaseSelected = { claseId ->
+                    onUpdateClaseSeleccionada(claseId)
+                },
+                isLoading = isLoading,
+                focusRequester = claseFocusRequester,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading && cursoRealmenteSeleccionado && !(isEditMode && isCentroBloqueado)
+            )
+            
+            // Número de Seguridad Social
+            OutlinedTextField(
+                value = numeroSS,
+                onValueChange = { newValue ->
+                    val newDigitsOnly = newValue.filter { it.isDigit() }.take(12)
+                    onUpdateNumeroSS(newDigitsOnly)
+                },
+                label = { Text("Número de Seguridad Social") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.VerifiedUser,
+                        contentDescription = null,
+                        tint = if (numeroSSError != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                     )
-                } else { // Mostrar Texto si NO está enfocado
-                    Text(
-                        text = numeroSS,
-                        style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { numeroSSFocusRequester.requestFocus() }
-                            .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 16.dp)
-                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
-                            .padding(16.dp)
-                    )
-                }
-            }
+                },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = if (numeroSS.length == 12) ImeAction.Done else ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { condicionesMedicasFocusRequester.requestFocus() },
+                    onDone = { focusManager.clearFocus() }
+                ),
+                isError = numeroSSError != null,
+                supportingText = {
+                    if (numeroSSError != null) {
+                        Text(text = numeroSSError)
+                    } else {
+                        Row {
+                            Text(if (numeroSS.length == 12) "Nº SS completo " else "Introduce los 12 dígitos ")
+                            Text("(Opcional)", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(numeroSSFocusRequester),
+                singleLine = true,
+                visualTransformation = VisualTransformation.None
+            )
 
             // Condiciones médicas
             OutlinedTextField(
@@ -1790,29 +1769,6 @@ fun AlumnoFields(
                     .fillMaxWidth(),
                 minLines = 2,
                 maxLines = 3
-            )
-
-            // Curso
-            CursoDropdown(
-                cursoSeleccionado = cursoSeleccionado?.nombre ?: "Elija el curso",
-                onCursoSelected = { cursoId ->
-                    onCursoSelected(cursoId)
-                },
-                cursos = cursosDisponibles.map { it.nombre to it.id },
-                error = null,
-                isLoading = isLoading,
-                focusRequester = cursoFocusRequester,
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            ClaseDropdown(
-                clases = clasesDisponibles,
-                cursoSeleccionado = cursoSeleccionado,
-                selectedClase = claseSeleccionada,
-                onClaseSelected = onUpdateClaseSeleccionada,
-                isLoading = isLoading,
-                focusRequester = claseFocusRequester,
-                modifier = Modifier.fillMaxWidth()
             )
         }
     }

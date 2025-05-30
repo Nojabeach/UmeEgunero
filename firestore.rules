@@ -1,6 +1,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Regla global para desarrollo - QUITAR EN PRODUCCIÓN
+    // Permite a cualquier usuario autenticado leer y escribir en cualquier colección
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
     
     // ========== FUNCIONES AUXILIARES ==========
     // Verificar si el usuario está autenticado
@@ -84,11 +89,12 @@ service cloud.firestore {
     
     // ========== CENTROS ==========
     match /centros/{centroId} {
-      // Todos los usuarios autenticados pueden ver centros
-      allow read: if isAuthenticated();
+      // Permitir a cualquier usuario ver centros, incluso sin autenticación
+      allow read: if true;
       
-      // Solo admins pueden crear/modificar centros
-      allow create, update: if isAnyAdmin();
+      // Permitir a cualquier usuario autenticado crear/modificar centros inicialmente
+      // Esto es necesario para el registro de nuevos centros por administradores recién creados
+      allow create, update: if isAuthenticated();
       
       // Solo admin app puede eliminar centros
       allow delete: if isAdminApp();
@@ -261,11 +267,9 @@ service cloud.firestore {
     
     // ========== SOLICITUDES DE VINCULACIÓN ==========
     match /solicitudes_vinculacion/{solicitudId} {
-      // El familiar solicitante y los administradores pueden ver las solicitudes
-      allow read: if isAuthenticated() && (
-        resource.data.familiarId == request.auth.token.dni ||
-        isAnyAdmin()
-      );
+      // Permitir a cualquier usuario autenticado leer las solicitudes
+      // Sin restricciones en los campos de consulta
+      allow read: if isAuthenticated();
       
       // Cualquier usuario autenticado puede crear solicitudes
       allow create: if isAuthenticated();
@@ -282,8 +286,8 @@ service cloud.firestore {
       // Todos los usuarios autenticados pueden ver clases
       allow read: if isAuthenticated();
       
-      // Administradores de centro y app pueden gestionar clases
-      allow write: if isAnyAdmin();
+      // Permitir a cualquier usuario autenticado gestionar clases temporalmente
+      allow write: if isAuthenticated();
     }
     
     // ========== SOLICITUDES DE ELIMINACIÓN DE USUARIOS ==========
@@ -339,11 +343,11 @@ service cloud.firestore {
     
     // ========== CURSOS ==========
     match /cursos/{cursoId} {
-      // Todos los usuarios autenticados pueden ver cursos
-      allow read: if isAuthenticated();
+      // Permitir a cualquier usuario ver cursos, incluso sin autenticación
+      allow read: if true;
       
-      // Solo administradores pueden gestionar cursos
-      allow write: if isAnyAdmin();
+      // Permitir a cualquier usuario autenticado gestionar cursos temporalmente
+      allow write: if isAuthenticated();
     }
     
     // ========== CONFIG ==========

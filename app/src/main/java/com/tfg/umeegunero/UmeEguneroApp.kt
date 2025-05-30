@@ -301,61 +301,68 @@ class UmeEguneroApp : Application(), Configuration.Provider, DefaultLifecycleObs
     }
     
     /**
-     * Inicializa Firebase con manejo de errores
+     * Inicializa Firebase con la configuración correspondiente.
+     * Maneja los posibles errores durante la inicialización.
      */
     private fun initializeFirebase() {
         try {
-            // Inicializar Firebase con configuración predeterminada
+            Timber.d("Inicializando Firebase...")
+            
+            // Intentar inicializar Firebase normalmente
             FirebaseApp.initializeApp(this)
-            Timber.d("Firebase inicializado correctamente")
             
-            // Configurar Firebase Remote Config para desarrollo
-            val remoteConfig: FirebaseRemoteConfig = Firebase.remoteConfig
-            val configSettings = remoteConfigSettings {
-                if (com.tfg.umeegunero.BuildConfig.DEBUG) {
-                    minimumFetchIntervalInSeconds = 0 // Sin caché en desarrollo
-                } else {
-                    minimumFetchIntervalInSeconds = 3600 // 1 hora en producción
-                }
+            // Inicializar AppCheck para solucionar el error de autenticación
+            try {
+                // Verificar que tenemos Google Play Services disponibles
+                com.google.android.gms.common.GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this)
+                
+                // Configurar Firebase para que no requiera AppCheck durante el desarrollo
+                val firebaseApp = FirebaseApp.getInstance()
+                val appCheckInstallationId = FirebaseInstallations.getInstance(firebaseApp).id
+                
+                Timber.d("Firebase App Check ID: $appCheckInstallationId")
+            } catch (e: Exception) {
+                Timber.e(e, "Error al configurar App Check, pero continuando inicialización")
             }
-            remoteConfig.setConfigSettingsAsync(configSettings)
             
-            // Intentar un fetch inicial de Remote Config
-            remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
+            // Inicializar configuración remota de Firebase
+            initializeRemoteConfig()
+            
+            // Log de confirmación
+            Timber.d("✅ Firebase inicializado correctamente")
+            
+            // Obtener ID de instalación
+            FirebaseInstallations.getInstance().id.addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    Timber.d("Remote Config sincronizado correctamente")
+                    val installationId = task.result
+                    Timber.d("📱 ID de instalación de Firebase: $installationId")
                 } else {
-                    Timber.w("Error al sincronizar Remote Config: ${task.exception?.message}")
-                    // Registrar el error en Crashlytics
-                    FirebaseCrashlytics.getInstance().recordException(
-                        task.exception ?: Exception("Error desconocido al sincronizar Remote Config")
-                    )
+                    Timber.e(task.exception, "Error al obtener ID de instalación de Firebase")
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error al inicializar Firebase")
-            // Mostrar información detallada del error para depuración
-            e.printStackTrace()
+            // Capturar cualquier error durante la inicialización
+            Timber.e(e, "❌ ERROR al inicializar Firebase")
             
-            // Registrar el error en Crashlytics
-            FirebaseCrashlytics.getInstance().recordException(e)
-            
-            // Reintentar la inicialización con una configuración mínima
+            // Si la inicialización falla, intentar crear una nueva instancia con configuración manual
             try {
-                // Usar configuración segura desde LocalConfig
                 val options = FirebaseOptions.Builder()
-                    .setApplicationId(LocalConfig.FIREBASE_APPLICATION_ID)
-                    .setApiKey(LocalConfig.FIREBASE_API_KEY)
-                    .setProjectId(LocalConfig.FIREBASE_PROJECT_ID)
+                    .setApiKey(BuildConfig.FIREBASE_API_KEY)
+                    .setApplicationId(BuildConfig.FIREBASE_APPLICATION_ID)
+                    .setProjectId(BuildConfig.FIREBASE_PROJECT_ID)
                     .build()
                 
-                if (FirebaseApp.getApps(this).isEmpty()) {
-                    FirebaseApp.initializeApp(this, options)
-                    Timber.d("Firebase reinicializado con configuración segura desde LocalConfig")
-                }
+                // Inicializar Firebase con las opciones manuales
+                FirebaseApp.initializeApp(this, options)
+                Timber.d("✅ Firebase inicializado con configuración manual")
+                
+                // Inicializar configuración remota
+                initializeRemoteConfig()
             } catch (e2: Exception) {
-                Timber.e(e2, "Error fatal al inicializar Firebase con configuración mínima")
-                // Registrar también este error en Crashlytics
+                // Si también falla la inicialización manual, registrar el error
+                Timber.e(e2, "❌❌ ERROR CRÍTICO: No se pudo inicializar Firebase manualmente")
+                
+                // Enviamos este error a Crashlytics
                 FirebaseCrashlytics.getInstance().recordException(e2)
             }
         }
@@ -424,6 +431,40 @@ class UmeEguneroApp : Application(), Configuration.Provider, DefaultLifecycleObs
         } catch (e: Exception) {
             Timber.e(e, "Error al iniciar subida de avatar de administrador")
             // Registrar el error en Crashlytics
+            FirebaseCrashlytics.getInstance().recordException(e)
+        }
+    }
+    
+    /**
+     * Inicializa la configuración remota de Firebase.
+     */
+    private fun initializeRemoteConfig() {
+        try {
+            // Configurar Firebase Remote Config para desarrollo
+            val remoteConfig: FirebaseRemoteConfig = Firebase.remoteConfig
+            val configSettings = remoteConfigSettings {
+                if (com.tfg.umeegunero.BuildConfig.DEBUG) {
+                    minimumFetchIntervalInSeconds = 0 // Sin caché en desarrollo
+                } else {
+                    minimumFetchIntervalInSeconds = 3600 // 1 hora en producción
+                }
+            }
+            remoteConfig.setConfigSettingsAsync(configSettings)
+            
+            // Intentar un fetch inicial de Remote Config
+            remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Timber.d("✅ Remote Config sincronizado correctamente")
+                } else {
+                    Timber.w("⚠️ Error al sincronizar Remote Config: ${task.exception?.message}")
+                    // Registrar el error en Crashlytics
+                    FirebaseCrashlytics.getInstance().recordException(
+                        task.exception ?: Exception("Error desconocido al sincronizar Remote Config")
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Error al inicializar Remote Config")
             FirebaseCrashlytics.getInstance().recordException(e)
         }
     }

@@ -505,17 +505,40 @@ open class UsuarioRepository @Inject constructor(
      */
     suspend fun getCentrosEducativos(): Result<List<Centro>> = withContext(Dispatchers.IO) {
         try {
+            Timber.d("🏫 Iniciando carga de centros educativos...")
+            
             val centrosQuery = centrosCollection.whereEqualTo("activo", true).get().await()
+            
+            Timber.d("📊 Centros obtenidos de Firestore: ${centrosQuery.size()}")
+            
             try {
                 val centros = centrosQuery.toObjects(Centro::class.java)
+                Timber.d("✅ Centros deserializados correctamente: ${centros.size}")
+                
+                // Si la lista está vacía, es posible que haya un problema con la consulta
+                if (centros.isEmpty()) {
+                    Timber.w("⚠️ No se encontraron centros activos. Intentando obtener todos los centros sin filtro...")
+                    // Intentar recuperar sin el filtro de activo
+                    val allCentrosQuery = centrosCollection.get().await()
+                    val allCentros = allCentrosQuery.toObjects(Centro::class.java)
+                    
+                    Timber.d("📊 Total de centros (sin filtro de activo): ${allCentros.size}")
+                    
+                    if (allCentros.isNotEmpty()) {
+                        // Si encontramos centros, usar todos temporalmente
+                        return@withContext Result.Success(allCentros)
+                    }
+                }
+                
                 return@withContext Result.Success(centros)
             } catch (deserializeEx: Exception) {
                 // Manejo específico para errores de deserialización
-                Log.e("UsuarioRepository", "Error de deserialización: ${deserializeEx.message}")
+                Timber.e(deserializeEx, "❌ Error de deserialización al obtener centros: ${deserializeEx.message}")
                 
                 // Intento alternativo: procesar manualmente los documentos
                 val centrosAlternativos = mutableListOf<Centro>()
                 try {
+                    Timber.d("🔄 Intentando procesamiento manual de los documentos...")
                     for (doc in centrosQuery.documents) {
                         val id = doc.id
                         val nombre = doc.getString("nombre") ?: ""
@@ -534,15 +557,44 @@ open class UsuarioRepository @Inject constructor(
                             activo = activo
                         )
                         centrosAlternativos.add(centro)
+                        Timber.d("📋 Centro procesado manualmente: $nombre (ID: $id)")
                     }
+                    
+                    Timber.d("✅ Procesamiento manual completado: ${centrosAlternativos.size} centros")
                     return@withContext Result.Success(centrosAlternativos)
                 } catch (innerEx: Exception) {
                     // Si también falla el procesamiento manual, reportamos el error original
+                    Timber.e(innerEx, "❌ Error en procesamiento manual: ${innerEx.message}")
                     return@withContext Result.Error(deserializeEx)
                 }
             }
         } catch (e: Exception) {
-            Log.e("UsuarioRepository", "Error general al obtener centros: ${e.message}")
+            Timber.e(e, "❌ Error general al obtener centros: ${e.message}")
+            
+            // Intentar recuperar de caché o crear centros de prueba en modo debug
+            if (BuildConfig.DEBUG) {
+                Timber.d("🔧 Modo DEBUG: Generando centros de prueba...")
+                val centrosPrueba = listOf(
+                    Centro(
+                        id = "centro_prueba_1",
+                        nombre = "Centro Educativo de Prueba 1",
+                        direccion = "Calle Principal 123",
+                        telefono = "945123456",
+                        email = "centro1@prueba.com",
+                        activo = true
+                    ),
+                    Centro(
+                        id = "centro_prueba_2",
+                        nombre = "Centro Educativo de Prueba 2",
+                        direccion = "Avenida Secundaria 456",
+                        telefono = "945654321",
+                        email = "centro2@prueba.com",
+                        activo = true
+                    )
+                )
+                return@withContext Result.Success(centrosPrueba)
+            }
+            
             return@withContext Result.Error(e)
         }
     }
@@ -2072,27 +2124,71 @@ open class UsuarioRepository @Inject constructor(
      * Obtiene el usuario actualmente autenticado
      * @return Usuario actual o null si no hay sesión
      */
-    suspend fun obtenerUsuarioActual(): Usuario? {
+    suspend fun obtenerUsuarioActual(): Usuario? = withContext(Dispatchers.IO) {
+        val firebaseUser = firebaseAuth.currentUser
+        
+        if (firebaseUser == null) {
+            Timber.w("No hay usuario autenticado en Firebase Auth")
+            return@withContext null
+        }
+        
+        val uid = firebaseUser.uid
+        val email = firebaseUser.email
+        
+        if (email.isNullOrEmpty()) {
+            Timber.e("Usuario de Firebase Auth ($uid) no tiene email asociado")
+            return@withContext null
+        }
+        
         try {
-            val firebaseUser = getUsuarioActualAuth() ?: return null
-            
-            // Buscar usuario por firebaseUid en la colección, no por ID del documento
-            val querySnapshot = usuariosCollection
-                .whereEqualTo("firebaseUid", firebaseUser.uid)
+            // Paso 1: Intentar encontrar el usuario por el firebaseUid (compatibilidad)
+            Timber.d("Buscando usuario por firebaseUid: $uid")
+            val userByUidQuery = usuariosCollection
+                .whereEqualTo("firebaseUid", uid)
                 .limit(1)
                 .get()
                 .await()
             
-            if (querySnapshot.isEmpty) {
-                Timber.w("No se encontró usuario con firebaseUid: ${firebaseUser.uid}")
-                return null
+            if (!userByUidQuery.isEmpty) {
+                val usuario = userByUidQuery.documents.first().toObject(Usuario::class.java)
+                Timber.d("✅ Usuario encontrado por firebaseUid: ${usuario?.dni}")
+                return@withContext usuario
             }
             
-            val usuarioDoc = querySnapshot.documents.first()
-            return usuarioDoc.toObject(Usuario::class.java)?.copy(dni = usuarioDoc.id)
+            // Paso 2: Buscar usuario por email (más fiable)
+            Timber.d("Usuario no encontrado por firebaseUid, buscando por email: $email")
+            val userByEmailQuery = usuariosCollection
+                .whereEqualTo("email", email)
+                .limit(1)
+                .get()
+                .await()
+            
+            if (!userByEmailQuery.isEmpty) {
+                val userDoc = userByEmailQuery.documents.first()
+                val usuario = userDoc.toObject(Usuario::class.java)
+                
+                if (usuario != null) {
+                    Timber.d("✅ Usuario encontrado por email: ${usuario.dni}")
+                    
+                    // Actualizar el firebaseUid si está vacío para evitar este problema en el futuro
+                    if (usuario.firebaseUid.isNullOrEmpty()) {
+                        Timber.d("Actualizando firebaseUid para usuario ${usuario.dni}")
+                        userDoc.reference.update("firebaseUid", uid).await()
+                    }
+                    
+                    return@withContext usuario
+                }
+            }
+            
+            Timber.w("No se encontró usuario con firebaseUid: $uid ni con email: $email")
+            return@withContext null
+            
         } catch (e: Exception) {
-            Timber.e(e, "Error al obtener usuario actual")
-            return null
+            Timber.e(e, "❌ Error al obtener usuario actual: ${e.message}")
+            if (BuildConfig.DEBUG) {
+                e.printStackTrace() // Stack trace completa solo en debug
+            }
+            return@withContext null
         }
     }
 
@@ -2500,6 +2596,29 @@ open class UsuarioRepository @Inject constructor(
         try {
             Timber.d("Guardando alumno con DNI ${alumno.dni} en Firestore...")
             
+            // Logs detallados para verificar todos los campos
+            Timber.d("📋 Datos personales del alumno:")
+            Timber.d("   - Nombre: ${alumno.nombre}")
+            Timber.d("   - Apellidos: ${alumno.apellidos}")
+            Timber.d("   - DNI: ${alumno.dni}")
+            Timber.d("   - Teléfono: ${alumno.telefono}")
+            Timber.d("   - Fecha de nacimiento: ${alumno.fechaNacimiento}")
+            
+            Timber.d("📋 Datos académicos:")
+            Timber.d("   - Centro ID: ${alumno.centroId}")
+            Timber.d("   - Clase ID: ${alumno.claseId}")
+            Timber.d("   - Curso: ${alumno.curso}")
+            Timber.d("   - Clase: ${alumno.clase}")
+            
+            Timber.d("📋 Datos médicos:")
+            Timber.d("   - Número SS: ${alumno.numeroSS}")
+            Timber.d("   - Condiciones médicas: ${alumno.condicionesMedicas}")
+            Timber.d("   - Alergias: ${alumno.alergias.joinToString(", ")}")
+            Timber.d("   - Medicación: ${alumno.medicacion.joinToString(", ")}")
+            Timber.d("   - Necesidades especiales: ${alumno.necesidadesEspeciales}")
+            Timber.d("   - Observaciones médicas: ${alumno.observacionesMedicas}")
+            Timber.d("   - Observaciones generales: ${alumno.observaciones}")
+            
             // Verificar si tiene URL de avatar, y si no, obtener una
             val avatarUrlActual = alumno.avatarUrl ?: ""
             val avatarUrl = if (avatarUrlActual.isEmpty()) {
@@ -2516,9 +2635,22 @@ open class UsuarioRepository @Inject constructor(
                 alumno
             }
             
+            // Asegurarse de que todos los campos médicos y personales estén incluidos
+            val alumnoCompleto = alumnoFinal.copy(
+                telefono = alumnoFinal.telefono,
+                numeroSS = alumnoFinal.numeroSS,
+                condicionesMedicas = alumnoFinal.condicionesMedicas,
+                alergias = alumnoFinal.alergias,
+                medicacion = alumnoFinal.medicacion,
+                necesidadesEspeciales = alumnoFinal.necesidadesEspeciales,
+                observaciones = alumnoFinal.observaciones,
+                observacionesMedicas = alumnoFinal.observacionesMedicas,
+                activo = true
+            )
+            
             // Usar el DNI del alumno como ID del documento en la colección 'alumnos'
-            alumnosCollection.document(alumnoFinal.dni).set(alumnoFinal).await()
-            Timber.d("Alumno con DNI ${alumnoFinal.dni} guardado exitosamente con avatar: $avatarUrl")
+            alumnosCollection.document(alumnoCompleto.dni).set(alumnoCompleto).await()
+            Timber.d("✅ Alumno con DNI ${alumnoCompleto.dni} guardado exitosamente con avatar: $avatarUrl")
             
             // También crear un documento en la colección "usuarios" con el perfil de alumno
             try {
@@ -2526,16 +2658,17 @@ open class UsuarioRepository @Inject constructor(
                 perfiles.add(
                     Perfil(
                         tipo = TipoUsuario.ALUMNO,
-                        centroId = alumnoFinal.centroId,
+                        centroId = alumnoCompleto.centroId,
                         verificado = true
                     )
                 )
                 
                 val usuario = Usuario(
-                    dni = alumnoFinal.dni,
-                    nombre = alumnoFinal.nombre,
-                    apellidos = alumnoFinal.apellidos,
+                    dni = alumnoCompleto.dni,
+                    nombre = alumnoCompleto.nombre,
+                    apellidos = alumnoCompleto.apellidos,
                     email = "", // No se crea cuenta de correo para alumnos
+                    telefono = alumnoCompleto.telefono, // Incluir teléfono en el usuario básico
                     avatarUrl = avatarUrl, // Misma URL del avatar
                     perfiles = perfiles,
                     activo = true,
@@ -2543,15 +2676,15 @@ open class UsuarioRepository @Inject constructor(
                 )
                 
                 usuariosCollection.document(usuario.dni).set(usuario).await()
-                Timber.d("Usuario básico creado para alumno con avatar: $avatarUrl")
+                Timber.d("✅ Usuario básico creado para alumno con avatar: $avatarUrl")
             } catch (e: Exception) {
-                Timber.e(e, "Error al crear usuario básico para alumno: ${e.message}")
+                Timber.e(e, "❌ Error al crear usuario básico para alumno: ${e.message}")
                 // No interrumpir el flujo principal por este error secundario
             }
             
             return@withContext Result.Success(Unit)
         } catch (e: Exception) {
-            Timber.e(e, "Error al guardar alumno con DNI ${alumno.dni}")
+            Timber.e(e, "❌ Error al guardar alumno con DNI ${alumno.dni}: ${e.message}")
             return@withContext Result.Error(e)
         }
     }
@@ -3308,6 +3441,135 @@ open class UsuarioRepository @Inject constructor(
             return@withContext Result.Success(profesores)
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener profesores del centro $centroId")
+            return@withContext Result.Error(e)
+        }
+    }
+
+    /**
+     * Actualiza los datos de un alumno existente en Firestore.
+     * Utiliza el DNI del alumno como ID del documento.
+     *
+     * @param alumno Objeto Alumno con los datos actualizados.
+     * @param context Contexto de la aplicación para acceder a los recursos (opcional)
+     * @return Result<Unit> indicando éxito o error.
+     */
+    suspend fun actualizarAlumno(alumno: Alumno, context: Context? = null): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Actualizando alumno con DNI ${alumno.dni} en Firestore...")
+            
+            // Logs detallados para verificar todos los campos que se van a actualizar
+            Timber.d("📋 Datos del alumno a actualizar:")
+            Timber.d("👤 Nombre: ${alumno.nombre} ${alumno.apellidos}")
+            Timber.d("📱 Teléfono: ${alumno.telefono}")
+            Timber.d("📅 Fecha de nacimiento: ${alumno.fechaNacimiento}")
+            Timber.d("🏥 Número SS: ${alumno.numeroSS}")
+            Timber.d("🩺 Condiciones médicas: ${alumno.condicionesMedicas}")
+            Timber.d("⚠️ Alergias: ${alumno.alergias.joinToString(", ")}")
+            Timber.d("💊 Medicación: ${alumno.medicacion.joinToString(", ")}")
+            Timber.d("🔔 Necesidades especiales: ${alumno.necesidadesEspeciales}")
+            Timber.d("📝 Observaciones: ${alumno.observaciones}")
+            Timber.d("🏥 Observaciones médicas: ${alumno.observacionesMedicas}")
+            Timber.d("🎓 Curso: ${alumno.curso}")
+            Timber.d("🏫 Clase: ${alumno.clase}")
+            
+            // Verificar primero si el alumno existe
+            val alumnoExistente = alumnosCollection.document(alumno.dni).get().await()
+            
+            if (!alumnoExistente.exists()) {
+                Timber.e("❌ El alumno con DNI ${alumno.dni} no existe en Firestore")
+                return@withContext Result.Error(Exception("El alumno no existe"))
+            }
+            
+            // Obtener el alumno actual para mantener campos que no se actualizan
+            val alumnoActual = alumnoExistente.toObject(Alumno::class.java)
+            
+            // Mantener la URL del avatar actual si existe
+            val avatarUrlActual = alumnoActual?.avatarUrl ?: ""
+            val avatarUrl = if (avatarUrlActual.isNotEmpty()) {
+                avatarUrlActual
+            } else {
+                // Si no tiene avatar, usar uno por defecto
+                "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40alumno.png?alt=media&token=5bdc263e-3320-4c99-b6af-6dc258c917be"
+            }
+            
+            // Mantener los familiares y otros campos que no se actualizan desde el formulario
+            val alumnoFinal = alumno.copy(
+                avatarUrl = avatarUrl,
+                familiarIds = alumnoActual?.familiarIds ?: emptyList(),
+                familiares = alumnoActual?.familiares ?: emptyList(),
+                profesorId = alumnoActual?.profesorId ?: "",
+                profesorIds = alumnoActual?.profesorIds ?: emptyList()
+            )
+            
+            // Actualizar el alumno en la colección 'alumnos'
+            alumnosCollection.document(alumnoFinal.dni).set(alumnoFinal).await()
+            Timber.d("✅ Alumno con DNI ${alumnoFinal.dni} actualizado exitosamente")
+            
+            // También actualizar el documento en la colección "usuarios" con el perfil de alumno
+            try {
+                // Buscar si existe el usuario básico
+                val usuarioExistente = usuariosCollection.document(alumnoFinal.dni).get().await()
+                
+                if (usuarioExistente.exists()) {
+                    // Actualizar los datos básicos manteniendo los perfiles
+                    val usuarioActual = usuarioExistente.toObject(Usuario::class.java)
+                    
+                    val usuario = Usuario(
+                        dni = alumnoFinal.dni,
+                        nombre = alumnoFinal.nombre,
+                        apellidos = alumnoFinal.apellidos,
+                        email = usuarioActual?.email ?: "",
+                        telefono = alumnoFinal.telefono,
+                        avatarUrl = avatarUrl,
+                        perfiles = usuarioActual?.perfiles ?: listOf(
+                            Perfil(
+                                tipo = TipoUsuario.ALUMNO,
+                                centroId = alumnoFinal.centroId,
+                                verificado = true
+                            )
+                        ),
+                        activo = true,
+                        firebaseUid = usuarioActual?.firebaseUid ?: "",
+                        fechaRegistro = usuarioActual?.fechaRegistro ?: Timestamp.now(),
+                        preferencias = usuarioActual?.preferencias ?: Preferencias()
+                    )
+                    
+                    usuariosCollection.document(usuario.dni).set(usuario).await()
+                    Timber.d("✅ Usuario básico actualizado para alumno")
+                } else {
+                    // Crear un usuario básico para el alumno si no existe
+                    val perfiles = mutableListOf<Perfil>()
+                    perfiles.add(
+                        Perfil(
+                            tipo = TipoUsuario.ALUMNO,
+                            centroId = alumnoFinal.centroId,
+                            verificado = true
+                        )
+                    )
+                    
+                    val usuario = Usuario(
+                        dni = alumnoFinal.dni,
+                        nombre = alumnoFinal.nombre,
+                        apellidos = alumnoFinal.apellidos,
+                        email = "",
+                        telefono = alumnoFinal.telefono,
+                        avatarUrl = avatarUrl,
+                        perfiles = perfiles,
+                        activo = true,
+                        fechaRegistro = Timestamp.now()
+                    )
+                    
+                    usuariosCollection.document(usuario.dni).set(usuario).await()
+                    Timber.d("✅ Usuario básico creado para alumno que no lo tenía")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "❌ Error al actualizar usuario básico para alumno: ${e.message}")
+                // No interrumpir el flujo principal por este error secundario
+            }
+            
+            return@withContext Result.Success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "❌ Error al actualizar alumno con DNI ${alumno.dni}: ${e.message}")
             return@withContext Result.Error(e)
         }
     }

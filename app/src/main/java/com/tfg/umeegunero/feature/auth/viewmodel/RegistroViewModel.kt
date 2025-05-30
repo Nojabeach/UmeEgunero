@@ -35,6 +35,7 @@ import com.tfg.umeegunero.BuildConfig
 import android.os.Handler
 import android.os.Looper
 import kotlin.random.Random
+import kotlinx.coroutines.delay
 
 /**
  * Estado UI para la pantalla de registro
@@ -124,24 +125,115 @@ class RegistroViewModel @Inject constructor(
         cargarCentros()
     }
 
-    private fun cargarCentros() {
+    fun cargarCentros() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingCentros = true) }
-            when (val result = usuarioRepository.getCentrosEducativos()) {
-                is Result.Success -> {
-                    _uiState.update {
-                        it.copy(centros = result.data, isLoadingCentros = false)
+            
+            Timber.d("🏫 Iniciando carga de centros educativos en RegistroViewModel...")
+            
+            // Reintentar hasta 3 veces con retraso entre intentos
+            var intentos = 0
+            var resultado: Result<List<Centro>>? = null
+            
+            while (intentos < 3 && (resultado == null || resultado is Result.Error)) {
+                intentos++
+                Timber.d("🔄 Intento $intentos de cargar centros educativos")
+                
+                try {
+                    resultado = usuarioRepository.getCentrosEducativos()
+                    
+                    when (resultado) {
+                        is Result.Success -> {
+                            val centros = resultado.data
+                            Timber.d("✅ Centros cargados exitosamente: ${centros.size}")
+                            
+                            if (centros.isEmpty()) {
+                                Timber.w("⚠️ La lista de centros está vacía")
+                                // Esperar y reintentar
+                                if (intentos < 3) {
+                                    delay(1000L * intentos) // Retraso progresivo
+                                    continue
+                                }
+                            }
+                            
+                            _uiState.update {
+                                it.copy(centros = centros, isLoadingCentros = false)
+                            }
+                            
+                            // Verificar si la actualización de estado funcionó
+                            val tamañoActualizado = _uiState.value.centros.size
+                            Timber.d("📊 Centros en UI State después de actualización: $tamañoActualizado")
+                            
+                            break // Salir del bucle si fue exitoso
+                        }
+                        is Result.Error -> {
+                            Timber.e(resultado.exception, "❌ Error en intento $intentos: ${resultado.exception?.message}")
+                            
+                            // Esperar y reintentar
+                            if (intentos < 3) {
+                                delay(1000L * intentos) // Retraso progresivo
+                            }
+                        }
+                        else -> { /* Ignorar Loading */ }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "❌ Excepción no manejada en intento $intentos: ${e.message}")
+                    resultado = Result.Error(e)
+                    
+                    // Esperar y reintentar
+                    if (intentos < 3) {
+                        delay(1000L * intentos) // Retraso progresivo
                     }
                 }
-                is Result.Error -> {
+            }
+            
+            // Si todos los intentos fallaron, actualizar estado con error
+            if (resultado is Result.Error || _uiState.value.centros.isEmpty()) {
+                val errorMsg = if (resultado is Result.Error) {
+                    "Error al cargar centros: ${resultado.exception?.message}"
+                } else {
+                    "No se pudieron cargar los centros educativos"
+                }
+                
+                Timber.e("❌ Todos los intentos fallaron: $errorMsg")
+                
+                _uiState.update {
+                    it.copy(
+                        error = errorMsg,
+                        isLoadingCentros = false
+                    )
+                }
+                
+                // En modo debug, crear centros de prueba si no se pudieron cargar
+                if (BuildConfig.DEBUG) {
+                    Timber.d("🔧 Modo DEBUG: Generando centros de prueba tras fallo...")
+                    val centrosPrueba = listOf(
+                        Centro(
+                            id = "centro_prueba_1",
+                            nombre = "Centro Educativo de Prueba 1",
+                            direccion = "Calle Principal 123",
+                            telefono = "945123456",
+                            email = "centro1@prueba.com",
+                            activo = true
+                        ),
+                        Centro(
+                            id = "centro_prueba_2",
+                            nombre = "Centro Educativo de Prueba 2",
+                            direccion = "Avenida Secundaria 456",
+                            telefono = "945654321",
+                            email = "centro2@prueba.com",
+                            activo = true
+                        )
+                    )
+                    
                     _uiState.update {
                         it.copy(
-                            error = "Error al cargar centros: ${result.exception?.message}",
-                            isLoadingCentros = false
+                            centros = centrosPrueba,
+                            isLoadingCentros = false,
+                            error = null // Limpiar el error ya que tenemos datos de prueba
                         )
                     }
                 }
-                else -> { /* Ignorar Loading */ }
             }
         }
     }

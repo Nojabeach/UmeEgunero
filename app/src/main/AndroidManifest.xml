@@ -81,6 +81,11 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/purple_500" />
+        
+        <!-- Configuración de Google Play Services para solucionar el error de autenticación -->
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
             
         <!-- Proveedor de archivos para compartir con otras aplicaciones -->
         <provider

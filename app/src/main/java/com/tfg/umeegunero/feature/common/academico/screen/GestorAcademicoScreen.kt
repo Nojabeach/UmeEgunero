@@ -81,6 +81,7 @@ fun GestorAcademicoScreen(
     // Log distintivo para depuración
     Timber.e("🔴 GestorAcademicoScreen LANZADA - modo: $modo, centroId: $centroId, cursoId: $cursoId, perfilUsuario: $perfilUsuario")
     
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val centros = uiState.centros
     val cursos = uiState.cursos
@@ -90,12 +91,39 @@ fun GestorAcademicoScreen(
     val isLoadingCursos = uiState.isLoadingCursos
     val isLoadingClases = uiState.isLoadingClases
     val error = uiState.error
+    
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showDeleteDialog by remember { mutableStateOf(false) }
     var itemToDelete by remember { mutableStateOf<String?>(null) }
     var deleteType by remember { mutableStateOf("") } // "curso" o "clase"
-
+    
+    // Verificar si estamos volviendo desde DetalleClaseScreen y restaurar el curso si es necesario
+    LaunchedEffect(key1 = Unit) {
+        // Si no hay cursoId explícito, verificar si hay uno guardado en SharedPreferences
+        if (modo == ModoVisualizacion.CLASES && (cursoId == null || cursoId.isEmpty())) {
+            val prefs = context.getSharedPreferences("gestor_academico_prefs", 0)
+            val lastCursoId = prefs.getString("last_curso_id", "")
+            val lastCentroId = prefs.getString("last_centro_id", "")
+            
+            if (!lastCursoId.isNullOrEmpty() && (!lastCentroId.isNullOrEmpty() || centroId != null)) {
+                Timber.d("📝 Restaurando curso seleccionado: $lastCursoId de centro: ${lastCentroId ?: centroId}")
+                
+                // Forzar carga del centro si es necesario
+                if (!lastCentroId.isNullOrEmpty() && (centroId == null || centroId.isEmpty())) {
+                    Timber.d("🔍 Forzando carga del centro: $lastCentroId")
+                    viewModel.cargarCentroPorId(lastCentroId)
+                }
+                
+                // Inicializar con el curso guardado
+                viewModel.inicializarConCursoId(lastCursoId)
+                
+                // Limpiar las preferencias para no interferir en futuras navegaciones
+                prefs.edit().remove("last_curso_id").remove("last_centro_id").apply()
+            }
+        }
+    }
+    
     // Efectos para inicializar el ViewModel con los parámetros recibidos
     LaunchedEffect(centroId, cursoId, modo) {
         Timber.d("🔄 Inicializando GestorAcademicoScreen: modo=$modo, centroId=$centroId, cursoId=$cursoId")
@@ -221,7 +249,7 @@ fun GestorAcademicoScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
             // Lista de cursos o clases con animación y menú contextual
-            if (isLoadingCursos && modo == ModoVisualizacion.CURSOS || isLoadingClases && modo == ModoVisualizacion.CLASES) {
+            if ((isLoadingCursos && modo == ModoVisualizacion.CURSOS) || (isLoadingClases && modo == ModoVisualizacion.CLASES)) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
@@ -489,7 +517,7 @@ fun GestorAcademicoScreen(
                 title = { Text("Confirmar eliminación") },
                 text = { Text("¿Estás seguro de que quieres eliminar este ${if (deleteType == "curso") "curso" else "clase"}? Esta acción no se puede deshacer.") },
                 confirmButton = {
-                    TextButton(onClick = {
+                    Button(onClick = {
                         if (deleteType == "curso") {
                             viewModel.eliminarCurso(itemToDelete!!)
                         } else {

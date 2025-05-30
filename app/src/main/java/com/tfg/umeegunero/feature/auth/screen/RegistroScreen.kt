@@ -67,6 +67,7 @@ import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Pin
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.SensorDoor
 import androidx.compose.material.icons.filled.Tag
@@ -1168,166 +1169,231 @@ fun Step3Content(uiState: RegistroUiState, viewModel: RegistroViewModel, focusMa
     Spacer(modifier = Modifier.height(16.dp))
 
     // Selección de Centro Educativo
-    ExposedDropdownMenuBox(
-        expanded = centroDropdownExpanded,
-        onExpandedChange = { centroDropdownExpanded = !centroDropdownExpanded },
-         modifier = Modifier.fillMaxWidth()
-    ) {
-                    OutlinedTextField(
-            value = uiState.centros.find { it.id == uiState.form.centroId }?.nombre ?: "",
-            onValueChange = { /* No editable directamente */ },
-            readOnly = true,
-            label = { Text("Centro Educativo") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = centroDropdownExpanded) },
-            modifier = Modifier
-                .menuAnchor() // Importante para vincular el menú
-                .fillMaxWidth(),
-             leadingIcon = { Icon(Icons.Default.School, contentDescription = null) },
-             isError = uiState.form.centroId.isBlank() && uiState.currentStep == 3 // Mostrar error si está vacío en este paso
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Título y descripción para los centros
+        Text(
+            "Centro Educativo",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(bottom = 4.dp)
         )
-        ExposedDropdownMenu(
-            expanded = centroDropdownExpanded,
-            onDismissRequest = { centroDropdownExpanded = false }
-        ) {
-            if (uiState.isLoadingCentros) {
-                 DropdownMenuItem(
-                     text = { Text("Cargando centros...") },
-                     onClick = { },
-                     enabled = false
-                 )
-             } else if (uiState.centros.isEmpty()) {
-                 DropdownMenuItem(
-                     text = { Text("No hay centros disponibles") },
-                     onClick = { },
-                     enabled = false
-                 )
-            } else {
-                 uiState.centros.forEach { centro ->
-                     DropdownMenuItem(
-                         text = { Text(centro.nombre) },
-                         onClick = {
-                             viewModel.updateFormField("centroId", centro.id)
-                             centroDropdownExpanded = false
-                         }
-                     )
-                 }
+        
+        Text(
+            "Selecciona el centro educativo al que pertenecen los alumnos que quieres vincular.",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        
+        // Indicador de carga con mensaje
+        if (uiState.isLoadingCentros) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(36.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Cargando centros educativos...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else if (uiState.centros.isEmpty() && uiState.error != null) {
+            // Mostrar error y botón para reintentar si la carga falló
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Error",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(36.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "No se pudieron cargar los centros educativos",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { viewModel.cargarCentros() },
+                    modifier = Modifier.fillMaxWidth(0.7f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Reintentar"
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Reintentar")
+                }
+            }
+        } else {
+            // Dropdown normal cuando hay centros disponibles
+            ExposedDropdownMenuBox(
+                expanded = centroDropdownExpanded,
+                onExpandedChange = { centroDropdownExpanded = !centroDropdownExpanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = uiState.centros.find { it.id == uiState.form.centroId }?.nombre ?: "",
+                    onValueChange = { /* No editable directamente */ },
+                    readOnly = true,
+                    label = { Text("Seleccionar Centro") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = centroDropdownExpanded) },
+                    modifier = Modifier
+                        .menuAnchor() // Importante para vincular el menú
+                        .fillMaxWidth(),
+                    leadingIcon = { Icon(Icons.Default.School, contentDescription = null) },
+                    isError = uiState.form.centroId.isBlank() && uiState.currentStep == 3 // Mostrar error si está vacío en este paso
+                )
+                ExposedDropdownMenu(
+                    expanded = centroDropdownExpanded,
+                    onDismissRequest = { centroDropdownExpanded = false }
+                ) {
+                    if (uiState.centros.isEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text("No hay centros disponibles") },
+                            onClick = { },
+                            enabled = false
+                        )
+                    } else {
+                        uiState.centros.forEach { centro ->
+                            DropdownMenuItem(
+                                text = { Text(centro.nombre) },
+                                onClick = {
+                                    viewModel.updateFormField("centroId", centro.id)
+                                    centroDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+            if (uiState.form.centroId.isBlank() && uiState.currentStep == 3) {
+                Text("Debes seleccionar un centro", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
-     if (uiState.form.centroId.isBlank() && uiState.currentStep == 3) {
-         Text("Debes seleccionar un centro", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-     }
 
-     Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(16.dp))
 
-     // Sección para DNIs de alumnos (movida aquí desde el Card principal)
-     Card(
-         modifier = Modifier
-             .fillMaxWidth()
-             .padding(vertical = 8.dp),
-         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-     ) {
-         Column(
-             modifier = Modifier
-                 .fillMaxWidth()
-                 .padding(16.dp)
-         ) {
-             Text(
-                 text = "DNIs de Alumnos Vinculados", // Título más descriptivo
-                 style = MaterialTheme.typography.titleMedium,
-                 modifier = Modifier.padding(bottom = 8.dp)
-             )
-             Text(
-                 text = "Introduce el DNI de cada alumno que deseas vincular. El centro verificará esta información.",
-                 style = MaterialTheme.typography.bodySmall,
-                 modifier = Modifier.padding(bottom = 12.dp)
-             )
+    // Sección para DNIs de alumnos (movida aquí desde el Card principal)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "DNIs de Alumnos Vinculados", // Título más descriptivo
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Text(
+                text = "Introduce el DNI de cada alumno que deseas vincular. El centro verificará esta información.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
 
-             if (uiState.form.alumnosDni.isEmpty()) {
-                 Text(
-                     "Aún no has añadido ningún DNI.",
-                     style = MaterialTheme.typography.bodyMedium,
-                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                     modifier = Modifier.padding(bottom = 8.dp)
-                 )
-             } else {
-                 uiState.form.alumnosDni.forEachIndexed { index, dni ->
-                     Row(
-                         modifier = Modifier
-                             .fillMaxWidth()
-                             .padding(vertical = 4.dp),
-                         verticalAlignment = Alignment.CenterVertically
-                     ) {
-                         OutlinedTextField(
-                             value = dni,
-                             // Usar onValueChange directamente para actualizar alumno específico
-                             onValueChange = { viewModel.updateAlumnoDni(index, it) },
-                             label = { Text("DNI Alumno ${index + 1}") },
-                             modifier = Modifier.weight(1f),
-                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = if (index == uiState.form.alumnosDni.lastIndex) ImeAction.Done else ImeAction.Next),
-                             keyboardActions = KeyboardActions(
-                                 onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                                 onDone = { focusManager.clearFocus() }
-                             ),
-                             singleLine = true,
-                             isError = dni.isNotBlank() && !validateDni(dni),
-                             supportingText = {
-                                 if (dni.isNotBlank() && !validateDni(dni)) {
-                                     Text(
-                                         "Formato DNI inválido", // Mensaje más corto
-                                         color = MaterialTheme.colorScheme.error
-                                     )
-                                 }
-                             },
-                             leadingIcon = {
-                                 Icon(
-                                     Icons.Default.Badge, // O usar otro icono como ChildCare
-                                     contentDescription = "DNI del alumno"
-                                 )
-                             }
-                         )
+            if (uiState.form.alumnosDni.isEmpty()) {
+                Text(
+                    "Aún no has añadido ningún DNI.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            } else {
+                uiState.form.alumnosDni.forEachIndexed { index, dni ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = dni,
+                            // Usar onValueChange directamente para actualizar alumno específico
+                            onValueChange = { viewModel.updateAlumnoDni(index, it) },
+                            label = { Text("DNI Alumno ${index + 1}") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = if (index == uiState.form.alumnosDni.lastIndex) ImeAction.Done else ImeAction.Next),
+                            keyboardActions = KeyboardActions(
+                                onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                                onDone = { focusManager.clearFocus() }
+                            ),
+                            singleLine = true,
+                            isError = dni.isNotBlank() && !validateDni(dni),
+                            supportingText = {
+                                if (dni.isNotBlank() && !validateDni(dni)) {
+                                    Text(
+                                        "Formato DNI inválido", // Mensaje más corto
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Badge, // O usar otro icono como ChildCare
+                                    contentDescription = "DNI del alumno"
+                                )
+                            }
+                        )
 
-                         IconButton(
-                             onClick = { viewModel.removeAlumnoDni(index) },
-                             modifier = Modifier.padding(start = 8.dp)
-                         ) {
-                             Icon(
-                                 imageVector = Icons.Filled.Delete,
-                                 contentDescription = "Eliminar DNI",
-                                 tint = MaterialTheme.colorScheme.error
-                             )
-                         }
-                     }
-                 }
-             }
+                        IconButton(
+                            onClick = { viewModel.removeAlumnoDni(index) },
+                            modifier = Modifier.padding(start = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = "Eliminar DNI",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+            }
 
-             // Mostrar error si no se ha añadido ningún alumno y es obligatorio
-             val showErrorAlMenosUno = !uiState.form.alumnosDni.any { it.isNotBlank() } && uiState.currentStep == 3
-             if (showErrorAlMenosUno) {
-                 Text(
-                     "Debes añadir el DNI de al menos un alumno.",
-                     color = MaterialTheme.colorScheme.error,
-                     style = MaterialTheme.typography.bodySmall,
-                     modifier = Modifier.padding(top = 4.dp)
-                 )
-             }
+            // Mostrar error si no se ha añadido ningún alumno y es obligatorio
+            val showErrorAlMenosUno = !uiState.form.alumnosDni.any { it.isNotBlank() } && uiState.currentStep == 3
+            if (showErrorAlMenosUno) {
+                Text(
+                    "Debes añadir el DNI de al menos un alumno.",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
 
-             // Botón para añadir DNIs
-             Button(
-                 onClick = { viewModel.addAlumnoDni() },
-                 modifier = Modifier
-                     .fillMaxWidth()
-                     .padding(top = 16.dp) // Más espacio antes del botón
-             ) {
-                 Icon(
-                     imageVector = Icons.Default.Add,
-                     contentDescription = "Añadir DNI"
-                 )
-                 Spacer(modifier = Modifier.width(8.dp))
-                 Text("Añadir DNI de Alumno")
-             }
-         }
-     }
+            // Botón para añadir DNIs
+            Button(
+                onClick = { viewModel.addAlumnoDni() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp) // Más espacio antes del botón
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Añadir DNI"
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Añadir DNI de Alumno")
+            }
+        }
+    }
 }
 
 /**
