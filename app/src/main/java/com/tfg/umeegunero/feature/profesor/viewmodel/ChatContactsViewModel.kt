@@ -17,16 +17,19 @@ import com.tfg.umeegunero.data.repository.CursoRepository
 import com.tfg.umeegunero.data.repository.FamiliarRepository
 import com.tfg.umeegunero.data.repository.ProfesorRepository
 import com.tfg.umeegunero.data.repository.UsuarioRepository
-import com.tfg.umeegunero.util.Result
+import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
 import com.tfg.umeegunero.navigation.AppScreens
+import com.tfg.umeegunero.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import javax.inject.Provider
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import com.google.firebase.Timestamp
@@ -106,7 +109,8 @@ class ChatContactsViewModel @Inject constructor(
     private val cursoRepository: CursoRepository,
     private val claseRepository: ClaseRepository,
     private val chatRepository: ChatRepository,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val unifiedMessageRepository: UnifiedMessageRepository
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ChatContactsUiState())
@@ -764,42 +768,111 @@ class ChatContactsViewModel @Inject constructor(
                     alumnoId
                 }
                 
-                // Obtener o crear la conversación en Firestore
-                val conversacionData = mapOf(
-                    "participante1Id" to currentUser.dni,
-                    "participante2Id" to contactId,
-                    "nombreParticipante1" to "${currentUser.nombre} ${currentUser.apellidos}",
-                    "nombreParticipante2" to contactName,
-                    "alumnoId" to contextAlumnoId,
-                    "fechaCreacion" to Timestamp.now(),
-                    "ultimaActualizacion" to Timestamp.now()
-                )
+                // Lista de participantes para la conversación
+                val participantIds = listOf(currentUser.dni, contactId)
                 
-                // Buscar si ya existe una conversación entre estos usuarios
-                val existingConvQuery = firestore.collection("conversaciones")
-                    .whereEqualTo("participante1Id", currentUser.dni)
-                    .whereEqualTo("participante2Id", contactId)
-                    .get()
-                    .await()
+                // Título de la conversación (opcional)
+                val title = "Chat con $contactName"
+                
+                // Metadatos adicionales
+                val entityId = contextAlumnoId ?: ""
+                val entityType = if (contextAlumnoId != null) "ALUMNO" else ""
+                
+                // Buscar si ya existe una conversación entre estos usuarios en el sistema unificado
+                var conversacionId = ""
+                
+                // Primero buscar en el sistema unificado
+                try {
+                    val unifiedMessageRepo = unifiedMessageRepository
                     
-                val altExistingConvQuery = firestore.collection("conversaciones")
-                    .whereEqualTo("participante1Id", contactId)
-                    .whereEqualTo("participante2Id", currentUser.dni)
-                    .get()
-                    .await()
+                    // Buscar conversaciones existentes
+                    val conversationsResult = unifiedMessageRepo.getCurrentUserConversations().first()
                     
-                val conversacionId = if (!existingConvQuery.isEmpty || !altExistingConvQuery.isEmpty) {
-                    // Usar la conversación existente
-                    if (!existingConvQuery.isEmpty) {
-                        existingConvQuery.documents.first().id
-                    } else {
-                        altExistingConvQuery.documents.first().id
+                    if (conversationsResult is Result.Success) {
+                        // Buscar una conversación que tenga exactamente estos dos participantes
+                        val existingConversation = conversationsResult.data.find { conversation ->
+                            val participants = conversation.participantIds
+                            participants.size == 2 && 
+                            participants.contains(currentUser.dni) && 
+                            participants.contains(contactId)
+                        }
+                        
+                        if (existingConversation != null) {
+                            conversacionId = existingConversation.id
+                            Timber.d("Se encontró una conversación existente en el sistema unificado: $conversacionId")
+                        }
                     }
-                } else {
-                    // Crear nueva conversación
-                    val newConvRef = firestore.collection("conversaciones").document()
-                    newConvRef.set(conversacionData).await()
-                    newConvRef.id
+                    
+                    // Si no se encontró, crear una nueva conversación en el sistema unificado
+                    if (conversacionId.isEmpty()) {
+                        val createResult = unifiedMessageRepo.createOrUpdateConversation(
+                            conversationId = "",
+                            participantIds = participantIds,
+                            title = title,
+                            entityId = entityId,
+                            entityType = entityType
+                        )
+                        
+                        if (createResult is Result.Success) {
+                            conversacionId = createResult.data
+                            Timber.d("Se creó una nueva conversación en el sistema unificado: $conversacionId")
+                        } else {
+                            Timber.e("Error al crear conversación unificada: ${(createResult as? Result.Error)?.message}")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al buscar/crear conversación en sistema unificado")
+                }
+                
+                // Si no se pudo crear en el sistema unificado, intentar con el sistema antiguo como fallback
+                if (conversacionId.isEmpty()) {
+                    Timber.w("Fallback: Usando sistema antiguo de conversaciones")
+                    
+                    // Obtener o crear la conversación en Firestore (sistema antiguo)
+                    val conversacionData = mapOf(
+                        "participante1Id" to currentUser.dni,
+                        "participante2Id" to contactId,
+                        "nombreParticipante1" to "${currentUser.nombre} ${currentUser.apellidos}",
+                        "nombreParticipante2" to contactName,
+                        "alumnoId" to contextAlumnoId,
+                        "fechaCreacion" to Timestamp.now(),
+                        "ultimaActualizacion" to Timestamp.now()
+                    )
+                    
+                    // Buscar si ya existe una conversación entre estos usuarios
+                    val existingConvQuery = firestore.collection("conversaciones")
+                        .whereEqualTo("participante1Id", currentUser.dni)
+                        .whereEqualTo("participante2Id", contactId)
+                        .get()
+                        .await()
+                        
+                    val altExistingConvQuery = firestore.collection("conversaciones")
+                        .whereEqualTo("participante1Id", contactId)
+                        .whereEqualTo("participante2Id", currentUser.dni)
+                        .get()
+                        .await()
+                        
+                    conversacionId = if (!existingConvQuery.isEmpty || !altExistingConvQuery.isEmpty) {
+                        // Usar la conversación existente
+                        if (!existingConvQuery.isEmpty) {
+                            existingConvQuery.documents.first().id
+                        } else {
+                            altExistingConvQuery.documents.first().id
+                        }
+                    } else {
+                        // Crear nueva conversación
+                        val newConvRef = firestore.collection("conversaciones").document()
+                        newConvRef.set(conversacionData).await()
+                        newConvRef.id
+                    }
+                }
+                
+                if (conversacionId.isEmpty()) {
+                    _uiState.update { it.copy(
+                        error = "No se pudo crear la conversación",
+                        isLoading = false
+                    )}
+                    return@launch
                 }
                 
                 Timber.d("Usando conversaciónId: $conversacionId para chat entre ${currentUser.dni} y $contactId")

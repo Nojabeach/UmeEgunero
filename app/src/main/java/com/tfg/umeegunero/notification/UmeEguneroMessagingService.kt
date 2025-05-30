@@ -29,6 +29,7 @@ import com.tfg.umeegunero.MainActivity
 import com.tfg.umeegunero.navigation.AppScreens
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.Timestamp
+import androidx.core.content.ContextCompat
 
 /**
  * Servicio de mensajería de Firebase Cloud Messaging (FCM) para la aplicación UmeEgunero.
@@ -215,120 +216,50 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
     }
     
     /**
-     * Procesa mensajes recibidos de FCM
+     * Llamado cuando se recibe un mensaje de FCM
      */
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
-        Timber.d("⚠️ [FCM] 📱 MENSAJE FCM RECIBIDO de: ${remoteMessage.from}")
-        Timber.d("⚠️ [FCM] Datos del mensaje: ${remoteMessage.data}")
+        
+        Timber.d("⚠️ [FCM] Mensaje recibido de FCM: ${remoteMessage.data}")
+        
+        // Procesar el mensaje recibido
+        val data = remoteMessage.data
+        
+        // IMPORTANTE: Siempre mostrar notificaciones, independientemente del estado de la app
+        // La app puede estar:
+        // 1. En primer plano (visible al usuario)
+        // 2. En segundo plano (minimizada)
+        // 3. Cerrada (no en memoria)
+        
+        // Determinar el tipo de notificación
+        val messageType = data["messageType"] ?: data["tipo"] ?: "UNKNOWN"
+        
+        // Registrar información detallada en logs
+        Timber.d("⚠️ [FCM] Tipo de mensaje: $messageType")
+        Timber.d("⚠️ [FCM] Datos: $data")
         
         try {
-            // Priorizar el campo 'messageType' del payload data para determinar el tipo de mensaje
-            val messageType = remoteMessage.data["messageType"] ?: remoteMessage.data["tipo"]
-            val messageId = remoteMessage.data["messageId"]
-            
-            Timber.d("⚠️ [FCM] Tipo de mensaje: $messageType, ID: $messageId")
-            
-            if (messageId != null) {
-                // Este es un mensaje unificado, procesarlo como tal
-                Timber.d("⚠️ [FCM] Procesando como mensaje unificado con ID: $messageId")
-                procesarNotificacionUnificada(remoteMessage.data)
-                return
+            when (messageType) {
+                "CHAT", "chat" -> procesarNotificacionChat(data)
+                "SOLICITUD_VINCULACION", "solicitud_vinculacion" -> procesarNotificacionSolicitudVinculacion(data)
+                "REGISTRO_DIARIO", "registro_diario" -> procesarNotificacionRegistroDiario(data)
+                "INCIDENCIA", "incidencia" -> procesarNotificacionIncidencia(data)
+                "ASISTENCIA", "asistencia" -> procesarNotificacionAsistencia(data)
+                "ANNOUNCEMENT", "COMUNICADO", "comunicado" -> procesarNotificacionComunicado(data)
+                "unified_message", "UNIFIED_MESSAGE" -> procesarNotificacionUnificada(data)
+                else -> procesarNotificacionGenerica(data)
             }
             
-            // Procesamiento para formatos de mensajes antiguos
-            remoteMessage.notification?.let { notification ->
-                val title = notification.title ?: ""
-                val body = notification.body ?: ""
-                
-                // Usar el canal adecuado según el tipo de notificación
-                val channelId = when (messageType) {
-                    "solicitud_vinculacion" -> AppNotificationManager.CHANNEL_ID_SOLICITUDES
-                    "chat" -> AppNotificationManager.CHANNEL_ID_CHAT
-                    "registro_diario" -> AppNotificationManager.CHANNEL_ID_TAREAS
-                    "incidencia" -> if (remoteMessage.data["urgente"] == "true") {
-                        AppNotificationManager.CHANNEL_ID_INCIDENCIAS
-                    } else {
-                        AppNotificationManager.CHANNEL_ID_GENERAL
-                    }
-                    "asistencia" -> AppNotificationManager.CHANNEL_ID_ASISTENCIA
-                    "unified_message", "ANNOUNCEMENT", "CHAT", "INCIDENT", "ATTENDANCE", "DAILY_RECORD", "NOTIFICATION", "SYSTEM" -> 
-                        AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
-                    else -> AppNotificationManager.CHANNEL_ID_GENERAL
-                }
-                
-                // Generar un ID único para la notificación
-                val notificationId = when {
-                    messageId != null -> messageId.hashCode()
-                    remoteMessage.data.containsKey("solicitudId") -> remoteMessage.data["solicitudId"]?.hashCode() ?: System.currentTimeMillis().toInt()
-                    remoteMessage.data.containsKey("mensajeId") -> remoteMessage.data["mensajeId"]?.hashCode() ?: System.currentTimeMillis().toInt()
-                    else -> System.currentTimeMillis().toInt()
-                }
-                
-                // Procesar según el tipo de notificación
-                when (messageType) {
-                    "solicitud_vinculacion" -> procesarNotificacionSolicitud(remoteMessage.data)
-                    "chat" -> procesarNotificacionChat(remoteMessage.data)
-                    "incidencia" -> procesarNotificacionIncidencia(remoteMessage.data)
-                    "asistencia" -> procesarNotificacionAsistencia(remoteMessage.data)
-                    "unified_message", "ANNOUNCEMENT", "CHAT", "INCIDENT", "ATTENDANCE", "DAILY_RECORD", "NOTIFICATION", "SYSTEM" -> 
-                        procesarNotificacionUnificada(remoteMessage.data)
-                    else -> {
-                        // Notificación general
-                        mostrarNotificacion(title, body, channelId, notificationId, remoteMessage.data)
-                    }
-                }
-            } ?: run {
-                // Sin objeto de notificación, procesar según datos
-                if (remoteMessage.data.isNotEmpty()) {
-                    val title = remoteMessage.data["title"] ?: remoteMessage.data["titulo"] ?: "Nueva notificación"
-                    val body = remoteMessage.data["body"] ?: remoteMessage.data["mensaje"] ?: remoteMessage.data["content"] ?: "Tienes una nueva notificación"
-                    
-                    val channelId = when (messageType) {
-                        "solicitud_vinculacion" -> AppNotificationManager.CHANNEL_ID_SOLICITUDES
-                        "chat" -> AppNotificationManager.CHANNEL_ID_CHAT
-                        "registro_diario" -> AppNotificationManager.CHANNEL_ID_TAREAS
-                        "incidencia" -> if (remoteMessage.data["urgente"] == "true") {
-                            AppNotificationManager.CHANNEL_ID_INCIDENCIAS
-                        } else {
-                            AppNotificationManager.CHANNEL_ID_GENERAL
-                        }
-                        "asistencia" -> AppNotificationManager.CHANNEL_ID_ASISTENCIA
-                        "unified_message", "ANNOUNCEMENT", "CHAT", "INCIDENT", "ATTENDANCE", "DAILY_RECORD", "NOTIFICATION", "SYSTEM" -> 
-                            AppNotificationManager.CHANNEL_ID_UNIFIED_COMMUNICATION
-                        else -> AppNotificationManager.CHANNEL_ID_GENERAL
-                    }
-                    
-                    // Generar un ID único para la notificación
-                    val notificationId = when {
-                        messageId != null -> messageId.hashCode()
-                        remoteMessage.data.containsKey("solicitudId") -> remoteMessage.data["solicitudId"]?.hashCode() ?: System.currentTimeMillis().toInt()
-                        remoteMessage.data.containsKey("mensajeId") -> remoteMessage.data["mensajeId"]?.hashCode() ?: System.currentTimeMillis().toInt()
-                        else -> System.currentTimeMillis().toInt()
-                    }
-                    
-                    // Procesar según el tipo de notificación
-                    when (messageType) {
-                        "solicitud_vinculacion" -> procesarNotificacionSolicitud(remoteMessage.data)
-                        "chat" -> procesarNotificacionChat(remoteMessage.data)
-                        "incidencia" -> procesarNotificacionIncidencia(remoteMessage.data)
-                        "asistencia" -> procesarNotificacionAsistencia(remoteMessage.data)
-                        "unified_message", "ANNOUNCEMENT", "CHAT", "INCIDENT", "ATTENDANCE", "DAILY_RECORD", "NOTIFICATION", "SYSTEM" -> 
-                            procesarNotificacionUnificada(remoteMessage.data)
-                        else -> {
-                            // Notificación general
-                            mostrarNotificacion(title, body, channelId, notificationId, remoteMessage.data)
-                        }
-                    }
-                }
-            }
+            // Enviar broadcast general para actualizar cualquier UI que esté escuchando
+            sendBroadcast(Intent(ACTION_NUEVA_NOTIFICACION).apply {
+                putExtra("messageType", messageType)
+                putExtra("data", HashMap(data))
+            })
+            
+            Timber.d("⚠️ [FCM] Notificación procesada correctamente: $messageType")
         } catch (e: Exception) {
-            Timber.e(e, "⚠️ [FCM] ERROR al procesar notificación FCM: ${e.message}")
-            
-            // Intentar mostrar algo aunque haya error
-            val title = remoteMessage.notification?.title ?: remoteMessage.data["title"] ?: "Nueva notificación"
-            val body = remoteMessage.notification?.body ?: remoteMessage.data["message"] ?: "Tienes una nueva notificación"
-            mostrarNotificacion(title, body, AppNotificationManager.CHANNEL_ID_GENERAL, System.currentTimeMillis().toInt())
+            Timber.e(e, "⚠️ [FCM] ERROR al procesar notificación: ${e.message}")
         }
     }
     
@@ -358,7 +289,7 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
     /**
      * Procesa notificaciones de solicitudes de vinculación
      */
-    private fun procesarNotificacionSolicitud(data: Map<String, String>) {
+    private fun procesarNotificacionSolicitudVinculacion(data: Map<String, String>) {
         val titulo = data["titulo"] ?: "Nueva solicitud"
         val mensaje = data["mensaje"] ?: "Hay una nueva solicitud pendiente"
         val channelId = AppNotificationManager.CHANNEL_ID_SOLICITUDES
@@ -536,6 +467,145 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
     }
     
     /**
+     * Procesa notificaciones de comunicados oficiales
+     */
+    private fun procesarNotificacionComunicado(data: Map<String, String>) {
+        val titulo = data["title"] ?: data["titulo"] ?: "Nuevo comunicado"
+        val mensaje = data["body"] ?: data["mensaje"] ?: data["content"] ?: "Has recibido un nuevo comunicado oficial"
+        val channelId = AppNotificationManager.CHANNEL_ID_ANNOUNCEMENTS
+        val notificationId = data["messageId"]?.hashCode() ?: System.currentTimeMillis().toInt()
+        
+        Timber.d("⚠️ [FCM] Procesando comunicado: $titulo")
+        
+        // Crear intent para abrir la app en la pantalla de comunicados
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("navigate_to", "comunicados")
+            putExtra("messageId", data["messageId"])
+            
+            // Añadir datos adicionales si están disponibles
+            data.forEach { (key, value) ->
+                putExtra(key, value)
+            }
+        }
+        
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(titulo)
+            .setContentText(mensaje)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(mensaje))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            .build()
+            
+        showNotification(notificationId, notification)
+        
+        // Enviar broadcast para actualizar la UI si la app está abierta
+        sendBroadcast(Intent(ACTION_NUEVO_COMUNICADO).apply {
+            putExtra("messageId", data["messageId"])
+        })
+    }
+    
+    /**
+     * Procesa notificaciones genéricas que no encajan en otros tipos
+     */
+    private fun procesarNotificacionGenerica(data: Map<String, String>) {
+        val titulo = data["title"] ?: data["titulo"] ?: "Nueva notificación"
+        val mensaje = data["body"] ?: data["mensaje"] ?: data["content"] ?: "Tienes una nueva notificación"
+        val channelId = AppNotificationManager.CHANNEL_ID_GENERAL
+        val notificationId = data["messageId"]?.hashCode() ?: System.currentTimeMillis().toInt()
+        
+        Timber.d("⚠️ [FCM] Procesando notificación genérica: $titulo")
+        
+        // Crear intent para abrir la app en la pantalla principal
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            
+            // Añadir datos para posible navegación específica
+            data.forEach { (key, value) ->
+                putExtra(key, value)
+            }
+        }
+        
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(titulo)
+            .setContentText(mensaje)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(mensaje))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            .build()
+            
+        showNotification(notificationId, notification)
+    }
+    
+    /**
+     * Procesa notificaciones de registro diario
+     */
+    private fun procesarNotificacionRegistroDiario(data: Map<String, String>) {
+        val titulo = data["titulo"] ?: "Registro diario"
+        val mensaje = data["mensaje"] ?: "Hay un nuevo registro diario disponible"
+        val channelId = AppNotificationManager.CHANNEL_ID_TAREAS
+        val notificationId = ("registro_${data["alumnoId"]}_${data["fecha"]}").hashCode()
+        
+        mostrarNotificacion(titulo, mensaje, channelId, notificationId, data)
+        
+        // Enviar broadcast para actualizar la UI si la app está abierta
+        sendBroadcast(Intent(ACTION_REGISTRO_DIARIO).apply {
+            putExtra("alumnoId", data["alumnoId"])
+            putExtra("fecha", data["fecha"])
+        })
+    }
+    
+    /**
+     * Método auxiliar para mostrar notificaciones con manejo de permisos
+     */
+    private fun showNotification(notificationId: Int, notification: Notification) {
+        try {
+            with(NotificationManagerCompat.from(this)) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    // En Android 13+ necesitamos verificar permisos en tiempo de ejecución
+                    val permissionGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+                        this@UmeEguneroMessagingService, 
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    
+                    if (permissionGranted) {
+                        notify(notificationId, notification)
+                        Timber.d("⚠️ [FCM] ✅ Notificación mostrada: $notificationId")
+                    } else {
+                        Timber.w("⚠️ [FCM] ⚠️ Permiso de notificaciones denegado en Android 13+")
+                    }
+                } else {
+                    // En versiones anteriores no necesitamos verificar permisos
+                    notify(notificationId, notification)
+                    Timber.d("⚠️ [FCM] ✅ Notificación mostrada: $notificationId")
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "⚠️ [FCM] ❌ Error al mostrar notificación: $notificationId")
+        }
+    }
+    
+    /**
      * Muestra una notificación
      */
     private fun mostrarNotificacion(
@@ -597,25 +667,6 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
     }
     
     /**
-     * Corregir el método que muestra las notificaciones para verificar permisos antes de mostrarlas
-     */
-    private fun showNotification(notificationId: Int, notification: Notification) {
-        val notificationManager = NotificationManagerCompat.from(this)
-        
-        // Verificar si tenemos permiso para mostrar notificaciones
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                notificationManager.notify(notificationId, notification)
-            } else {
-                Timber.w("No se tienen permisos para mostrar notificaciones")
-            }
-        } else {
-            // En versiones anteriores a Android 13 no se necesitaba el permiso explícito
-            notificationManager.notify(notificationId, notification)
-        }
-    }
-    
-    /**
      * Limpia recursos al destruir el servicio
      */
     override fun onDestroy() {
@@ -631,5 +682,8 @@ class UmeEguneroMessagingService : FirebaseMessagingService() {
         const val ACTION_NUEVA_INCIDENCIA = "com.tfg.umeegunero.NUEVA_INCIDENCIA"
         const val ACTION_ASISTENCIA = "com.tfg.umeegunero.ASISTENCIA"
         const val ACTION_NUEVO_MENSAJE_UNIFICADO = "com.tfg.umeegunero.NUEVO_MENSAJE_UNIFICADO"
+        const val ACTION_NUEVA_NOTIFICACION = "com.tfg.umeegunero.NUEVA_NOTIFICACION"
+        const val ACTION_NUEVO_COMUNICADO = "com.tfg.umeegunero.NUEVO_COMUNICADO"
+        const val ACTION_REGISTRO_DIARIO = "com.tfg.umeegunero.REGISTRO_DIARIO"
     }
 } 
