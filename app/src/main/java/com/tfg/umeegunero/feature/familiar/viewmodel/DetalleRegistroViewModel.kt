@@ -64,6 +64,8 @@ class DetalleRegistroViewModel @Inject constructor(
     private var alumnoId: String? = null
     private var registrosCargados: Map<String, RegistroActividad> = emptyMap()
     private var ausenciasCargadas: Map<String, NotificacionAusencia> = emptyMap()
+    // Conjunto para rastrear registros ya marcados como vistos en esta sesión
+    private val registrosMarcadosComoVistos = mutableSetOf<String>()
 
     init {
         // Obtener el ID del registro de la navegación
@@ -230,6 +232,12 @@ class DetalleRegistroViewModel @Inject constructor(
      */
     private suspend fun marcarComoVistoPorFamiliar(registro: RegistroActividad) {
         try {
+            // Verificar si ya hemos marcado este registro como visto en esta sesión
+            if (registrosMarcadosComoVistos.contains(registro.id)) {
+                Timber.d("Registro ${registro.id} ya fue marcado como visto en esta sesión. Omitiendo.")
+                return
+            }
+            
             val usuarioActual = authRepository.getFirebaseUser()
             
             if (usuarioActual != null) {
@@ -248,6 +256,8 @@ class DetalleRegistroViewModel @Inject constructor(
                 
                 if (resultado is Result.Success) {
                     Timber.d("Registro marcado como visto correctamente")
+                    // Añadir al conjunto de registros marcados
+                    registrosMarcadosComoVistos.add(registro.id)
                 } else if (resultado is Result.Error) {
                     Timber.e(resultado.exception, "Error al marcar registro como visto: ${resultado.message}")
                 }

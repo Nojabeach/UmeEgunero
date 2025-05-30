@@ -154,12 +154,54 @@ class NewMessageViewModel @Inject constructor(
                 
                 // Obtener el centro del usuario actual (basado en su primer perfil)
                 val centroId = userProfile.centroId
-                if (centroId.isEmpty()) {
+                
+                // Para familiares, si no tienen centroId, intentar obtenerlo a través de sus hijos
+                var centroIdFinal = centroId
+                if (centroId.isEmpty() && userType == TipoUsuario.FAMILIAR) {
+                    Timber.d("Familiar sin centro asignado directamente, intentando obtenerlo a través de sus hijos")
+                    
+                    // Obtener los alumnos vinculados al familiar
+                    val hijosIds = getAlumnosByFamiliarFromVinculaciones(currentUser.dni)
+                    
+                    if (hijosIds.isNotEmpty()) {
+                        // Tomar el primer alumno y obtener su centro
+                        val alumnoId = hijosIds.first()
+                        val alumnoResult = alumnoRepository.getAlumnoById(alumnoId)
+                        
+                        if (alumnoResult is com.tfg.umeegunero.util.Result.Success) {
+                            val alumno = alumnoResult.data
+                            
+                            // Obtener la clase del alumno para determinar el centro
+                            if (!alumno.claseId.isNullOrEmpty()) {
+                                val claseResult = claseRepository.getClaseById(alumno.claseId)
+                                
+                                if (claseResult is com.tfg.umeegunero.util.Result.Success) {
+                                    val clase = claseResult.data
+                                    
+                                    // Obtener el curso para determinar el centro
+                                    val cursoResult = cursoRepository.getCursoById(clase.cursoId)
+                                    
+                                    if (cursoResult is com.tfg.umeegunero.util.Result.Success) {
+                                        val curso = cursoResult.data
+                                        centroIdFinal = curso.centroId
+                                        Timber.d("Centro obtenido a través del alumno: $centroIdFinal")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Si aún no tenemos centroId, mostrar error
+                    if (centroIdFinal.isEmpty()) {
+                        throw Exception("No se pudo determinar el centro. Contacte con el administrador.")
+                    }
+                } else if (centroId.isEmpty()) {
+                    // Para otros tipos de usuario, sí requerimos el centroId
                     throw Exception("Usuario sin centro asignado")
                 }
                 
                 // 1. Cargar administradores del centro (excepto el usuario actual)
-                val adminResults = loadCentroAdmins(centroId)
+                val adminResults = loadCentroAdmins(centroIdFinal)
                     .filter { it.id != currentUser.dni } // Excluir al usuario actual
                 results.addAll(adminResults)
                 
@@ -169,13 +211,13 @@ class NewMessageViewModel @Inject constructor(
                         // Admin ve a todos los profesores y familiares de su centro, organizados por curso y clase
                         try {
                             // Cargar cursos del centro
-                            val cursosResult = cursoRepository.getCursosPorCentro(centroId)
+                            val cursosResult = cursoRepository.getCursosPorCentro(centroIdFinal)
                             
                             if (cursosResult is com.tfg.umeegunero.util.Result.Success<List<Curso>>) {
                                 val cursos = cursosResult.data
                                 
                                 // Primero añadir todos los profesores (excepto el admin actual si es profesor)
-                                val profesoresResult = usuarioRepository.getUsuariosByCentroId(centroId)
+                                val profesoresResult = usuarioRepository.getUsuariosByCentroId(centroIdFinal)
                                 if (profesoresResult is com.tfg.umeegunero.util.Result.Success) {
                                     // Filtrar por tipo de usuario PROFESOR y excluir al usuario actual
                                     val profesores = profesoresResult.data
@@ -380,25 +422,50 @@ class NewMessageViewModel @Inject constructor(
                                 }
                             }
                         } catch (e: Exception) {
-                            Timber.e(e, "Error al cargar usuarios del centro: $centroId")
+                            Timber.e(e, "Error al cargar usuarios del centro: $centroIdFinal")
                         }
                     }
                     TipoUsuario.PROFESOR -> {
-                        // Obtener las clases donde el profesor da clases
-                        val clasesProfesor = claseRepository.getClasesByProfesor(currentUser.dni)
-                        if (clasesProfesor is com.tfg.umeegunero.util.Result.Success) {
-                            val clases = clasesProfesor.data
+                        // Profesor ve a otros profesores del mismo centro y padres de sus alumnos
+                        try {
+                            // 1. Cargar clases asignadas al profesor
+                            val clasesAsignadas = mutableListOf<String>()
                             
-                            if (clases.isNotEmpty()) {
-                                // Profesores del mismo curso
-                                val cursosIds = clases.map { it.cursoId }.distinct()
-                                val profesoresResults = loadProfesoresByCursos(cursosIds, currentUser.dni)
-                                results.addAll(profesoresResults)
-                                
-                                // Padres de los alumnos de las clases
-                                val padresResults = loadPadresByClases(clases.map { it.id })
-                                results.addAll(padresResults)
+                            // Buscar clases donde el profesor es titular
+                            val clasesTitularResult = claseRepository.getClasesByProfesorId(currentUser.dni)
+                            if (clasesTitularResult is com.tfg.umeegunero.util.Result.Success) {
+                                clasesAsignadas.addAll(clasesTitularResult.data.map { it.id })
                             }
+                            
+                            // Si no hay clases asignadas como titular, intentar buscar por centro
+                            if (clasesAsignadas.isEmpty()) {
+                                val clasesDelCentroResult = claseRepository.getClasesByCentro(centroIdFinal)
+                                if (clasesDelCentroResult is com.tfg.umeegunero.util.Result.Success) {
+                                    // Filtrar solo las clases que podrían estar relacionadas con el profesor
+                                    // (esto es una aproximación, idealmente tendríamos una tabla de asignaciones)
+                                    clasesAsignadas.addAll(clasesDelCentroResult.data.map { it.id })
+                                }
+                            }
+                            
+                            // 2. Obtener cursos de esas clases para cargar otros profesores
+                            val cursosIds = mutableSetOf<String>()
+                            
+                            for (claseId in clasesAsignadas) {
+                                val claseResult = claseRepository.getClaseById(claseId)
+                                if (claseResult is com.tfg.umeegunero.util.Result.Success) {
+                                    cursosIds.add(claseResult.data.cursoId)
+                                }
+                            }
+                            
+                            // 3. Cargar profesores de esos cursos (excluyendo al profesor actual)
+                            val profesoresResults = loadProfesoresByCursos(cursosIds.toList(), currentUser.dni)
+                            results.addAll(profesoresResults)
+                            
+                            // 4. Cargar padres de alumnos de las clases asignadas
+                            val padresResults = loadPadresByClases(clasesAsignadas)
+                            results.addAll(padresResults)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al cargar contactos para profesor: ${e.message}")
                         }
                     }
                     TipoUsuario.FAMILIAR -> {

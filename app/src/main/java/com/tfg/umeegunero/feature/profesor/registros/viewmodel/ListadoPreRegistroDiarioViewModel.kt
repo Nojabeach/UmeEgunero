@@ -1335,4 +1335,47 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * Actualiza manualmente el estado de lectura del registro diario para un alumno
+     * 
+     * @param alumnoId ID del alumno
+     * @param leido Estado de lectura (true = leído, false = no leído)
+     */
+    fun actualizarEstadoLecturaAlumno(alumnoId: String, leido: Boolean = true) {
+        viewModelScope.launch {
+            try {
+                Timber.d("Solicitando actualización manual del estado de lectura para alumno: $alumnoId a $leido")
+                
+                val resultado = registroDiarioRepository.actualizarEstadoLecturaRegistroDiario(alumnoId, leido)
+                
+                if (resultado is Result.Success) {
+                    Timber.d("Estado de lectura actualizado correctamente para alumno: $alumnoId")
+                    
+                    // Actualizar la lista de alumnos en memoria
+                    val alumnosActualizados = _uiState.value.alumnos.map { alumno ->
+                        if (alumno.id == alumnoId) {
+                            alumno.copy(registroDiarioLeido = leido)
+                        } else {
+                            alumno
+                        }
+                    }
+                    
+                    _uiState.update { 
+                        it.copy(
+                            alumnos = alumnosActualizados,
+                            alumnosFiltrados = alumnosActualizados,
+                            mensajeExito = "Estado de lectura actualizado"
+                        )
+                    }
+                } else {
+                    Timber.e("Error al actualizar estado de lectura: ${(resultado as Result.Error).message}")
+                    _uiState.update { it.copy(error = "Error al actualizar estado de lectura") }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al actualizar estado de lectura: ${e.message}")
+                _uiState.update { it.copy(error = "Error al actualizar estado de lectura: ${e.message}") }
+            }
+        }
+    }
 } 

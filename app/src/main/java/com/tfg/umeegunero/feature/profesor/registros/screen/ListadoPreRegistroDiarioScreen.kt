@@ -395,7 +395,8 @@ fun ListadoPreRegistroDiarioScreen(
                         },
                         tieneRegistro = uiState.alumnosConRegistro.contains(alumno.id),
                         onEliminarRegistro = { id -> viewModel.eliminarRegistro(id) },
-                        ausenciaJustificada = uiState.alumnosConAusenciaJustificada.contains(alumno.id)
+                        ausenciaJustificada = uiState.alumnosConAusenciaJustificada.contains(alumno.id),
+                        onActualizarEstadoLectura = { id, nuevoEstado -> viewModel.actualizarEstadoLecturaAlumno(id, nuevoEstado) }
                     )
                 }
             }
@@ -572,10 +573,12 @@ fun AlumnoSelectionChip(
     onSelectionChanged: (Boolean) -> Unit,
     tieneRegistro: Boolean,
     onEliminarRegistro: (String) -> Unit,
-    ausenciaJustificada: Boolean = false
+    ausenciaJustificada: Boolean = false,
+    onActualizarEstadoLectura: ((String, Boolean) -> Unit)? = null
 ) {
     val haptic = LocalHapticFeedback.current
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showLecturaDialog by remember { mutableStateOf(false) }
     
     // Log para depuración del estado de lectura
     LaunchedEffect(alumno.id, tieneRegistro, alumno.registroDiarioLeido) {
@@ -605,6 +608,32 @@ fun AlumnoSelectionChip(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+    
+    // Diálogo para actualizar estado de lectura
+    if (showLecturaDialog && onActualizarEstadoLectura != null) {
+        AlertDialog(
+            onDismissRequest = { showLecturaDialog = false },
+            title = { Text("Actualizar estado de lectura") },
+            text = { 
+                Text("¿Quieres marcar el registro de ${alumno.nombre} como ${if (alumno.registroDiarioLeido == true) "no leído" else "leído"}?") 
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLecturaDialog = false
+                        onActualizarEstadoLectura(alumno.id, !(alumno.registroDiarioLeido ?: false))
+                    }
+                ) {
+                    Text("Actualizar", color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLecturaDialog = false }) {
                     Text("Cancelar")
                 }
             }
@@ -721,7 +750,7 @@ fun AlumnoSelectionChip(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         
-                        // Indicador compacto de estado de lectura
+                        // Indicador compacto de estado de lectura con opción de actualización
                         Icon(
                             imageVector = if (alumno.registroDiarioLeido == true) 
                                 Icons.Default.Visibility else Icons.Default.VisibilityOff,
@@ -729,7 +758,14 @@ fun AlumnoSelectionChip(
                                 "Visto" else "No visto",
                             tint = if (alumno.registroDiarioLeido == true) 
                                 MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier
+                                .size(14.dp)
+                                .clickable(enabled = onActualizarEstadoLectura != null) {
+                                    if (onActualizarEstadoLectura != null) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        showLecturaDialog = true
+                                    }
+                                }
                         )
                     }
                 } else if (ausenciaJustificada) {
