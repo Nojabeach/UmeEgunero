@@ -446,8 +446,15 @@ fun ProfesorDashboardScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showPerfilDialog = false
-                        navController.navigate(AppScreens.Perfil.route)
+                        try {
+                            showPerfilDialog = false
+                            // Navegar directamente a la pantalla de perfil
+                            navController.navigate(AppScreens.Perfil.createRoute(false))
+                            Timber.d("Navegando a perfil del profesor")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al navegar al perfil: ${e.message}")
+                            viewModel.showSnackbarMessage("Error al navegar al perfil")
+                        }
                     }
                 ) {
                     Text("Sí")

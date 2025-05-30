@@ -121,7 +121,7 @@ class PerfilViewModel @Inject constructor(
      */
     fun cargarUsuario() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
             
             try {
                 // Obtener usuario actual directamente desde AuthRepository
@@ -133,8 +133,28 @@ class PerfilViewModel @Inject constructor(
                     // Actualizar directamente el perfil con los datos que tenemos
                     actualizarPerfil(usuarioActual)
                 } else {
-                    _uiState.update { it.copy(isLoading = false, error = "No se pudo obtener el usuario actual") }
-                    Timber.e("No se pudo obtener el usuario actual")
+                    // Intentar obtener el usuario a través del flujo alternativo
+                    usuarioRepository.getUsuarioActual().collect { result ->
+                        when (result) {
+                            is Result.Success -> {
+                                val usuario = result.data
+                                if (usuario != null) {
+                                    Timber.d("Usuario obtenido desde flujo alternativo: ${usuario.nombre} ${usuario.apellidos}")
+                                    actualizarPerfil(usuario)
+                                } else {
+                                    _uiState.update { it.copy(isLoading = false, error = "No se pudo obtener el usuario actual") }
+                                    Timber.e("El flujo alternativo devolvió un usuario nulo")
+                                }
+                            }
+                            is Result.Error -> {
+                                _uiState.update { it.copy(isLoading = false, error = "Error al cargar usuario: ${result.exception?.message}") }
+                                Timber.e(result.exception, "Error en flujo alternativo para obtener usuario")
+                            }
+                            else -> {
+                                _uiState.update { it.copy(isLoading = false) }
+                            }
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = "Error al cargar usuario: ${e.message}") }

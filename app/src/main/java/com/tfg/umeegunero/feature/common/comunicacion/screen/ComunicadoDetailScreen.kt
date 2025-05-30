@@ -46,6 +46,15 @@ fun ComunicadoDetailScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     
+    // Marcar automáticamente como leído cuando se abre el comunicado
+    LaunchedEffect(uiState.comunicado) {
+        uiState.comunicado?.let { comunicado ->
+            if (!comunicado.isRead) {
+                viewModel.confirmRead()
+            }
+        }
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(

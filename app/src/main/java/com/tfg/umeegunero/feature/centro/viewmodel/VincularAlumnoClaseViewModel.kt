@@ -332,24 +332,37 @@ class VincularAlumnoClaseViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             
             try {
-                // 1. Actualizar alumnoIds en la clase
+                Timber.d("Iniciando proceso de asignación para alumno ${alumno.dni} a clase ${clase.id}")
+                
+                // 1. Primero asignamos el alumno a la clase (actualizar alumnosIds en la clase)
                 val resultClase = claseRepository.asignarAlumnoAClase(clase.id, alumno.dni)
                 
-                // 2. Actualizar la clase en el alumno
-                val resultAlumno = if (resultClase is Result.Success) {
-                    // Actualizar la clase en el alumno usando el nuevo método
-                    alumnoRepository.asignarClaseAAlumno(alumno.dni, clase.id)
-                } else {
-                    resultClase
+                if (resultClase is Result.Error) {
+                    Timber.e(resultClase.exception, "Error al asignar a la clase: ${resultClase.message}")
+                    _uiState.update { it.copy(
+                        error = resultClase.message ?: "Error al asignar alumno a la clase",
+                        showAsignarDialog = false,
+                        isLoading = false
+                    ) }
+                    return@launch
                 }
+                
+                Timber.d("Alumno correctamente asignado a la clase, procediendo a actualizar alumno")
+                
+                // 2. Ahora actualizamos el alumno con la referencia a la clase
+                val resultAlumno = alumnoRepository.asignarClaseAAlumno(alumno.dni, clase.id)
                 
                 when (resultAlumno) {
                     is Result.Success -> {
+                        Timber.d("Asignación completa exitosa para alumno ${alumno.dni} a clase ${clase.id}")
                         _uiState.update { it.copy(
                             mensaje = "Alumno asignado correctamente a la clase",
                             showAsignarDialog = false,
                             showSuccessMessage = true
                         ) }
+                        
+                        // Esperar un momento para que Firestore propague los cambios
+                        delay(500)
                         
                         // Recargar los datos de la clase
                         val claseActual = _uiState.value.claseSeleccionada
@@ -419,8 +432,10 @@ class VincularAlumnoClaseViewModel @Inject constructor(
                             showSuccessMessage = true
                         ) }
                         
+                        // Esperar un momento para que Firestore propague los cambios
+                        delay(500)
+                        
                         // Recargar los datos de la clase para actualizar las listas
-                        // Eliminado delay innecesario - Firestore es consistente
                         val claseActual = _uiState.value.claseSeleccionada
                         if (claseActual != null) {
                             seleccionarClase(claseActual)
@@ -442,6 +457,52 @@ class VincularAlumnoClaseViewModel @Inject constructor(
                 _uiState.update { it.copy(
                     error = "Error al desasignar alumno: ${e.message}",
                     showConfirmarDesasignacionDialog = false
+                ) }
+            } finally {
+                _uiState.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+    
+    /**
+     * Sincroniza los alumnos con sus clases
+     * Este método ejecuta la migración de alumnosIds en todas las clases
+     */
+    fun sincronizarAlumnosConClases() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, mensaje = null, error = null) }
+            
+            try {
+                Timber.d("Iniciando sincronización de alumnos con clases")
+                
+                val result = claseRepository.migrarAlumnosIdsEnClases()
+                
+                when (result) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(
+                            mensaje = "Sincronización completada correctamente",
+                            showSuccessMessage = true
+                        ) }
+                        
+                        // Recargar los datos de la clase actual si hay una seleccionada
+                        val claseActual = _uiState.value.claseSeleccionada
+                        if (claseActual != null) {
+                            seleccionarClase(claseActual)
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(
+                            error = "Error en la sincronización: ${result.message ?: result.exception?.message ?: "Error desconocido"}"
+                        ) }
+                    }
+                    is Result.Loading<*> -> {
+                        // Ya se está manejando el estado de carga
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error general en la sincronización de alumnos con clases")
+                _uiState.update { it.copy(
+                    error = "Error en la sincronización: ${e.message}"
                 ) }
             } finally {
                 _uiState.update { it.copy(isLoading = false) }

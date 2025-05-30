@@ -709,7 +709,7 @@ class ClaseRepositoryImpl @Inject constructor(
                         }
                     }
                     
-                    // Buscar por claseId (campo legacy)
+                    // Buscar por claseId (campo principal)
                     val queryClaseId = firestore.collection("alumnos")
                         .whereEqualTo("claseId", claseId)
                         .get()
@@ -719,6 +719,7 @@ class ClaseRepositoryImpl @Inject constructor(
                         val dni = alumnoDoc.getString("dni")
                         if (!dni.isNullOrBlank()) {
                             alumnosConEstaClase.add(dni)
+                            Timber.d("Encontrado alumno con DNI $dni que tiene claseId=$claseId")
                         }
                     }
                     

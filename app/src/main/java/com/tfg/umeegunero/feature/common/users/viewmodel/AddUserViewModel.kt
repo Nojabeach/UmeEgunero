@@ -950,7 +950,7 @@ class AddUserViewModel @Inject constructor(
             // Actualizar UI
             _uiState.update { it.copy(
                 isLoading = false,
-                success = true,
+                success = true, // Solo establecemos success = true, sin mostrar diálogo
                 error = null
             )}
         } catch (e: Exception) {
@@ -1164,7 +1164,7 @@ class AddUserViewModel @Inject constructor(
             // Actualizar UI
             _uiState.update { it.copy(
                 isLoading = false,
-                success = true,
+                success = true, // Solo establecemos success = true, sin mostrar diálogo
                 error = null
             )}
         } catch (e: Exception) {
@@ -1372,7 +1372,7 @@ class AddUserViewModel @Inject constructor(
 
     private suspend fun updateExistingUser(state: AddUserUiState) {
         try {
-            Timber.d("⏳ Actualizando usuario existente con DNI: ${state.dni}")
+            Timber.d("⏳ Actualizando usuario existente. Tipo: ${state.tipoUsuario}")
             
             when (state.tipoUsuario) {
                 TipoUsuario.ALUMNO -> updateExistingAlumno(state)
@@ -1392,7 +1392,7 @@ class AddUserViewModel @Inject constructor(
      */
     private suspend fun updateExistingAlumno(state: AddUserUiState) {
         try {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true) }
             Timber.d("Actualizando alumno existente con DNI: ${state.dni}")
             
             // Crear objeto alumno con los datos actualizados
@@ -1443,8 +1443,7 @@ class AddUserViewModel @Inject constructor(
             // Actualizar UI
             _uiState.update { it.copy(
                 isLoading = false,
-                success = true,
-                showSuccessDialog = true,
+                success = true, // Solo establecemos success = true, sin mostrar diálogo
                 error = null
             )}
         } catch (e: Exception) {
@@ -1461,7 +1460,7 @@ class AddUserViewModel @Inject constructor(
      */
     private suspend fun updateExistingRegularUser(state: AddUserUiState) {
         try {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true) }
             Timber.d("Actualizando usuario regular existente con DNI: ${state.dni}")
             
             // Obtener el usuario actual para mantener datos que no se editan
@@ -1510,8 +1509,7 @@ class AddUserViewModel @Inject constructor(
             // Actualizar UI
             _uiState.update { it.copy(
                 isLoading = false,
-                success = true,
-                showSuccessDialog = true,
+                success = true, // Solo establecemos success = true, sin mostrar diálogo
                 error = null
             )}
         } catch (e: Exception) {

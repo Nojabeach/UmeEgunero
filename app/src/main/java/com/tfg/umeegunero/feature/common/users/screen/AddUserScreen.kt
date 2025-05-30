@@ -935,17 +935,6 @@ fun AddUserScreenContent(
                     )
                 }
                 
-                // Mensaje de éxito
-                if (uiState.showSuccessDialog) {
-                    SuccessDialog(
-                        message = if (uiState.isEditMode) "Usuario actualizado correctamente" else "Usuario creado correctamente",
-                        onConfirm = {
-                            viewModel.dismissSuccessDialog()
-                            navController.popBackStack()
-                        }
-                    )
-                }
-                
                 Spacer(modifier = Modifier.height(64.dp)) // Espacio para el botón flotante
             }
         }
@@ -1037,45 +1026,6 @@ fun TipoUsuarioSelector(
             }
         }
     }
-}
-
-/**
- * Diálogo de confirmación de éxito
- */
-@Composable
-fun SuccessDialog(
-    message: String,
-    onConfirm: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = { },
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Operación completada")
-            }
-        },
-        text = {
-            Text(text = message)
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Text("Aceptar")
-            }
-        }
-    )
 }
 
 /**

@@ -1219,9 +1219,10 @@ fun Navigation(
             )
         ) { backStackEntry ->
             val comunicadoId = backStackEntry.arguments?.getString("comunicadoId") ?: ""
-            ComunicadoDetailScreen(
-                comunicadoId = comunicadoId,
-                onBack = { navController.popBackStack() }
+            MessageDetailScreen(
+                messageId = comunicadoId,
+                onBack = { navController.popBackStack() },
+                onNavigateToConversation = { /* No aplica para comunicados */ }
             )
         }
 

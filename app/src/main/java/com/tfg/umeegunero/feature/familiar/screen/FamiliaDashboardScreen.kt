@@ -999,17 +999,9 @@ fun FamiliaDashboardScreen(
                     IconButton(onClick = { 
                         try {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            // Obtener el DNI del familiar actual
-                            val familiar = uiState.familiar
-                            if (familiar != null) {
-                                navController.navigate(AppScreens.Perfil.createRoute(false))
-                                Timber.d("Navegando a perfil del familiar: ${familiar.id}")
-                            } else {
-                                Timber.e("No se pudo navegar al perfil: familiar es nulo")
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("No se pudo acceder al perfil: información de usuario no disponible")
-                                }
-                            }
+                            // Navegar directamente sin intentar obtener el DNI del familiar
+                            navController.navigate(AppScreens.Perfil.createRoute(false))
+                            Timber.d("Navegando a perfil del familiar")
                         } catch (e: Exception) {
                             Timber.e(e, "Error al navegar a Perfil: ${e.message}")
                             scope.launch {
@@ -1019,7 +1011,8 @@ fun FamiliaDashboardScreen(
                     }) {
                         Icon(
                             imageVector = Icons.Default.Person,
-                            contentDescription = "Perfil"
+                            contentDescription = "Perfil",
+                            tint = Color.White
                         )
                     }
                     

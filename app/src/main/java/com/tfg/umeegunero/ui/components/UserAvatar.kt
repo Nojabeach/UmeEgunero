@@ -28,7 +28,7 @@ import coil.size.Size
 import timber.log.Timber
 
 // URL fija para administradores
-private const val ADMIN_AVATAR_URL = "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/AdminAvatar.png?alt=media"
+private const val ADMIN_AVATAR_URL = "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40AdminAvatar.png?alt=media&token=3b72bee4-d25e-4ca3-8e57-0d26476e825c"
 
 /**
  * Componente que muestra un avatar de usuario, ya sea con imagen o iniciales.

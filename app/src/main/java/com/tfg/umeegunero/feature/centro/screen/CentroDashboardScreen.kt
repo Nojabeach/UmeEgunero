@@ -576,19 +576,18 @@ fun CentroDashboardScreen(
             title = { Text("Perfil") },
             text = { Text("¿Quieres ir a tu perfil de usuario?") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                TextButton(onClick = {
+                    try {
                         showPerfilDialog = false
-                        try {
-                            navController.navigate(AppScreens.Perfil.createRoute(false))
-                        } catch (e: Exception) {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Error al navegar al perfil: ${e.message}")
-                            }
+                        // Navegar directamente sin lógica adicional
+                        navController.navigate(AppScreens.Perfil.createRoute(false))
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al navegar al perfil: ${e.message}")
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Error al navegar al perfil")
                         }
                     }
-                ) {
+                }) {
                     Text("Sí")
                 }
             },

@@ -61,6 +61,9 @@ import com.tfg.umeegunero.feature.admin.viewmodel.AdminDashboardViewModel
 import com.tfg.umeegunero.feature.common.config.screen.PerfilConfiguracion
 import com.tfg.umeegunero.feature.admin.screen.components.DashboardItem
 import androidx.compose.material3.HorizontalDivider
+import timber.log.Timber
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.rememberCoroutineScope
 
 /**
  * Dashboard del administrador de la aplicación
@@ -116,6 +119,11 @@ fun AdminDashboardScreen(
     var showFAQDialog by remember { mutableStateOf(false) }
     var showTerminosDialog by remember { mutableStateOf(false) }
     var showEmailTestScreen by remember { mutableStateOf(false) }
+
+    // Añadimos las variables para manejar errores y feedback háptico
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // En la sección de gestión de usuarios, solo mostrar la opción si el usuario es ADMIN_APP
     val puedeGestionarUsuarios = uiState.currentUser?.perfiles?.any { it.tipo.name == "ADMIN_APP" } == true
@@ -346,7 +354,18 @@ fun AdminDashboardScreen(
                     ) {
                         Icon(Icons.Default.Email, contentDescription = "Probar Email")
                     }
-                    IconButton(onClick = onNavigateToProfile) {
+                    IconButton(onClick = { 
+                        try {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onNavigateToProfile()
+                            Timber.d("Navegando a perfil del administrador")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al navegar a Perfil: ${e.message}")
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al abrir perfil: ${e.message}")
+                            }
+                        }
+                    }) {
                         Icon(Icons.Default.Person, contentDescription = "Editar perfil")
                     }
                     IconButton(onClick = { showLogoutDialog = true }) {
@@ -360,6 +379,7 @@ fun AdminDashboardScreen(
                 )
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = AdminColor.copy(alpha = 0.05f)
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {

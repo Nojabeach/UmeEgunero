@@ -200,11 +200,6 @@ fun UnifiedInboxScreen(
             context.registerReceiver(receiver, filter)
         }
         
-        // NO actualizar aquí para evitar carga duplicada
-        // scope.launch {
-        //     viewModel.loadMessages()
-        // }
-        
         // Limpiar al destruir
         onDispose {
             context.unregisterReceiver(receiver)
@@ -384,7 +379,6 @@ fun UnifiedInboxScreen(
                     MessageList(
                         messages = messagesForDisplay,
                         onMessageClick = { message ->
-                            viewModel.markAsRead(message.id)
                             onNavigateToMessage(message.id)
                         },
                         onDeleteClick = { message ->

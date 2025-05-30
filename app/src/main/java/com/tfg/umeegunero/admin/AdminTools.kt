@@ -25,7 +25,7 @@ class AdminTools(private val context: Context) {
     private val storageRef = storage.reference
     
     // URL fija para el avatar de administrador
-    private val ADMIN_AVATAR_URL = "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/AdminAvatar.png?alt=media"
+    private val ADMIN_AVATAR_URL = "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40AdminAvatar.png?alt=media&token=3b72bee4-d25e-4ca3-8e57-0d26476e825c"
 
     /**
      * Sube el avatar del administrador a Firebase Storage desde los assets

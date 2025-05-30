@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.RemoveCircle
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -72,14 +73,29 @@ fun VincularAlumnoClaseScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    // Inicializar con claseId o centroId si está disponible
-    LaunchedEffect(claseId, centroId) {
-        if (!claseId.isNullOrEmpty()) {
-            // Inicializar con clase específica
-            viewModel.inicializarConClase(claseId)
-        } else if (!centroId.isNullOrEmpty()) {
-            // Si no hay claseId, pero hay centroId, inicializar con centro
+    // Efecto para inicializar con parámetros si se proporcionan
+    LaunchedEffect(centroId, claseId) {
+        if (centroId != null) {
             viewModel.seleccionarCentro(centroId)
+        }
+        
+        if (claseId != null && centroId != null) {
+            // Cargar cursos primero
+            val cursos = viewModel.uiState.value.cursos
+            if (cursos.isNotEmpty()) {
+                // Buscar la clase y su curso
+                val clases = viewModel.uiState.value.clases
+                val clase = clases.find { it.id == claseId }
+                if (clase != null) {
+                    // Buscar el curso de la clase
+                    val curso = cursos.find { it.id == clase.cursoId }
+                    if (curso != null) {
+                        // Seleccionar curso y luego clase
+                        viewModel.seleccionarCurso(curso)
+                        viewModel.seleccionarClase(clase)
+                    }
+                }
+            }
         }
     }
     
@@ -112,37 +128,21 @@ fun VincularAlumnoClaseScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        // Recargar datos
-                        scope.launch {
-                            if (uiState.claseSeleccionada != null) {
-                                viewModel.seleccionarClase(uiState.claseSeleccionada!!)
-                                if (uiState.error == null) {
-                                    viewModel.limpiarMensajeExito()
-                                    viewModel.limpiarError()
-                                    // Eliminado delay innecesario
-                                    viewModel.mostrarMensaje("Datos recargados correctamente")
-                                }
-                            } else if (uiState.cursoSeleccionado != null) {
-                                viewModel.seleccionarCurso(uiState.cursoSeleccionado!!)
-                            } else if (uiState.centroId.isNotEmpty()) {
-                                viewModel.seleccionarCentro(uiState.centroId)
-                            } else if (uiState.isAdminApp) {
-                                // Esta función se implementará en el ViewModel
-                                // viewModel.cargarTodosCentros()
-                            }
-                        }
-                    }) {
+                    // Botón de sincronización
+                    IconButton(
+                        onClick = { viewModel.sincronizarAlumnosConClases() }
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Recargar datos",
-                            modifier = Modifier.size(size = 32.dp)
+                            imageVector = Icons.Default.Sync,
+                            contentDescription = "Sincronizar alumnos y clases"
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         }
@@ -1480,13 +1480,13 @@ fun AlumnoItem(
             )
         
             // Etiqueta de vinculado en su propia línea
-        if (estaVinculado) {
+            if (estaVinculado) {
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Box(
                     modifier = Modifier
                         .background(
-                            color = MaterialTheme.colorScheme.errorContainer,
+                            color = MaterialTheme.colorScheme.primaryContainer,
                             shape = RoundedCornerShape(4.dp)
                         )
                         .padding(horizontal = 6.dp, vertical = 2.dp)
@@ -1494,40 +1494,45 @@ fun AlumnoItem(
                     Text(
                         text = "Vinculado",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium
-                )
-            }
+                    )
+                }
             }
         }
         
         Spacer(modifier = Modifier.width(8.dp))
         
         // Botón de acción (vincular o desvincular)
-        FilledIconButton(
+        Button(
             onClick = if (estaVinculado) onDesvincularClick else onVincularClick,
-            colors = IconButtonDefaults.filledIconButtonColors(
+            colors = ButtonDefaults.buttonColors(
                 containerColor = if (estaVinculado) 
                     MaterialTheme.colorScheme.errorContainer
                 else 
-                    MaterialTheme.colorScheme.primaryContainer
+                    MaterialTheme.colorScheme.primaryContainer,
+                contentColor = if (estaVinculado) 
+                    MaterialTheme.colorScheme.error
+                else 
+                    MaterialTheme.colorScheme.primary
             ),
-            modifier = Modifier.size(42.dp)
+            modifier = Modifier
+                .width(120.dp)
+                .height(40.dp)
         ) {
-                Icon(
+            Icon(
                 imageVector = if (estaVinculado) 
                     Icons.Default.RemoveCircle
                 else 
                     Icons.Default.AddCircle,
-                contentDescription = if (estaVinculado) 
-                    "Desvincular alumno" 
-                else 
-                    "Vincular alumno",
-                tint = if (estaVinculado) 
-                    MaterialTheme.colorScheme.error
-                else 
-                    MaterialTheme.colorScheme.primary
-                )
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = if (estaVinculado) "Desvincular" else "Vincular",
+                style = MaterialTheme.typography.labelMedium
+            )
         }
     }
 } 

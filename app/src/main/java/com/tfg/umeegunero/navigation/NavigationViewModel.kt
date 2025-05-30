@@ -71,43 +71,11 @@ class NavigationViewModel @Inject constructor() : ViewModel() {
     suspend fun handleNotificationNavigation(messageId: String, messageType: String?) {
         Timber.d("Manejando navegación desde notificación - messageId: $messageId, tipo: $messageType")
         
-        when (messageType) {
-            MessageType.CHAT.name -> {
-                // Para mensajes de chat, navegar a la conversación
-                _navigationCommands.emit(
-                    NavigationCommand.NavigateTo(
-                        AppScreens.MessageDetail.createRoute(messageId)
-                    )
-                )
-            }
-            MessageType.ANNOUNCEMENT.name -> {
-                // Para comunicados, navegar al detalle del comunicado
-                _navigationCommands.emit(
-                    NavigationCommand.NavigateTo(
-                        AppScreens.DetalleComunicado.createRoute(messageId)
-                    )
-                )
-            }
-            MessageType.INCIDENT.name, 
-            MessageType.ATTENDANCE.name,
-            MessageType.DAILY_RECORD.name,
-            MessageType.NOTIFICATION.name,
-            MessageType.SYSTEM.name -> {
-                // Para otros tipos, navegar al detalle del mensaje unificado
-                _navigationCommands.emit(
-                    NavigationCommand.NavigateTo(
-                        AppScreens.MessageDetail.createRoute(messageId)
-                    )
-                )
-            }
-            else -> {
-                // Si no se especifica el tipo o no se reconoce, ir a la bandeja de entrada unificada
-                _navigationCommands.emit(
-                    NavigationCommand.NavigateTo(
-                        AppScreens.UnifiedInbox.route
-                    )
-                )
-            }
-        }
+        // Para todos los tipos de mensajes, navegar al detalle del mensaje unificado
+        _navigationCommands.emit(
+            NavigationCommand.NavigateTo(
+                AppScreens.MessageDetail.createRoute(messageId)
+            )
+        )
     }
 } 

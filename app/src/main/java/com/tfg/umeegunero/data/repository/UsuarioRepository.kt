@@ -2573,7 +2573,7 @@ open class UsuarioRepository @Inject constructor(
         return defaultAvatarsManager?.obtenerAvatarPredeterminado(tipoUsuario) ?: run {
             // URL por defecto para cuando no tenemos el manager (por ejemplo en mock)
             when (tipoUsuario) {
-                TipoUsuario.ADMIN_APP -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/AdminAvatar.png?alt=media"
+                TipoUsuario.ADMIN_APP -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40AdminAvatar.png?alt=media&token=3b72bee4-d25e-4ca3-8e57-0d26476e825c"
                 TipoUsuario.ADMIN_CENTRO -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/centro.png?alt=media&token=ac002e24-dbd1-41a5-8c26-4959c714c649"
                 TipoUsuario.PROFESOR -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/profesor.png?alt=media&token=89b1bae9-dddc-476f-b6dc-184ec0b55eaf"
                 TipoUsuario.FAMILIAR -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/familiar.png?alt=media&token=0d69c88f-4eb1-4e94-a20a-624d91c38379"
@@ -2651,6 +2651,44 @@ open class UsuarioRepository @Inject constructor(
             // Usar el DNI del alumno como ID del documento en la colección 'alumnos'
             alumnosCollection.document(alumnoCompleto.dni).set(alumnoCompleto).await()
             Timber.d("✅ Alumno con DNI ${alumnoCompleto.dni} guardado exitosamente con avatar: $avatarUrl")
+            
+            // Si el alumno tiene una clase asignada, actualizar el array alumnosIds en la clase
+            if (alumnoCompleto.claseId.isNotBlank()) {
+                try {
+                    Timber.d("📝 Actualizando alumnosIds en clase ${alumnoCompleto.claseId}")
+                    
+                    // Obtener el documento de la clase
+                    val claseDoc = firestore.collection("clases").document(alumnoCompleto.claseId).get().await()
+                    
+                    if (claseDoc.exists()) {
+                        // Obtener el array actual de alumnosIds o crear uno nuevo si no existe
+                        val alumnosIdsActuales = when (val alumnosIdsAny = claseDoc.get("alumnosIds")) {
+                            is List<*> -> alumnosIdsAny.filterIsInstance<String>().toMutableList()
+                            else -> mutableListOf()
+                        }
+                        
+                        // Verificar si el alumno ya está en la lista
+                        if (!alumnosIdsActuales.contains(alumnoCompleto.dni)) {
+                            // Añadir el alumno a la lista
+                            alumnosIdsActuales.add(alumnoCompleto.dni)
+                            
+                            // Actualizar el documento de la clase
+                            firestore.collection("clases").document(alumnoCompleto.claseId)
+                                .update("alumnosIds", alumnosIdsActuales)
+                                .await()
+                                
+                            Timber.d("✅ Alumno ${alumnoCompleto.dni} añadido a alumnosIds en clase ${alumnoCompleto.claseId}")
+                        } else {
+                            Timber.d("⚠️ El alumno ${alumnoCompleto.dni} ya estaba en alumnosIds de la clase ${alumnoCompleto.claseId}")
+                        }
+                    } else {
+                        Timber.e("❌ La clase con ID ${alumnoCompleto.claseId} no existe")
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "❌ Error al actualizar alumnosIds en clase: ${e.message}")
+                    // No interrumpir el flujo principal por este error secundario
+                }
+            }
             
             // También crear un documento en la colección "usuarios" con el perfil de alumno
             try {
@@ -2890,7 +2928,7 @@ open class UsuarioRepository @Inject constructor(
         return defaultAvatarsManager?.obtenerAvatarPredeterminado(tipoUsuario) ?: run {
             // URL por defecto para cuando no tenemos el manager (por ejemplo en mock)
             when (tipoUsuario) {
-                TipoUsuario.ADMIN_APP -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/AdminAvatar.png?alt=media"
+                TipoUsuario.ADMIN_APP -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/avatares%2F%40AdminAvatar.png?alt=media&token=3b72bee4-d25e-4ca3-8e57-0d26476e825c"
                 TipoUsuario.ADMIN_CENTRO -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/centro.png?alt=media&token=ac002e24-dbd1-41a5-8c26-4959c714c649"
                 TipoUsuario.PROFESOR -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/profesor.png?alt=media&token=89b1bae9-dddc-476f-b6dc-184ec0b55eaf"
                 TipoUsuario.FAMILIAR -> "https://firebasestorage.googleapis.com/v0/b/umeegunero.firebasestorage.app/o/familiar.png?alt=media&token=0d69c88f-4eb1-4e94-a20a-624d91c38379"
@@ -3500,6 +3538,73 @@ open class UsuarioRepository @Inject constructor(
                 profesorId = alumnoActual?.profesorId ?: "",
                 profesorIds = alumnoActual?.profesorIds ?: emptyList()
             )
+            
+            // Comprobar si ha cambiado la clase
+            val claseIdAnterior = alumnoActual?.claseId ?: ""
+            val claseIdNueva = alumnoFinal.claseId
+            val hayCambioDeClase = claseIdAnterior != claseIdNueva
+            
+            if (hayCambioDeClase) {
+                Timber.d("🔄 Detectado cambio de clase: $claseIdAnterior -> $claseIdNueva")
+                
+                // Si tenía una clase anterior, eliminar el alumno de esa clase
+                if (claseIdAnterior.isNotBlank()) {
+                    try {
+                        Timber.d("🗑️ Eliminando alumno ${alumno.dni} de la clase anterior $claseIdAnterior")
+                        
+                        val claseAnteriorDoc = firestore.collection("clases").document(claseIdAnterior).get().await()
+                        
+                        if (claseAnteriorDoc.exists()) {
+                            val alumnosIdsAnteriores = when (val alumnosIdsAny = claseAnteriorDoc.get("alumnosIds")) {
+                                is List<*> -> alumnosIdsAny.filterIsInstance<String>().toMutableList()
+                                else -> mutableListOf()
+                            }
+                            
+                            if (alumnosIdsAnteriores.contains(alumno.dni)) {
+                                alumnosIdsAnteriores.remove(alumno.dni)
+                                
+                                firestore.collection("clases").document(claseIdAnterior)
+                                    .update("alumnosIds", alumnosIdsAnteriores)
+                                    .await()
+                                    
+                                Timber.d("✅ Alumno ${alumno.dni} eliminado de alumnosIds en clase anterior $claseIdAnterior")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "❌ Error al eliminar alumno de la clase anterior: ${e.message}")
+                        // No interrumpir el flujo principal por este error
+                    }
+                }
+                
+                // Si tiene una nueva clase, añadir el alumno a esa clase
+                if (claseIdNueva.isNotBlank()) {
+                    try {
+                        Timber.d("📝 Añadiendo alumno ${alumno.dni} a la nueva clase $claseIdNueva")
+                        
+                        val claseNuevaDoc = firestore.collection("clases").document(claseIdNueva).get().await()
+                        
+                        if (claseNuevaDoc.exists()) {
+                            val alumnosIdsNuevos = when (val alumnosIdsAny = claseNuevaDoc.get("alumnosIds")) {
+                                is List<*> -> alumnosIdsAny.filterIsInstance<String>().toMutableList()
+                                else -> mutableListOf()
+                            }
+                            
+                            if (!alumnosIdsNuevos.contains(alumno.dni)) {
+                                alumnosIdsNuevos.add(alumno.dni)
+                                
+                                firestore.collection("clases").document(claseIdNueva)
+                                    .update("alumnosIds", alumnosIdsNuevos)
+                                    .await()
+                                    
+                                Timber.d("✅ Alumno ${alumno.dni} añadido a alumnosIds en nueva clase $claseIdNueva")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "❌ Error al añadir alumno a la nueva clase: ${e.message}")
+                        // No interrumpir el flujo principal por este error
+                    }
+                }
+            }
             
             // Actualizar el alumno en la colección 'alumnos'
             alumnosCollection.document(alumnoFinal.dni).set(alumnoFinal).await()
