@@ -274,6 +274,23 @@ class RegistroDiarioRepository @Inject constructor(
                 ultimaModificacion = Timestamp(Date())
             )
             
+            // Resetear el campo registroDiarioLeido a false cuando se crea un nuevo registro
+            // Esto debe hacerse SIEMPRE, con o sin conexión
+            try {
+                val alumnoId = registroActualizado.alumnoId
+                if (alumnoId.isNotEmpty()) {
+                    Timber.d("Reseteando registroDiarioLeido a false para alumno: $alumnoId")
+                    val alumnosCollection = firestore.collection("alumnos")
+                    alumnosCollection.document(alumnoId)
+                        .update("registroDiarioLeido", false)
+                        .await()
+                    Timber.d("Campo registroDiarioLeido reseteado a false para alumno: $alumnoId")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al resetear registroDiarioLeido en alumno: ${registroActualizado.alumnoId}")
+                // No interrumpimos el flujo si falla esta actualización
+            }
+            
             // Si hay conexión, guardamos en Firestore
             if (isNetworkAvailable()) {
                 try {
@@ -289,22 +306,6 @@ class RegistroDiarioRepository @Inject constructor(
                     registrosCollection.document(idParaUsar)
                         .set(registroConIdCorrecto)
                         .await()
-                    
-                    // Resetear el campo registroDiarioLeido a false cuando se crea un nuevo registro
-                    try {
-                        val alumnoId = registroConIdCorrecto.alumnoId
-                        if (alumnoId.isNotEmpty()) {
-                            Timber.d("Reseteando registroDiarioLeido a false para alumno: $alumnoId")
-                            val alumnosCollection = firestore.collection("alumnos")
-                            alumnosCollection.document(alumnoId)
-                                .update("registroDiarioLeido", false)
-                                .await()
-                            Timber.d("Campo registroDiarioLeido reseteado a false para alumno: $alumnoId")
-                        }
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error al resetear registroDiarioLeido en alumno: ${registroConIdCorrecto.alumnoId}")
-                        // No interrumpimos el flujo si falla esta actualización
-                    }
                     
                     // Guardar en local sincronizado
                     localRegistroRepository.saveRegistroActividad(registroConIdCorrecto, true)
@@ -1486,6 +1487,7 @@ class RegistroDiarioRepository @Inject constructor(
                             }
                         } catch (e: Exception) {
                             Timber.e(e, "✗ Error al actualizar registroDiarioLeido en alumno: ${lecturaFamiliar.alumnoId}")
+                            // No interrumpimos el flujo si falla esta actualización
                         }
                         
                         return@withContext Result.Success(true)

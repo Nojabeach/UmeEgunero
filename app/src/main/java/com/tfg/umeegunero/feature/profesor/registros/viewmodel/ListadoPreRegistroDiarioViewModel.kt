@@ -266,6 +266,32 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 // Cargar ausencias notificadas
                 cargarAusenciasNotificadas()
                 
+                // Actualizar alumnos con registro
+                val alumnosConRegistroActualizado = registros
+                    .map { it.alumnoId }
+                    .toSet()
+                
+                Timber.d("Alumnos con registro actualizados: $alumnosConRegistroActualizado")
+                
+                // Resetear registroDiarioLeido para alumnos que NO tienen registro
+                val alumnosParaResetear = alumnos.filter { alumno ->
+                    !alumnosConRegistroActualizado.contains(alumno.id) && alumno.registroDiarioLeido == true
+                }
+                
+                if (alumnosParaResetear.isNotEmpty()) {
+                    Timber.d("Reseteando registroDiarioLeido para ${alumnosParaResetear.size} alumnos sin registro")
+                    alumnosParaResetear.forEach { alumno ->
+                        viewModelScope.launch {
+                            try {
+                                registroDiarioRepository.actualizarEstadoLecturaRegistroDiario(alumno.id, false)
+                                Timber.d("Reseteado registroDiarioLeido a false para alumno ${alumno.id}")
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al resetear registroDiarioLeido para alumno ${alumno.id}")
+                            }
+                        }
+                    }
+                }
+                
             } catch (e: Exception) {
                 Timber.e(e, "Error al cargar datos")
                 _uiState.update { it.copy(
@@ -853,6 +879,25 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                     alumnosPresentes = alumnosActualizados.count { a -> a.presente },
                     isLoading = false
                 )}
+                
+                // Resetear registroDiarioLeido para alumnos que NO tienen registro
+                val alumnosParaResetear = alumnosActualizados.filter { alumno ->
+                    !alumnosConRegistro.contains(alumno.id) && alumno.registroDiarioLeido == true
+                }
+                
+                if (alumnosParaResetear.isNotEmpty()) {
+                    Timber.d("Reseteando registroDiarioLeido para ${alumnosParaResetear.size} alumnos sin registro")
+                    alumnosParaResetear.forEach { alumno ->
+                        viewModelScope.launch {
+                            try {
+                                registroDiarioRepository.actualizarEstadoLecturaRegistroDiario(alumno.id, false)
+                                Timber.d("Reseteado registroDiarioLeido a false para alumno ${alumno.id}")
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error al resetear registroDiarioLeido para alumno ${alumno.id}")
+                            }
+                        }
+                    }
+                }
                 
             } catch (e: Exception) {
                 Timber.e(e, "Error al verificar registros existentes")
