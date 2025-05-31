@@ -53,7 +53,6 @@
       "collectionGroup": "registrosActividad",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "eliminado", "order": "ASCENDING" },
         { "fieldPath": "claseId", "order": "ASCENDING" },
         { "fieldPath": "fecha", "order": "ASCENDING" }
       ]
@@ -98,6 +97,48 @@
         { "fieldPath": "receiverId", "order": "ASCENDING" },
         { "fieldPath": "type", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "unified_messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "conversationId", "order": "ASCENDING" },
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "unified_messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "receiverId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "unified_messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "receiversIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "unified_messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "lecturas_familiar",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "registroId", "order": "ASCENDING" },
+        { "fieldPath": "familiarId", "order": "ASCENDING" },
+        { "fieldPath": "fechaLectura", "order": "DESCENDING" }
       ]
     }
   ],
