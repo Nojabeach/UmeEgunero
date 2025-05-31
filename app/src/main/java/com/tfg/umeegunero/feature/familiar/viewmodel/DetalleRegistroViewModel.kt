@@ -242,21 +242,23 @@ class DetalleRegistroViewModel @Inject constructor(
                 return
             }
             
-            val usuarioActual = authRepository.getFirebaseUser()
-            Timber.d("Usuario actual obtenido: ${usuarioActual?.uid}")
+            // Obtener el usuario actual con su DNI
+            val usuarioActual = authRepository.getUsuarioActual()
+            Timber.d("Usuario actual obtenido: ${usuarioActual?.documentId} (DNI: ${usuarioActual?.dni})")
             
             if (usuarioActual != null) {
-                val uid = usuarioActual.uid
+                // Usar el DNI como familiarId para mantener consistencia con vinculaciones_familiar_alumno
+                val familiarId = usuarioActual.dni ?: usuarioActual.documentId
                 
                 // Crear registro de lectura
                 val lecturaFamiliar = LecturaFamiliar(
-                    familiarId = uid,
+                    familiarId = familiarId, // Ahora usamos el DNI
                     registroId = registro.id,
                     alumnoId = registro.alumnoId,
                     fechaLectura = Timestamp.now()
                 )
                 
-                Timber.d("LecturaFamiliar creada: $lecturaFamiliar")
+                Timber.d("LecturaFamiliar creada con familiarId (DNI): $familiarId")
                 
                 // Guardar la lectura
                 Timber.d("Llamando a registrarLecturaFamiliar...")
