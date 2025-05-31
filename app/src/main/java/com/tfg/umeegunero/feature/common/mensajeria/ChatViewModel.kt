@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import timber.log.Timber
 import javax.inject.Inject
 import com.google.firebase.functions.FirebaseFunctions
@@ -451,6 +452,38 @@ class ChatViewModel @Inject constructor(
             try {
                 val currentUser = _uiState.value.usuario ?: throw Exception("Usuario no disponible")
                 val participanteId = _uiState.value.participanteId
+                val conversacionId = _uiState.value.conversacionId
+                
+                // IMPORTANTE: Verificar si existe la conversación antes de enviar el mensaje
+                Timber.d("🔍 Verificando si existe la conversación: $conversacionId")
+                
+                // Verificar si la conversación existe
+                val conversationDoc = firestore.collection("unified_conversations")
+                    .document(conversacionId)
+                    .get()
+                    .await()
+                
+                if (!conversationDoc.exists()) {
+                    Timber.d("📝 La conversación no existe, creándola...")
+                    
+                    // Crear la conversación si no existe
+                    val participantIds = listOf(currentUser.dni, participanteId).sorted()
+                    val alumnoId = _uiState.value.alumnoId
+                    
+                    val createResult = unifiedMessageRepository.createOrUpdateConversation(
+                        conversationId = conversacionId,
+                        participantIds = participantIds,
+                        title = "",
+                        entityId = alumnoId ?: "",
+                        entityType = if (alumnoId != null) "ALUMNO" else ""
+                    )
+                    
+                    if (createResult is Result.Error) {
+                        throw Exception("Error al crear la conversación: ${createResult.message}")
+                    }
+                    
+                    Timber.d("✅ Conversación creada exitosamente")
+                }
                 
                 // Preparar mensaje unificado
                 val unifiedMessage = UnifiedMessage(
@@ -465,7 +498,7 @@ class ChatViewModel @Inject constructor(
                     type = MessageType.CHAT,
                     priority = MessagePriority.NORMAL,
                     status = MessageStatus.UNREAD,
-                    conversationId = _uiState.value.conversacionId,
+                    conversationId = conversacionId,
                     metadata = if (_uiState.value.alumnoId != null) 
                         mapOf("alumnoId" to _uiState.value.alumnoId!!) 
                     else 
