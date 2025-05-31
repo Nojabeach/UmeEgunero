@@ -67,6 +67,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 /**
  * Tipos de adjuntos soportados
@@ -351,6 +353,7 @@ fun ChatProfesorScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .navigationBarsPadding()
         ) {
             // Lista de mensajes con indicador de carga integrado
             Box(
@@ -498,7 +501,8 @@ fun ChatProfesorScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .wrapContentHeight(), // Asegura que solo ocupe el alto necesario
+                    .wrapContentHeight() // Asegura que solo ocupe el alto necesario
+                    .imePadding(), // Aplica padding cuando el teclado está visible
                 tonalElevation = 3.dp,
                 shadowElevation = 4.dp // Añade una sombra para mejor visibilidad
             ) {
@@ -651,6 +655,9 @@ fun ChatProfesorScreen(
                             )
                         }
                     }
+                    
+                    // Espaciador de seguridad inferior
+                    Spacer(modifier = Modifier.height(2.dp))
                 }
             }
         }

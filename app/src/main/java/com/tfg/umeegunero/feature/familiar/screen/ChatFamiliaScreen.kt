@@ -30,10 +30,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -475,6 +477,7 @@ fun ChatFamiliaScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .navigationBarsPadding()
         ) {
             // Lista de mensajes con indicador de carga integrado
             Box(
@@ -622,9 +625,11 @@ fun ChatFamiliaScreen(
             // Campo de texto para escribir el mensaje con imePadding para que no sea empujado por el teclado
             Surface(
                 modifier = Modifier
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .imePadding(),
                 tonalElevation = 3.dp,
-                shadowElevation = 4.dp // Añade una sombra para mejor visibilidad
+                shadowElevation = 4.dp
             ) {
                 Column {
                     // Indicador de estado de conexión - usar if en lugar de AnimatedVisibility
@@ -758,6 +763,9 @@ fun ChatFamiliaScreen(
                             )
                         }
                     }
+                    
+                    // Espaciador de seguridad inferior
+                    Spacer(modifier = Modifier.height(2.dp))
                 }
             }
         }
