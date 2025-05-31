@@ -794,11 +794,16 @@ class ChatContactsViewModel @Inject constructor(
                     
                     if (conversationsResult is Result.Success) {
                         // Buscar una conversación que tenga exactamente estos dos participantes
+                        // (sin importar el orden y sin incluir a otros participantes)
                         val existingConversation = conversationsResult.data.find { conversation ->
-                            val participants = conversation.participantIds
-                            participants.size == 2 && 
-                            participants.contains(currentUser.dni) && 
-                            participants.contains(contactId)
+                            val participants = conversation.participantIds.sorted()
+                            val expectedParticipants = participantIds.sorted()
+                            
+                            // La conversación debe tener exactamente los mismos participantes
+                            participants.size == expectedParticipants.size && 
+                            participants == expectedParticipants &&
+                            // Si hay un alumno asociado, debe coincidir también
+                            (contextAlumnoId == null || conversation.entityId == contextAlumnoId)
                         }
                         
                         if (existingConversation != null) {
@@ -809,11 +814,11 @@ class ChatContactsViewModel @Inject constructor(
                     
                     // Si no se encontró, crear una nueva conversación en el sistema unificado
                     if (conversacionId.isEmpty()) {
-                        // Generar un ID de conversación predecible
+                        // Generar un ID de conversación predecible basado en los participantes
                         val generatedConversationId = participantIds.joinToString(separator = "_")
                         Timber.d("🆔 ID de conversación generado: $generatedConversationId")
                     
-                        Timber.d("🤝 Intentando crear/actualizar conversación unificada...")
+                        Timber.d("🤝 Intentando crear conversación unificada...")
                         val createResult = unifiedMessageRepo.createOrUpdateConversation(
                             conversationId = generatedConversationId,
                             participantIds = participantIds,
@@ -824,60 +829,23 @@ class ChatContactsViewModel @Inject constructor(
                         
                         if (createResult is Result.Success) {
                             conversacionId = createResult.data
-                            Timber.d("✅ Se creó una nueva conversación en el sistema unificado: $conversacionId")
+                            Timber.d("✅ Se creó/actualizó conversación en el sistema unificado: $conversacionId")
                         } else {
                             Timber.e("❌ Error al crear conversación unificada: ${(createResult as? Result.Error)?.message}")
+                            _uiState.update { it.copy(
+                                error = "Error al crear la conversación",
+                                isLoading = false
+                            )}
+                            return@launch
                         }
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "❌ Error al buscar/crear conversación en sistema unificado")
-                }
-                
-                // Si no se pudo crear en el sistema unificado, intentar con el sistema antiguo como fallback
-                if (conversacionId.isEmpty()) {
-                    Timber.w("⚠️ Fallback: Usando sistema antiguo de conversaciones")
-                    
-                    // Obtener o crear la conversación en Firestore (sistema antiguo)
-                    val conversacionData = mapOf(
-                        "participante1Id" to currentUser.dni,
-                        "participante2Id" to contactId,
-                        "nombreParticipante1" to "${currentUser.nombre} ${currentUser.apellidos}",
-                        "nombreParticipante2" to contactName,
-                        "alumnoId" to contextAlumnoId,
-                        "fechaCreacion" to Timestamp.now(),
-                        "ultimaActualizacion" to Timestamp.now()
-                    )
-                    
-                    // Buscar si ya existe una conversación entre estos usuarios
-                    val existingConvQuery = firestore.collection("conversaciones")
-                        .whereEqualTo("participante1Id", currentUser.dni)
-                        .whereEqualTo("participante2Id", contactId)
-                        .get()
-                        .await()
-                        
-                    val altExistingConvQuery = firestore.collection("conversaciones")
-                        .whereEqualTo("participante1Id", contactId)
-                        .whereEqualTo("participante2Id", currentUser.dni)
-                        .get()
-                        .await()
-                        
-                    conversacionId = if (!existingConvQuery.isEmpty || !altExistingConvQuery.isEmpty) {
-                        // Usar la conversación existente
-                        if (!existingConvQuery.isEmpty) {
-                            Timber.d("✅ Conversación existente encontrada (participante1Id): ${existingConvQuery.documents.first().id}")
-                            existingConvQuery.documents.first().id
-                        } else {
-                            Timber.d("✅ Conversación existente encontrada (participante2Id): ${altExistingConvQuery.documents.first().id}")
-                            altExistingConvQuery.documents.first().id
-                        }
-                    } else {
-                        // Crear nueva conversación
-                        Timber.d("🔄 Creando nueva conversación en sistema antiguo")
-                        val newConvRef = firestore.collection("conversaciones").document()
-                        newConvRef.set(conversacionData).await()
-                        Timber.d("✅ Nueva conversación creada: ${newConvRef.id}")
-                        newConvRef.id
-                    }
+                    _uiState.update { it.copy(
+                        error = "Error al establecer conversación: ${e.message}",
+                        isLoading = false
+                    )}
+                    return@launch
                 }
                 
                 if (conversacionId.isEmpty()) {

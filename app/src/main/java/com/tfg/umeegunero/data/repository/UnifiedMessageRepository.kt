@@ -5,6 +5,7 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import com.tfg.umeegunero.data.model.Conversation
 import com.tfg.umeegunero.data.model.MessageAction
 import com.tfg.umeegunero.data.model.MessagePriority
@@ -41,9 +42,10 @@ class UnifiedMessageRepository @Inject constructor(
     // Constantes para las colecciones
     companion object {
         const val MESSAGES_COLLECTION = "unified_messages"
-        const val CONVERSATIONS_COLLECTION = "conversaciones"
+        const val CONVERSATIONS_COLLECTION = "unified_conversations"
         const val USERS_COLLECTION = "usuarios"
         const val MAX_CACHE_AGE = 5 * 60 * 1000 // 5 minutos en milisegundos
+        const val PAGE_SIZE = 20
     }
     
     // Usar get() para obtener la instancia del Provider cuando sea necesario
@@ -433,6 +435,8 @@ class UnifiedMessageRepository @Inject constructor(
     ): Result<String> {
         return try {
             val convId = conversationId.ifEmpty { UUID.randomUUID().toString() }
+            
+            // Preparar datos de la conversación
             val conversationData = mapOf(
                 "participantIds" to participantIds,
                 "title" to title,
@@ -440,48 +444,24 @@ class UnifiedMessageRepository @Inject constructor(
                 "createdAt" to FieldValue.serverTimestamp(),
                 "updatedAt" to FieldValue.serverTimestamp(),
                 "entityId" to entityId,
-                "entityType" to entityType
+                "entityType" to entityType,
+                "lastMessage" to "",
+                "lastMessageSenderId" to "",
+                "unreadCounts" to participantIds.associateWith { 0 }
             )
             
-            // Forzar la creación de la colección con documento dummy si no existe
-            try {
-                // Verificar primero si la colección existe
-                val collectionQuery = firestore.collection(CONVERSATIONS_COLLECTION).limit(1).get().await()
-                if (collectionQuery.isEmpty) {
-                    Timber.d("⚠️ La colección '$CONVERSATIONS_COLLECTION' no existe. Creando colección con documento temporal...")
-                    
-                    // Crear documento temporal que será sobrescrito o eliminado
-                    val tempDocRef = firestore.collection(CONVERSATIONS_COLLECTION).document("temp_init_doc")
-                    tempDocRef.set(mapOf(
-                        "temp" to true,
-                        "createdAt" to FieldValue.serverTimestamp()
-                    )).await()
-                    
-                    Timber.d("✅ Colección '$CONVERSATIONS_COLLECTION' creada con documento temporal")
-                    
-                    // Eliminar documento temporal si no es el que necesitamos
-                    if (convId != "temp_init_doc") {
-                        tempDocRef.delete().await()
-                        Timber.d("🗑️ Documento temporal eliminado")
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al verificar/crear la colección: $CONVERSATIONS_COLLECTION")
-                // Continuar con la operación principal aunque esto falle
-            }
-            
-            // Crear/actualizar el documento de conversación real
-            Timber.d("📝 Creando documento en $CONVERSATIONS_COLLECTION con ID: $convId")
+            // Crear/actualizar el documento de conversación
+            Timber.d("📝 Creando/actualizando conversación en $CONVERSATIONS_COLLECTION con ID: $convId")
             firestore.collection(CONVERSATIONS_COLLECTION)
                 .document(convId)
-                .set(conversationData)
+                .set(conversationData, SetOptions.merge()) // Usar merge para preservar datos existentes
                 .await()
             
             Timber.d("✅ Conversación creada/actualizada correctamente con ID: $convId")
             Result.Success(convId)
         } catch (e: Exception) {
-            Timber.e(e, "Error al crear/actualizar conversación: ${e.message}")
-            Result.Error(e.message ?: "Error al gestionar conversación")
+            Timber.e(e, "Error al crear/actualizar conversación")
+            Result.Error(e.message ?: "Error al crear conversación")
         }
     }
     
