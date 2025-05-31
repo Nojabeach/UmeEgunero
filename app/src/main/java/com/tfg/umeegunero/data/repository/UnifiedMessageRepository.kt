@@ -41,7 +41,7 @@ class UnifiedMessageRepository @Inject constructor(
     // Constantes para las colecciones
     companion object {
         const val MESSAGES_COLLECTION = "unified_messages"
-        const val CONVERSATIONS_COLLECTION = "conversations"
+        const val CONVERSATIONS_COLLECTION = "conversaciones"
         const val USERS_COLLECTION = "usuarios"
         const val MAX_CACHE_AGE = 5 * 60 * 1000 // 5 minutos en milisegundos
     }
@@ -443,14 +443,44 @@ class UnifiedMessageRepository @Inject constructor(
                 "entityType" to entityType
             )
             
+            // Forzar la creación de la colección con documento dummy si no existe
+            try {
+                // Verificar primero si la colección existe
+                val collectionQuery = firestore.collection(CONVERSATIONS_COLLECTION).limit(1).get().await()
+                if (collectionQuery.isEmpty) {
+                    Timber.d("⚠️ La colección '$CONVERSATIONS_COLLECTION' no existe. Creando colección con documento temporal...")
+                    
+                    // Crear documento temporal que será sobrescrito o eliminado
+                    val tempDocRef = firestore.collection(CONVERSATIONS_COLLECTION).document("temp_init_doc")
+                    tempDocRef.set(mapOf(
+                        "temp" to true,
+                        "createdAt" to FieldValue.serverTimestamp()
+                    )).await()
+                    
+                    Timber.d("✅ Colección '$CONVERSATIONS_COLLECTION' creada con documento temporal")
+                    
+                    // Eliminar documento temporal si no es el que necesitamos
+                    if (convId != "temp_init_doc") {
+                        tempDocRef.delete().await()
+                        Timber.d("🗑️ Documento temporal eliminado")
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error al verificar/crear la colección: $CONVERSATIONS_COLLECTION")
+                // Continuar con la operación principal aunque esto falle
+            }
+            
+            // Crear/actualizar el documento de conversación real
+            Timber.d("📝 Creando documento en $CONVERSATIONS_COLLECTION con ID: $convId")
             firestore.collection(CONVERSATIONS_COLLECTION)
                 .document(convId)
                 .set(conversationData)
                 .await()
-                
+            
+            Timber.d("✅ Conversación creada/actualizada correctamente con ID: $convId")
             Result.Success(convId)
         } catch (e: Exception) {
-            Timber.e(e, "Error al crear/actualizar conversación")
+            Timber.e(e, "Error al crear/actualizar conversación: ${e.message}")
             Result.Error(e.message ?: "Error al gestionar conversación")
         }
     }

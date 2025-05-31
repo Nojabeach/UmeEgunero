@@ -821,7 +821,7 @@ class FamiliarDashboardViewModel @Inject constructor(
      * el usuario navega a la pantalla de mensajes unificados.
      * También marca todos los mensajes no leídos como leídos en la base de datos.
      */
-    fun marcarMensajesLeidos() {
+    fun marcarMensajesComoLeidos() {
         viewModelScope.launch {
             try {
                 // Obtener el ID del familiar
@@ -830,63 +830,24 @@ class FamiliarDashboardViewModel @Inject constructor(
                 
                 Timber.d("Marcando mensajes como leídos para el familiar $familiarId")
                 
-                // Intentar obtener todos los mensajes no leídos del usuario actual
-                unifiedMessageRepository.getCurrentUserInbox().collect { result ->
-                    when (result) {
-                        is Result.Success -> {
-                            val mensajesNoLeidos = result.data.filter { !it.isRead }
-                            
-                            // Marcar cada mensaje como leído
-                            Timber.d("Marcando ${mensajesNoLeidos.size} mensajes como leídos")
-                            mensajesNoLeidos.forEach { mensaje ->
-                                try {
-                                    unifiedMessageRepository.markAsRead(mensaje.id)
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Error al marcar mensaje ${mensaje.id} como leído")
-                                }
-                            }
-                            
-                            // Actualizar el estado local inmediatamente para reflejar el cambio en la UI
-                            _uiState.update { 
-                                it.copy(
-                                    registrosSinLeer = 0,
-                                    totalMensajesNoLeidos = 0
-                                )
-                            }
-                            
-                            // Actualizar también el flow específico para la UI
-                            _unreadMessageCount.update { 0 }
-                            
-                            Timber.d("Mensajes marcados como leídos para el familiar $familiarId")
-                        }
-                        is Result.Error -> {
-                            Timber.e(result.exception, "Error al obtener mensajes para marcar como leídos")
-                            
-                            // Aún así, actualizamos el contador local para mejorar la experiencia de usuario
-                            _uiState.update { 
-                                it.copy(
-                                    registrosSinLeer = 0,
-                                    totalMensajesNoLeidos = 0
-                                )
-                            }
-                            _unreadMessageCount.update { 0 }
-                        }
-                        is Result.Loading -> {
-                            // No hacer nada durante la carga
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Error al marcar mensajes como leídos")
+                // Ya no marcamos los mensajes como leídos aquí, solo actualizamos la UI
+                // Los mensajes serán marcados como leídos individualmente cuando el usuario
+                // abra cada mensaje en la pantalla de detalle.
                 
-                // En caso de error, actualizar igualmente el contador local
+                // SOLO actualizamos el contador visual en la UI para evitar confusiones
                 _uiState.update { 
                     it.copy(
-                        registrosSinLeer = 0,
                         totalMensajesNoLeidos = 0
                     )
                 }
+                
+                // Actualizamos el flow específico para la UI
                 _unreadMessageCount.update { 0 }
+                
+                Timber.d("Contador de mensajes reiniciado para familiar $familiarId (los mensajes se marcarán como leídos al abrirlos)")
+                
+            } catch (e: Exception) {
+                Timber.e(e, "Error al actualizar contador de mensajes")
             }
         }
     }

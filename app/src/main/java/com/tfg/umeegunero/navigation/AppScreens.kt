@@ -399,6 +399,18 @@ sealed class AppScreens(val route: String) {
     }
 
     /**
+     * Pantalla para editar o crear un familiar
+     * @param familiarId Identificador único del familiar (opcional, para edición)
+     */
+    object EditFamiliar : AppScreens("edit_familiar/{familiarId}") {
+        fun createRoute(familiarId: String = "") = if (familiarId.isEmpty()) "edit_familiar" else "edit_familiar/$familiarId"
+        
+        val arguments = listOf(
+            navArgument("familiarId") { type = NavType.StringType; nullable = true; defaultValue = null }
+        )
+    }
+
+    /**
      * Sección: Pantallas de comunicaciones y reportes
      */
     /** Pantalla de comunicados y circulares */

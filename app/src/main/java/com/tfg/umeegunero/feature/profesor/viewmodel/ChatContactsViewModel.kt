@@ -749,17 +749,20 @@ class ChatContactsViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            
+            Timber.d("🔄 Iniciando startConversation con contactId: $contactId, contactName: $contactName, alumnoId: $alumnoId")
+
             try {
                 // Obtener el usuario actual
                 val currentUser = authRepository.getCurrentUser()
                 if (currentUser == null) {
+                    Timber.e("❌ Usuario actual no encontrado al iniciar conversación.")
                     _uiState.update { it.copy(
                         error = "No se pudo obtener información del usuario actual",
                         isLoading = false
                     )}
                     return@launch
                 }
+                Timber.d("✅ Usuario actual: ${currentUser.dni}")
                 
                 // Usar el alumno seleccionado si estamos en modo familiar
                 val contextAlumnoId = if (_uiState.value.userType == TipoUsuario.FAMILIAR) {
@@ -769,7 +772,8 @@ class ChatContactsViewModel @Inject constructor(
                 }
                 
                 // Lista de participantes para la conversación
-                val participantIds = listOf(currentUser.dni, contactId)
+                val participantIds = listOf(currentUser.dni, contactId).sorted()
+                Timber.d("🆔 Participantes: $participantIds")
                 
                 // Título de la conversación (opcional)
                 val title = "Chat con $contactName"
@@ -799,14 +803,19 @@ class ChatContactsViewModel @Inject constructor(
                         
                         if (existingConversation != null) {
                             conversacionId = existingConversation.id
-                            Timber.d("Se encontró una conversación existente en el sistema unificado: $conversacionId")
+                            Timber.d("✅ Se encontró una conversación existente en el sistema unificado: $conversacionId")
                         }
                     }
                     
                     // Si no se encontró, crear una nueva conversación en el sistema unificado
                     if (conversacionId.isEmpty()) {
+                        // Generar un ID de conversación predecible
+                        val generatedConversationId = participantIds.joinToString(separator = "_")
+                        Timber.d("🆔 ID de conversación generado: $generatedConversationId")
+                    
+                        Timber.d("🤝 Intentando crear/actualizar conversación unificada...")
                         val createResult = unifiedMessageRepo.createOrUpdateConversation(
-                            conversationId = "",
+                            conversationId = generatedConversationId,
                             participantIds = participantIds,
                             title = title,
                             entityId = entityId,
@@ -815,18 +824,18 @@ class ChatContactsViewModel @Inject constructor(
                         
                         if (createResult is Result.Success) {
                             conversacionId = createResult.data
-                            Timber.d("Se creó una nueva conversación en el sistema unificado: $conversacionId")
+                            Timber.d("✅ Se creó una nueva conversación en el sistema unificado: $conversacionId")
                         } else {
-                            Timber.e("Error al crear conversación unificada: ${(createResult as? Result.Error)?.message}")
+                            Timber.e("❌ Error al crear conversación unificada: ${(createResult as? Result.Error)?.message}")
                         }
                     }
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al buscar/crear conversación en sistema unificado")
+                    Timber.e(e, "❌ Error al buscar/crear conversación en sistema unificado")
                 }
                 
                 // Si no se pudo crear en el sistema unificado, intentar con el sistema antiguo como fallback
                 if (conversacionId.isEmpty()) {
-                    Timber.w("Fallback: Usando sistema antiguo de conversaciones")
+                    Timber.w("⚠️ Fallback: Usando sistema antiguo de conversaciones")
                     
                     // Obtener o crear la conversación en Firestore (sistema antiguo)
                     val conversacionData = mapOf(
@@ -855,19 +864,24 @@ class ChatContactsViewModel @Inject constructor(
                     conversacionId = if (!existingConvQuery.isEmpty || !altExistingConvQuery.isEmpty) {
                         // Usar la conversación existente
                         if (!existingConvQuery.isEmpty) {
+                            Timber.d("✅ Conversación existente encontrada (participante1Id): ${existingConvQuery.documents.first().id}")
                             existingConvQuery.documents.first().id
                         } else {
+                            Timber.d("✅ Conversación existente encontrada (participante2Id): ${altExistingConvQuery.documents.first().id}")
                             altExistingConvQuery.documents.first().id
                         }
                     } else {
                         // Crear nueva conversación
+                        Timber.d("🔄 Creando nueva conversación en sistema antiguo")
                         val newConvRef = firestore.collection("conversaciones").document()
                         newConvRef.set(conversacionData).await()
+                        Timber.d("✅ Nueva conversación creada: ${newConvRef.id}")
                         newConvRef.id
                     }
                 }
                 
                 if (conversacionId.isEmpty()) {
+                    Timber.e("❌ No se pudo obtener/crear ID de conversación")
                     _uiState.update { it.copy(
                         error = "No se pudo crear la conversación",
                         isLoading = false
@@ -875,16 +889,14 @@ class ChatContactsViewModel @Inject constructor(
                     return@launch
                 }
                 
-                Timber.d("Usando conversaciónId: $conversacionId para chat entre ${currentUser.dni} y $contactId")
+                Timber.d("🚀 Usando conversaciónId: $conversacionId para chat entre ${currentUser.dni} y $contactId")
                 
                 // Comprobar si chatRouteName es la ruta base de ChatProfesor o contiene chat_profesor
                 if (chatRouteName == "chat_profesor" || chatRouteName.startsWith("chat_profesor")) {
-                    // Navegar usando la función createRoute de ChatProfesor - solo con los parámetros obligatorios
-                    navController.navigate(AppScreens.ChatProfesor.createRoute(
-                        conversacionId = conversacionId,
-                        participanteId = contactId
-                    ))
-                    Timber.d("Navegando a ChatProfesor: contactId=$contactId, conversacionId=$conversacionId")
+                    // Navegar usando la ruta de ChatProfesor
+                    val route = "${AppScreens.ChatProfesor.route}/$conversacionId/$contactId"
+                    navController.navigate(route)
+                    Timber.d("🚀 Navegando a ChatProfesor: contactId=$contactId, conversacionId=$conversacionId")
                 } else {
                     // Para otros tipos de chat, usar la ruta proporcionada
                     Timber.d("Ruta de chat no reconocida: $chatRouteName. Usando navegación genérica.")
@@ -894,12 +906,13 @@ class ChatContactsViewModel @Inject constructor(
                         "$chatRouteName/$conversacionId/$contactId"
                     }
                     navController.navigate(route)
+                    Timber.d("🚀 Navegando a ruta: $route")
                 }
                 
                 _uiState.update { it.copy(isLoading = false) }
                 
             } catch (e: Exception) {
-                Timber.e(e, "Error al iniciar conversación: ${e.message}")
+                Timber.e(e, "❌ Error al iniciar conversación: ${e.message}")
                 _uiState.update { it.copy(
                     error = "Error al iniciar la conversación: ${e.message}",
                     isLoading = false

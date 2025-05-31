@@ -71,15 +71,12 @@ data class Alumno(
     val observaciones: String = "",
     val familiares: List<Familiar> = emptyList(),
     val presente: Boolean = false,
+    val nombreCompleto: String = "",
     val asistenciaHoy: Boolean? = null,
     val ultimaAsistencia: Date? = null,
     val avatarUrl: String = "",
     val registroDiarioLeido: Boolean? = null
-) {
-    // Propiedad computada para obtener el nombre completo
-    val nombreCompleto: String
-        get() = "$nombre $apellidos".trim()
-}
+)
 
 /**
  * Modelo que representa la información básica de un familiar vinculado a un alumno.

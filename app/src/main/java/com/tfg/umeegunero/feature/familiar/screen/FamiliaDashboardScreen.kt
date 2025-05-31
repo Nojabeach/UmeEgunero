@@ -977,7 +977,7 @@ fun FamiliaDashboardScreen(
                                         navController.navigate(AppScreens.UnifiedInbox.route)
                                         
                                         // Actualizamos los contadores de mensajes cuando volvamos
-                                        viewModel.marcarMensajesLeidos()
+                                        viewModel.marcarMensajesComoLeidos()
                                     } catch (e: Exception) {
                                         Timber.e(e, "Error al navegar a mensajes: ${e.message}")
                                         snackbarHostState.showSnackbar("Error al abrir mensajes: ${e.message}")
@@ -1187,7 +1187,7 @@ fun FamiliaDashboardScreen(
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     navController.navigate(AppScreens.UnifiedInbox.route)
                                     // Actualizamos los contadores de mensajes cuando se navegue a Comunicación
-                                    viewModel.marcarMensajesLeidos()
+                                    viewModel.marcarMensajesComoLeidos()
                                 } catch (e: Exception) {
                                     Timber.e(e, "Error al navegar a Comunicación: ${e.message}")
                                 }

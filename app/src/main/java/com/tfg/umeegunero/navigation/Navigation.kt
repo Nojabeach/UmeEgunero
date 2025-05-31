@@ -1323,5 +1323,34 @@ fun Navigation(
                 eventoId = eventoId
             )
         }
+
+        // Pantalla de gestión de cursos
+        composable(route = AppScreens.GestionCursos.route) {
+            com.tfg.umeegunero.feature.centro.screen.ListaCursosScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla de gestión de familiares
+        composable(route = AppScreens.ListaFamiliares.route) {
+            com.tfg.umeegunero.feature.centro.screen.ListaFamiliaresScreen(
+                navController = navController,
+                viewModel = hiltViewModel()
+            )
+        }
+        
+        // Pantalla de edición de familiares
+        composable(
+            route = AppScreens.EditFamiliar.route,
+            arguments = AppScreens.EditFamiliar.arguments
+        ) { backStackEntry ->
+            val familiarId = backStackEntry.arguments?.getString("familiarId")
+            com.tfg.umeegunero.feature.centro.screen.EditFamiliarScreen(
+                navController = navController,
+                familiarId = familiarId,
+                viewModel = hiltViewModel()
+            )
+        }
     }
 } 
