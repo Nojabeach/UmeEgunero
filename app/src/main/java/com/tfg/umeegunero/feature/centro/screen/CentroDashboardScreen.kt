@@ -166,6 +166,7 @@ fun CentroDashboardScreen(
     var showPerfilDialog by remember { mutableStateOf(false) }
     var showMensajesUnificadosDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showFamiliasDialog by remember { mutableStateOf(false) }
     
     val solicitudesPendientes by viewModel.solicitudesPendientes.collectAsState()
     val currentDate = remember { 
@@ -723,6 +724,37 @@ fun CentroDashboardScreen(
         showPerfilDialog = true
     }
 
+    // Diálogo de confirmación para ir a Familias
+    if (showFamiliasDialog) {
+        AlertDialog(
+            onDismissRequest = { showFamiliasDialog = false },
+            title = { Text("Gestión de Familias") },
+            text = { Text("¿Quieres ir a la gestión de familias del centro?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showFamiliasDialog = false
+                        try {
+                            navController.navigate(AppScreens.ListaFamiliares.route)
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al navegar a familias: ${e.message}")
+                            }
+                        }
+                    }
+                ) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFamiliasDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -924,7 +956,7 @@ fun CentroDashboardScreen(
                                     icono = Icons.Default.People,
                                     color = CentroColor,
                                     iconTint = AppColors.Familiar,
-                                    onClick = { navController.navigate(AppScreens.ListaFamiliares.route) },
+                                    onClick = { showFamiliasDialog = true },
                                     modifier = Modifier.padding(4.dp)
                                 )
                             }
