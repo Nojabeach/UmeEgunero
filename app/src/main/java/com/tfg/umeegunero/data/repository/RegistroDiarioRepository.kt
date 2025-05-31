@@ -1413,12 +1413,17 @@ class RegistroDiarioRepository @Inject constructor(
                         Timber.d("Ya existe una lectura reciente para este registro y familiar. Evitando duplicado.")
                         
                         // Asegurar que el campo vistoPorFamiliar esté actualizado en el registro principal
-                        registrosCollection.document(lecturaFamiliar.registroId)
-                            .update(
-                                "vistoPorFamiliar", true,
-                                "fechaUltimaLectura", FieldValue.serverTimestamp()
-                            )
-                            .await()
+                        try {
+                            registrosCollection.document(lecturaFamiliar.registroId)
+                                .update(
+                                    "vistoPorFamiliar", true,
+                                    "fechaUltimaLectura", FieldValue.serverTimestamp()
+                                )
+                                .await()
+                            Timber.d("Campo vistoPorFamiliar actualizado a true en registrosActividad para registro: ${lecturaFamiliar.registroId}")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al actualizar vistoPorFamiliar en registrosActividad: ${lecturaFamiliar.registroId}")
+                        }
                         
                         // Asegurar que el campo registroDiarioLeido esté actualizado en el alumno
                         try {
@@ -1447,12 +1452,17 @@ class RegistroDiarioRepository @Inject constructor(
                         .await()
                     
                     // Actualizar campo en el registro principal
-                    registrosCollection.document(lecturaFamiliar.registroId)
-                        .update(
-                            "vistoPorFamiliar", true,
-                            "fechaUltimaLectura", FieldValue.serverTimestamp()
-                        )
-                        .await()
+                    try {
+                        registrosCollection.document(lecturaFamiliar.registroId)
+                            .update(
+                                "vistoPorFamiliar", true,
+                                "fechaUltimaLectura", FieldValue.serverTimestamp()
+                            )
+                            .await()
+                        Timber.d("Campo vistoPorFamiliar actualizado a true en registrosActividad para registro: ${lecturaFamiliar.registroId}")
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al actualizar vistoPorFamiliar en registrosActividad: ${lecturaFamiliar.registroId}")
+                    }
                     
                     // También actualizar el campo registroDiarioLeido en el documento del alumno
                     try {
@@ -1545,12 +1555,38 @@ class RegistroDiarioRepository @Inject constructor(
             
             if (isNetworkAvailable()) {
                 try {
+                    // Actualizar el campo registroDiarioLeido en la colección alumnos
                     val alumnosCollection = firestore.collection("alumnos")
                     alumnosCollection.document(alumnoId)
                         .update("registroDiarioLeido", leido)
                         .await()
                     
                     Timber.d("Estado de lectura actualizado manualmente para alumno: $alumnoId")
+                    
+                    // Actualizar el campo vistoPorFamiliar en los registros de actividad del alumno
+                    // Obtenemos los registros más recientes para este alumno
+                    val registrosQuery = registrosCollection
+                        .whereEqualTo("alumnoId", alumnoId)
+                        .orderBy("fecha", Query.Direction.DESCENDING)
+                        .limit(5) // Limitamos a los 5 más recientes para no actualizar todos
+                        .get()
+                        .await()
+                    
+                    val batch = firestore.batch()
+                    var registrosActualizados = 0
+                    
+                    registrosQuery.documents.forEach { document ->
+                        batch.update(document.reference, "vistoPorFamiliar", leido)
+                        registrosActualizados++
+                    }
+                    
+                    if (registrosActualizados > 0) {
+                        batch.commit().await()
+                        Timber.d("Actualizados $registrosActualizados registros de actividad con vistoPorFamiliar=$leido para alumno $alumnoId")
+                    } else {
+                        Timber.d("No se encontraron registros de actividad para actualizar para alumno $alumnoId")
+                    }
+                    
                     return@withContext Result.Success(true)
                 } catch (e: Exception) {
                     Timber.e(e, "Error al actualizar manualmente estado de lectura para alumno: $alumnoId")
