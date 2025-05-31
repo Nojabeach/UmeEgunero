@@ -124,20 +124,21 @@ class RegistroDiarioRepository @Inject constructor(
     }
     
     /**
-     * Obtiene o crea un registro diario para un alumno y fecha específicos.
+     * Obtiene un registro diario existente para un alumno en una fecha específica.
+     * NO crea un nuevo registro si no existe.
      * 
      * @param alumnoId ID del alumno
      * @param claseId ID de la clase
      * @param profesorId ID del profesor
-     * @param fecha Fecha para el registro (por defecto, la fecha actual)
-     * @return Resultado con el registro obtenido o creado
+     * @param fecha Fecha del registro (por defecto, la fecha actual)
+     * @return Resultado con el registro existente o null si no existe
      */
-    suspend fun obtenerOCrearRegistroDiario(
+    suspend fun obtenerRegistroDiarioExistente(
         alumnoId: String,
         claseId: String,
         profesorId: String,
         fecha: Date = Date()
-    ): Result<RegistroActividad> = withContext(Dispatchers.IO) {
+    ): Result<RegistroActividad?> = withContext(Dispatchers.IO) {
         try {
             // Obtener los límites del día (inicio y fin)
             val calendar = Calendar.getInstance()
@@ -171,28 +172,11 @@ class RegistroDiarioRepository @Inject constructor(
                         localRegistroRepository.saveRegistroActividad(registroExistente, true)
                         return@withContext Result.Success(registroExistente)
                     } else {
-                        // Si no existe, crear uno nuevo
-                        val nuevoRegistro = RegistroActividad(
-                            id = generateLocalId(alumnoId, fecha),
-                            alumnoId = alumnoId,
-                            claseId = claseId,
-                            profesorId = profesorId,
-                            fecha = Timestamp(fecha),
-                            creadoPor = profesorId,
-                            modificadoPor = profesorId
-                        )
-                        
-                        val documentRef = registrosCollection.document()
-                        val registroConId = nuevoRegistro.copy(id = documentRef.id)
-                        documentRef.set(registroConId).await()
-                        
-                        // Guardar en caché local
-                        localRegistroRepository.saveRegistroActividad(registroConId, true)
-                        
-                        return@withContext Result.Success(registroConId)
+                        // Si no existe, devolver null
+                        return@withContext Result.Success(null)
                     }
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al obtener/crear registro en Firestore, intentando con local")
+                    Timber.e(e, "Error al obtener registro en Firestore, intentando con local")
                     // Si falla Firestore, intentamos con local
                 }
             }
@@ -201,7 +185,7 @@ class RegistroDiarioRepository @Inject constructor(
             val registrosLocales = mutableListOf<RegistroActividad>()
             
             // Usar método sincronizado en lugar de Flow
-            val registros = localRegistroRepository.getRegistrosActividadByAlumno("")
+            val registros = localRegistroRepository.getRegistrosActividadByAlumno(alumnoId)
             registrosLocales.addAll(
                 registros.filter { 
                     it.claseId == claseId && 
@@ -214,22 +198,53 @@ class RegistroDiarioRepository @Inject constructor(
                 // Si hay registros locales, devolvemos el primero
                 return@withContext Result.Success(registrosLocales.first())
             } else {
-                // Si no hay registros locales, creamos uno nuevo
-                val nuevoRegistro = RegistroActividad(
-                    id = generateLocalId(alumnoId, fecha),
-                    alumnoId = alumnoId,
-                    claseId = claseId,
-                    profesorId = profesorId,
-                    fecha = Timestamp(fecha),
-                    creadoPor = profesorId,
-                    modificadoPor = profesorId
-                )
-                
-                // Guardamos en local con marca de "no sincronizado"
-                localRegistroRepository.saveRegistroActividad(nuevoRegistro, false)
-                
-                return@withContext Result.Success(nuevoRegistro)
+                // Si no hay registros locales, devolvemos null
+                return@withContext Result.Success(null)
             }
+        } catch (e: Exception) {
+            Timber.e(e, "Error al obtener registro diario existente")
+            return@withContext Result.Error(Exception(e.message ?: "Error desconocido"))
+        }
+    }
+
+    /**
+     * Obtiene un registro diario existente o crea uno nuevo si no existe.
+     * DEPRECATED: Usar obtenerRegistroDiarioExistente y crear el registro al guardar
+     * 
+     * @param alumnoId ID del alumno
+     * @param claseId ID de la clase
+     * @param profesorId ID del profesor
+     * @param fecha Fecha del registro (por defecto, la fecha actual)
+     * @return Resultado con el registro obtenido o creado
+     */
+    @Deprecated("Usar obtenerRegistroDiarioExistente y crear el registro al guardar")
+    suspend fun obtenerOCrearRegistroDiario(
+        alumnoId: String,
+        claseId: String,
+        profesorId: String,
+        fecha: Date = Date()
+    ): Result<RegistroActividad> = withContext(Dispatchers.IO) {
+        try {
+            // Primero intentar obtener un registro existente
+            val registroExistenteResult = obtenerRegistroDiarioExistente(alumnoId, claseId, profesorId, fecha)
+            
+            if (registroExistenteResult is Result.Success && registroExistenteResult.data != null) {
+                return@withContext Result.Success(registroExistenteResult.data)
+            }
+            
+            // Si no existe, crear uno nuevo EN MEMORIA (no guardarlo aún)
+            val nuevoRegistro = RegistroActividad(
+                id = generateLocalId(alumnoId, fecha), // Usar el ID calculado
+                alumnoId = alumnoId,
+                claseId = claseId,
+                profesorId = profesorId,
+                fecha = Timestamp(fecha),
+                creadoPor = profesorId,
+                modificadoPor = profesorId
+            )
+            
+            // NO guardamos el registro aquí, solo lo devolvemos
+            return@withContext Result.Success(nuevoRegistro)
         } catch (e: Exception) {
             Timber.e(e, "Error al obtener/crear registro diario")
             return@withContext Result.Error(Exception(e.message ?: "Error desconocido"))
@@ -262,12 +277,21 @@ class RegistroDiarioRepository @Inject constructor(
             // Si hay conexión, guardamos en Firestore
             if (isNetworkAvailable()) {
                 try {
-                    registrosCollection.document(registroActualizado.id)
-                        .set(registroActualizado)
+                    // Usar el ID calculado si es un registro nuevo
+                    val idParaUsar = if (registro.id.startsWith("registro_")) {
+                        registro.id // Ya tiene el formato correcto
+                    } else {
+                        generateLocalId(registro.alumnoId, registro.fecha.toDate())
+                    }
+                    
+                    val registroConIdCorrecto = registroActualizado.copy(id = idParaUsar)
+                    
+                    registrosCollection.document(idParaUsar)
+                        .set(registroConIdCorrecto)
                         .await()
                     
                     // Guardar en local sincronizado
-                    localRegistroRepository.saveRegistroActividad(registroActualizado, true)
+                    localRegistroRepository.saveRegistroActividad(registroConIdCorrecto, true)
                     return@withContext Result.Success(Unit)
                 } catch (e: Exception) {
                     Timber.e(e, "Error al guardar en Firestore, guardando solo en local")
@@ -450,7 +474,7 @@ class RegistroDiarioRepository @Inject constructor(
             val registrosLocales = mutableListOf<RegistroActividad>()
             
             // Usar método sincronizado en lugar de Flow
-            val registros = localRegistroRepository.getRegistrosActividadByAlumno("")
+            val registros = localRegistroRepository.getRegistrosActividadByAlumno(claseId)
             registrosLocales.addAll(
                 registros.filter { 
                     it.claseId == claseId && 

@@ -213,7 +213,7 @@ class RegistroDiarioViewModel @Inject constructor(
                 val fechaFormateada = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fecha)
                 Timber.d("Buscando registro para alumno: $alumnoId, fecha: $fechaFormateada")
                 
-                val result = registroDiarioRepository.obtenerOCrearRegistroDiario(
+                val result = registroDiarioRepository.obtenerRegistroDiarioExistente(
                     alumnoId = alumnoId,
                     claseId = _uiState.value.claseId,
                     profesorId = profesorIdActual,
@@ -223,38 +223,48 @@ class RegistroDiarioViewModel @Inject constructor(
                 when (result) {
                     is Result.Success -> {
                         val registro = result.data
-                        _uiState.update { state ->
-                            state.copy(
+                        if (registro != null) {
+                            // Si existe un registro, cargarlo
+                            _uiState.update { state ->
+                                state.copy(
+                                    isLoading = false,
+                                    registro = registro,
+                                    
+                                    // Actualizar los estados de UI con los datos del registro
+                                    primerPlato = registro.comidas.primerPlato.estadoComida,
+                                    segundoPlato = registro.comidas.segundoPlato.estadoComida,
+                                    postre = registro.comidas.postre.estadoComida,
+                                    merienda = EstadoComida.NO_SERVIDO,
+                                    observacionesComida = registro.observacionesComida ?: "",
+                                    
+                                    haSiestaSiNo = registro.haSiestaSiNo,
+                                    horaInicioSiesta = registro.horaInicioSiesta ?: "",
+                                    horaFinSiesta = registro.horaFinSiesta ?: "",
+                                    observacionesSiesta = registro.observacionesSiesta ?: "",
+                                    
+                                    necesitaPanales = registro.necesitaPanales,
+                                    necesitaToallitas = registro.necesitaToallitas,
+                                    necesitaRopaCambio = registro.necesitaRopaCambio,
+                                    otroMaterialNecesario = registro.otroMaterialNecesario ?: "",
+                                    
+                                    observacionesGenerales = registro.observacionesGenerales ?: "",
+                                    haHechoCaca = registro.haHechoCaca,
+                                    numeroCacas = registro.numeroCacas ?: 0,
+                                    observacionesCaca = registro.observacionesCaca ?: ""
+                                )
+                            }
+                            Timber.d("Registro existente cargado correctamente")
+                        } else {
+                            // Si no existe registro, solo actualizar el estado sin crear uno
+                            _uiState.update { it.copy(
                                 isLoading = false,
-                                registro = registro,
-                                
-                                // Actualizar los estados de UI con los datos del registro
-                                primerPlato = registro.comidas.primerPlato.estadoComida,
-                                segundoPlato = registro.comidas.segundoPlato.estadoComida,
-                                postre = registro.comidas.postre.estadoComida,
-                                merienda = EstadoComida.NO_SERVIDO,
-                                observacionesComida = registro.observacionesComida ?: "",
-                                
-                                haSiestaSiNo = registro.haSiestaSiNo,
-                                horaInicioSiesta = registro.horaInicioSiesta ?: "",
-                                horaFinSiesta = registro.horaFinSiesta ?: "",
-                                observacionesSiesta = registro.observacionesSiesta ?: "",
-                                
-                                necesitaPanales = registro.necesitaPanales,
-                                necesitaToallitas = registro.necesitaToallitas,
-                                necesitaRopaCambio = registro.necesitaRopaCambio,
-                                otroMaterialNecesario = registro.otroMaterialNecesario ?: "",
-                                
-                                observacionesGenerales = registro.observacionesGenerales ?: "",
-                                haHechoCaca = registro.haHechoCaca,
-                                numeroCacas = registro.numeroCacas ?: 0,
-                                observacionesCaca = registro.observacionesCaca ?: ""
-                            )
+                                registro = RegistroActividad() // Registro vacío para el formulario
+                            ) }
+                            Timber.d("No existe registro previo para esta fecha")
                         }
-                        Timber.d("Registro cargado correctamente")
                     }
                     is Result.Error -> {
-                        Timber.e(result.exception, "Error al obtener o crear registro diario")
+                        Timber.e(result.exception, "Error al obtener registro diario")
                         _uiState.update { it.copy(
                             isLoading = false,
                             error = result.exception?.message ?: "Error al cargar registro diario"
@@ -450,20 +460,36 @@ class RegistroDiarioViewModel @Inject constructor(
                 // Aquí obtenemos la fecha actual
                 val fecha = Timestamp(Date())
                 
+                // Generar el ID calculado para el registro
+                val fechaStr = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(_uiState.value.fechaSeleccionada)
+                val registroId = "registro_${fechaStr}_$alumnoId"
+                
+                // Obtener el nombre del alumno para incluirlo en el registro
+                val nombreAlumno = _uiState.value.alumnoNombre ?: ""
+                
+                // Obtener el nombre del profesor
+                var nombreProfesor = ""
+                try {
+                    val profesorData = profesorRepository.getUsuarioProfesorByDni(profesorIdActual)
+                    if (profesorData != null) {
+                        nombreProfesor = "${profesorData.nombre} ${profesorData.apellidos}".trim()
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al obtener nombre del profesor")
+                }
+                
                 // Para evitar problemas con registros duplicados, verificamos si ya existe
                 val registroExistente = _uiState.value.registro
-                val registro = if (registroExistente.id.isEmpty()) {
+                val registro = if (registroExistente.id.isEmpty() || !registroExistente.id.startsWith("registro_")) {
                     // Crear un nuevo registro con el formato correcto de ID
-                    val fechaStr = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(_uiState.value.fechaSeleccionada)
-                    val registroId = "registro_${fechaStr}_$alumnoId"
-                    
-                    // Crear un nuevo registro
-                    val nuevoRegistro = RegistroActividad(
+                    RegistroActividad(
                         id = registroId,
                         alumnoId = alumnoId,
+                        alumnoNombre = nombreAlumno,
                         claseId = _uiState.value.claseId,
                         profesorId = profesorIdActual,
-                        fecha = fecha,
+                        profesorNombre = nombreProfesor,
+                        fecha = Timestamp(_uiState.value.fechaSeleccionada),
                         comidas = Comidas(
                             primerPlato = Plato("", _uiState.value.primerPlato),
                             segundoPlato = Plato("", _uiState.value.segundoPlato),
@@ -486,10 +512,11 @@ class RegistroDiarioViewModel @Inject constructor(
                         modificadoPor = profesorIdActual,
                         ultimaModificacion = fecha
                     )
-                    nuevoRegistro
                 } else {
-                    // Actualizar registro existente
+                    // Actualizar registro existente manteniendo su ID
                     registroExistente.copy(
+                        alumnoNombre = nombreAlumno, // Asegurar que el nombre del alumno esté actualizado
+                        profesorNombre = nombreProfesor, // Asegurar que el nombre del profesor esté actualizado
                         comidas = Comidas(
                             primerPlato = Plato("", _uiState.value.primerPlato),
                             segundoPlato = Plato("", _uiState.value.segundoPlato),
