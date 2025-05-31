@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.data.model.EstadoSolicitud
+import com.tfg.umeegunero.data.model.Usuario
 import com.tfg.umeegunero.util.Result
 import com.tfg.umeegunero.data.repository.UsuarioRepository
 import com.tfg.umeegunero.data.repository.SolicitudRepository
@@ -43,6 +44,9 @@ import com.tfg.umeegunero.data.service.AvatarService
  * @property solicitudPendiente Indica si el familiar tiene una solicitud pendiente
  * @property solicitudId ID de la solicitud pendiente (si existe)
  * @property necesitaPermisoNotificaciones Indica si el familiar necesita configurar permisos
+ * @property necesitaCambioContrasena Indica si el usuario necesita cambiar la contraseña
+ * @property requiereNuevaContrasena Indica si el usuario necesita crear una nueva contraseña
+ * @property usuarioDni DNI del usuario autenticado
  * 
  * @author Estudiante 2º DAM
  */
@@ -57,7 +61,10 @@ data class LoginUiState(
     val userType: TipoUsuario? = null,
     val solicitudPendiente: Boolean = false,
     val solicitudId: String = "",
-    val necesitaPermisoNotificaciones: Boolean = false
+    val necesitaPermisoNotificaciones: Boolean = false,
+    val necesitaCambioContrasena: Boolean = false,
+    val requiereNuevaContrasena: Boolean = false,
+    val usuarioDni: String = ""
 ) {
     /**
      * Propiedad calculada que indica si el botón de login debe estar habilitado.
@@ -462,6 +469,26 @@ class LoginViewModel @Inject constructor(
                                     }
                                 }
                                 
+                                // Verificar si necesita cambio de contraseña
+                                val necesitaCambio = verificarNecesidadCambioContrasena(usuario)
+                                val requiereNueva = esContrasenaTemporalOPredeterminada(password)
+                                
+                                if (necesitaCambio || requiereNueva) {
+                                    // El usuario necesita cambiar su contraseña antes de continuar
+                                    _uiState.update {
+                                        it.copy(
+                                            isLoading = false,
+                                            necesitaCambioContrasena = necesitaCambio,
+                                            requiereNuevaContrasena = requiereNueva,
+                                            usuarioDni = usuario.dni,
+                                            userType = userType,
+                                            success = false // No completamos el login hasta cambiar contraseña
+                                        )
+                                    }
+                                    Timber.d("Usuario $email necesita cambiar contraseña antes de continuar")
+                                    return@launch
+                                }
+                                
                                 // Si el usuario seleccionó recordar usuario, guardamos el email
                                 if (rememberUser) {
                                     saveUserCredentials(email)
@@ -638,5 +665,132 @@ class LoginViewModel @Inject constructor(
      */
     fun isAdminApp(): Boolean {
         return sharedPreferences.getBoolean(PREF_IS_ADMIN_APP, false)
+    }
+    
+    /**
+     * Verifica si el usuario necesita cambiar su contraseña por políticas de seguridad.
+     * 
+     * Evalúa diferentes criterios:
+     * - Primera vez que se conecta (no tiene último acceso registrado)
+     * - Usuario nuevo sin acceso previo
+     * - Evaluación de contraseñas por políticas de seguridad
+     * 
+     * @param usuario Usuario autenticado
+     * @return true si necesita cambiar la contraseña, false en caso contrario
+     */
+    private fun verificarNecesidadCambioContrasena(usuario: Usuario): Boolean {
+        try {
+            // Verificar si es primera vez (no tiene último acceso registrado)
+            val esPrimeraVez = usuario.ultimoAcceso == null
+            
+            // Verificar si es un usuario muy reciente (registrado hace menos de 1 día y sin acceso previo)
+            val fechaRegistro = usuario.fechaRegistro.toDate()
+            val tiempoTranscurrido = System.currentTimeMillis() - fechaRegistro.time
+            val esUsuarioNuevo = tiempoTranscurrido < (24 * 60 * 60 * 1000) // menos de 24 horas
+            
+            // Si es primera vez o usuario muy nuevo, puede necesitar cambio
+            val necesitaCambio = esPrimeraVez && esUsuarioNuevo
+            
+            Timber.d("Verificación cambio contraseña para ${usuario.dni}: " +
+                    "primeraVez=$esPrimeraVez, usuarioNuevo=$esUsuarioNuevo, " +
+                    "necesitaCambio=$necesitaCambio")
+            
+            return necesitaCambio
+            
+        } catch (e: Exception) {
+            Timber.e(e, "Error al verificar necesidad de cambio de contraseña")
+            // En caso de error, por seguridad asumimos que NO necesita cambio
+            return false
+        }
+    }
+    
+    /**
+     * Verifica si la contraseña usada es temporal o predeterminada.
+     * 
+     * Identifica patrones comunes de contraseñas temporales:
+     * - Contraseñas que contengan "temp", "temporal", "cambiar"
+     * - Contraseñas con patrones simples como "123456", "password"
+     * - Contraseñas que sean igual al DNI del usuario
+     * - Formato típico de contraseñas generadas por administrador
+     * 
+     * @param password Contraseña utilizada en el login
+     * @return true si parece ser una contraseña temporal, false en caso contrario
+     */
+    private fun esContrasenaTemporalOPredeterminada(password: String): Boolean {
+        val passwordLower = password.lowercase()
+        
+        // Patrones de contraseñas temporales comunes
+        val patronesTemporales = listOf(
+            "temp", "temporal", "cambiar", "change", "reset",
+            "123456", "password", "admin", "usuario", 
+            "contraseña", "pass", "12345", "qwerty"
+        )
+        
+        // Verificar si contiene algún patrón temporal
+        val contienePatronTemporal = patronesTemporales.any { patron ->
+            passwordLower.contains(patron)
+        }
+        
+        // Verificar si es muy simple (solo números o muy corta para ser segura)
+        val esMuySimple = password.all { it.isDigit() } || 
+                         password.length <= 6 ||
+                         password.matches(Regex("^[a-zA-Z]+$")) // Solo letras
+        
+        // Verificar formato típico de contraseña generada: Temp+números
+        val formatoGenerado = password.matches(Regex("^[Tt]emp\\d+$")) ||
+                             password.matches(Regex("^[Cc]amb\\d+$")) ||
+                             password.matches(Regex("^[Nn]uev[ao]\\d+$"))
+        
+        val esTemporal = contienePatronTemporal || formatoGenerado
+        
+        Timber.d("Verificación contraseña temporal: temporal=$esTemporal, " +
+                "simple=$esMuySimple, patronTemporal=$contienePatronTemporal")
+        
+        return esTemporal
+    }
+    
+    /**
+     * Completa el proceso de login después de un cambio de contraseña exitoso.
+     * Este método se llama desde la pantalla de cambio de contraseña para finalizar
+     * el proceso de autenticación una vez que el usuario ha actualizado su contraseña.
+     */
+    fun completarLoginDespuesCambioContrasena() {
+        val currentState = _uiState.value
+        
+        // Guardar credenciales si el usuario lo eligió (esto se perdió en el flujo anterior)
+        if (sharedPreferences.getBoolean(PREF_REMEMBER_USER, false)) {
+            saveUserCredentials(currentState.email)
+        }
+        
+        _uiState.update {
+            it.copy(
+                necesitaCambioContrasena = false,
+                requiereNuevaContrasena = false,
+                success = true, // Ahora sí completamos el login
+                isLoading = false
+            )
+        }
+        
+        // Actualizar token FCM
+        if (currentState.usuarioDni.isNotBlank()) {
+            actualizarTokenFCM(currentState.usuarioDni)
+        }
+        
+        Timber.d("Login completado exitosamente después del cambio de contraseña")
+    }
+    
+    /**
+     * Limpia los estados relacionados con cambio de contraseña.
+     * Útil cuando el usuario cancela el proceso de cambio.
+     */
+    fun limpiarEstadoCambioContrasena() {
+        _uiState.update {
+            it.copy(
+                necesitaCambioContrasena = false,
+                requiereNuevaContrasena = false,
+                usuarioDni = "",
+                isLoading = false
+            )
+        }
     }
 }

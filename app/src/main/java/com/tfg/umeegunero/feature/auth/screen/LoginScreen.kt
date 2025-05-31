@@ -49,6 +49,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -112,6 +113,7 @@ import kotlinx.coroutines.launch
  * @param onLoginSuccess Callback que se ejecuta cuando la autenticación es exitosa
  * @param onForgotPassword Callback que se ejecuta cuando el usuario pulsa "Olvidé mi contraseña"
  * @param onNecesitaPermisos Callback que se ejecuta cuando un familiar necesita configurar permisos de notificaciones
+ * @param onNecesitaCambioContrasena Callback que se ejecuta cuando un usuario necesita cambiar su contraseña
  * 
  * @author Maitane (Estudiante 2º DAM)
  * @version 3.0
@@ -124,7 +126,8 @@ fun LoginScreen(
     onNavigateBack: () -> Unit,
     onLoginSuccess: (TipoUsuario) -> Unit,
     onForgotPassword: (String) -> Unit = {},
-    onNecesitaPermisos: () -> Unit = {}
+    onNecesitaPermisos: () -> Unit = {},
+    onNecesitaCambioContrasena: (String, TipoUsuario, Boolean) -> Unit = { _, _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -200,6 +203,17 @@ fun LoginScreen(
         }
     }
 
+    // Detectar si necesita cambio de contraseña
+    LaunchedEffect(uiState.necesitaCambioContrasena, uiState.requiereNuevaContrasena) {
+        if (uiState.necesitaCambioContrasena || uiState.requiereNuevaContrasena) {
+            onNecesitaCambioContrasena(
+                uiState.usuarioDni,
+                uiState.userType ?: userType,
+                uiState.requiereNuevaContrasena
+            )
+        }
+    }
+
     // Mostrar diálogo de solicitud pendiente
     if (uiState.solicitudPendiente) {
         AlertDialog(
@@ -250,6 +264,97 @@ fun LoginScreen(
                     imageVector = Icons.Default.Info,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        )
+    }
+    
+    // Mostrar diálogo de cambio de contraseña requerido
+    if (uiState.necesitaCambioContrasena || uiState.requiereNuevaContrasena) {
+        AlertDialog(
+            onDismissRequest = { 
+                // No permitir cerrar el diálogo hasta que cambie la contraseña
+            },
+            title = { 
+                Text(
+                    text = if (uiState.requiereNuevaContrasena) "Contraseña temporal" else "Cambio de contraseña requerido",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                ) 
+            },
+            text = { 
+                Column {
+                    if (uiState.requiereNuevaContrasena) {
+                        Text(
+                            text = "Has iniciado sesión con una contraseña temporal o predeterminada.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Por tu seguridad, debes establecer una contraseña personalizada antes de continuar.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    } else {
+                        Text(
+                            text = "Tu contraseña ha expirado o necesitas cambiarla por políticas de seguridad.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Debes actualizar tu contraseña antes de acceder a la aplicación.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Requisitos de la nueva contraseña:",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Text(
+                        text = "• Mínimo 6 caracteres\n• Al menos una letra\n• Al menos un número\n• Al menos un carácter especial",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { 
+                        onNecesitaCambioContrasena(
+                            uiState.usuarioDni,
+                            uiState.userType ?: userType,
+                            uiState.requiereNuevaContrasena
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = userTypeColor
+                    )
+                ) {
+                    Text("Cambiar contraseña")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { 
+                        // Limpiar estado y volver atrás
+                        viewModel.limpiarEstadoCambioContrasena()
+                        onNavigateBack()
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            },
+            icon = { 
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = userTypeColor
                 )
             }
         )

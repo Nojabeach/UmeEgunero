@@ -68,6 +68,9 @@ import com.tfg.umeegunero.feature.centro.screen.VincularProfesorClaseScreen
 import com.tfg.umeegunero.feature.centro.screen.VincularAlumnoClaseScreen
 import android.widget.Toast
 import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.MessageDetailViewModel
+import com.tfg.umeegunero.feature.auth.viewmodel.LoginViewModel
+import com.tfg.umeegunero.feature.auth.screen.CambioContrasenaScreen
+import com.tfg.umeegunero.feature.auth.screen.RecuperarPasswordScreen
 
 /**
  * Sistema de navegación principal de la aplicación UmeEgunero.
@@ -287,6 +290,117 @@ fun Navigation(
                         else -> AppScreens.Welcome.route
                     }
                     navController.navigate(route) {
+                        popUpTo(AppScreens.Welcome.route) { inclusive = true }
+                    }
+                },
+                onForgotPassword = { email ->
+                    // 🔐 NUEVA FUNCIONALIDAD: Navegar a recuperación de contraseña
+                    navController.navigate(
+                        AppScreens.RecuperarPassword.createRoute(email)
+                    )
+                },
+                onNecesitaPermisos = {
+                    // Navegación a pantalla de configuración de permisos (si existe)
+                    // navController.navigate("configurar_permisos")
+                },
+                onNecesitaCambioContrasena = { dni, tipo, requiereNueva ->
+                    // 🔐 NUEVA FUNCIONALIDAD: Navegar al cambio de contraseña obligatorio
+                    navController.navigate(
+                        AppScreens.CambioContrasenaLogin.createRoute(dni, tipo.name, requiereNueva)
+                    ) {
+                        // No permitir volver atrás hasta completar el cambio
+                        popUpTo(AppScreens.Login.route) { inclusive = false }
+                    }
+                }
+            )
+        }
+
+        // 🔐 Pantalla de recuperación de contraseña
+        composable(
+            route = AppScreens.RecuperarPassword.route,
+            arguments = AppScreens.RecuperarPassword.arguments
+        ) { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email")?.let { 
+                android.net.Uri.decode(it) 
+            }
+            
+            RecuperarPasswordScreen(
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.popBackStack() },
+                initialEmail = email
+            )
+        }
+
+        // 🔐 RUTAS DE CAMBIO DE CONTRASEÑA
+
+        // Ruta normal para cambio de contraseña desde perfil
+        composable(
+            route = AppScreens.CambioContrasena.route,
+            arguments = AppScreens.CambioContrasena.arguments
+        ) { backStackEntry ->
+            val dni = backStackEntry.arguments?.getString("dni") ?: ""
+            
+            CambioContrasenaScreen(
+                dni = dni,
+                onNavigateBack = { navController.popBackStack() },
+                onPasswordChanged = { 
+                    navController.popBackStack()
+                    // Mostrar mensaje de éxito si es necesario
+                }
+            )
+        }
+
+        // Nueva ruta para cambio de contraseña desde login
+        composable(
+            route = AppScreens.CambioContrasenaLogin.route,
+            arguments = AppScreens.CambioContrasenaLogin.arguments
+        ) { backStackEntry ->
+            val dni = backStackEntry.arguments?.getString("dni") ?: ""
+            val userTypeString = backStackEntry.arguments?.getString("userType") ?: ""
+            val requiereNueva = backStackEntry.arguments?.getBoolean("requiereNueva") ?: false
+            val userType = try { 
+                TipoUsuario.valueOf(userTypeString) 
+            } catch (e: Exception) { 
+                TipoUsuario.DESCONOCIDO 
+            }
+            
+            // Obtener el LoginViewModel desde el BackStackEntry anterior para completar el login
+            val loginViewModel: LoginViewModel = hiltViewModel(
+                remember { 
+                    try {
+                        navController.getBackStackEntry(AppScreens.Login.createRoute(userTypeString))
+                    } catch (e: Exception) {
+                        // Si no se puede obtener el BackStackEntry, usar el actual
+                        backStackEntry
+                    }
+                }
+            )
+            
+            CambioContrasenaScreen(
+                dni = dni,
+                isFromLogin = true,
+                requiereNuevaContrasena = requiereNueva,
+                userType = userType,
+                onNavigateBack = {
+                    // Si viene del login, limpiar estado y volver al login
+                    loginViewModel.limpiarEstadoCambioContrasena()
+                    navController.popBackStack(AppScreens.Login.createRoute(userTypeString), false)
+                },
+                onLoginCompleted = {
+                    // 🎉 Completar el proceso de login después del cambio exitoso
+                    loginViewModel.completarLoginDespuesCambioContrasena()
+                    
+                    // Navegar al dashboard correspondiente
+                    val destination = when (userType) {
+                        TipoUsuario.ADMIN_APP -> AppScreens.AdminDashboard.route
+                        TipoUsuario.ADMIN_CENTRO -> AppScreens.CentroDashboard.route
+                        TipoUsuario.PROFESOR -> AppScreens.ProfesorDashboard.route
+                        TipoUsuario.FAMILIAR -> AppScreens.FamiliarDashboard.route
+                        else -> AppScreens.Welcome.route
+                    }
+                    
+                    navController.navigate(destination) {
+                        // Limpiar todo el stack hasta llegar al dashboard
                         popUpTo(AppScreens.Welcome.route) { inclusive = true }
                     }
                 }

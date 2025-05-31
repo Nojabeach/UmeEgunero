@@ -36,6 +36,28 @@ sealed class AppScreens(val route: String) {
         fun createRoute(userType: String) = "login/$userType"
     }
     
+    /** 
+     * Pantalla de recuperación de contraseña 
+     * @param email Email del usuario (opcional, para prellenar)
+     */
+    object RecuperarPassword : AppScreens("recuperar_password?email={email}") {
+        fun createRoute(email: String? = null): String {
+            return if (email != null) {
+                "recuperar_password?email=${android.net.Uri.encode(email)}"
+            } else {
+                "recuperar_password"
+            }
+        }
+        
+        val arguments = listOf(
+            navArgument("email") { 
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            }
+        )
+    }
+    
     /** Pantalla de registro de nuevos usuarios */
     object Registro : AppScreens("registro")
     
@@ -288,6 +310,29 @@ sealed class AppScreens(val route: String) {
         
         val arguments = listOf(
             navArgument("dni") { type = NavType.StringType }
+        )
+    }
+
+    /** 
+     * Pantalla de cambio de contraseña desde login (obligatorio)
+     * @param dni DNI del usuario que cambiará su contraseña
+     * @param userType Tipo de usuario
+     * @param requiereNueva Indica si requiere nueva contraseña
+     */
+    object CambioContrasenaLogin : AppScreens("cambio_contrasena_login/{dni}?userType={userType}&requiereNueva={requiereNueva}") {
+        fun createRoute(dni: String, userType: String, requiereNueva: Boolean) = 
+            "cambio_contrasena_login/$dni?userType=$userType&requiereNueva=$requiereNueva"
+        
+        val arguments = listOf(
+            navArgument("dni") { type = NavType.StringType },
+            navArgument("userType") { 
+                type = NavType.StringType
+                defaultValue = "DESCONOCIDO"
+            },
+            navArgument("requiereNueva") { 
+                type = NavType.BoolType
+                defaultValue = false 
+            }
         )
     }
 

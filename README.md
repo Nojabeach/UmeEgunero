@@ -588,4 +588,51 @@ Las Cloud Functions manejan las siguientes funcionalidades:
 
 ## Estructura
 
+## 🔐 Sistema Avanzado de Autenticación
+
+### Cambio de Contraseña Obligatorio
+
+UmeEgunero implementa un sistema inteligente de detección y gestión de cambios de contraseña obligatorios:
+
+#### 🔍 Detección Automática
+- **Contraseñas temporales**: Detecta patrones como "temp123", "password", "cambiar"
+- **Primera conexión**: Usuarios que nunca han cambiado su contraseña inicial
+- **Contraseñas expiradas**: Más de 90 días desde el último cambio
+- **Reset administrativo**: Contraseñas reseteadas por administradores
+
+#### 🛡️ Flujo de Seguridad
+```kotlin
+// Ejemplo de integración en navegación
+LoginScreen(
+    userType = userType,
+    onLoginSuccess = { tipo -> /* Login normal */ },
+    onNecesitaCambioContrasena = { dni, tipo, requiereNueva ->
+        navController.navigate(
+            "cambio_contrasena/$dni?fromLogin=true&requiereNueva=$requiereNueva"
+        )
+    }
+)
+
+// Pantalla de cambio desde login
+CambioContrasenaScreen(
+    dni = dni,
+    isFromLogin = true,
+    requiereNuevaContrasena = requiereNueva,
+    userType = userType,
+    onLoginCompleted = {
+        // Completar login después del cambio exitoso
+        loginViewModel.completarLoginDespuesCambioContrasena()
+        navController.navigate("dashboard") {
+            popUpTo("login") { inclusive = true }
+        }
+    }
+)
 ```
+
+#### ✨ Características Avanzadas
+- **Validación inteligente**: Detecta patrones de contraseñas inseguras
+- **Experiencia adaptativa**: UI diferente para nuevas vs. contraseñas expiradas  
+- **Integración transparente**: Flujo sin interrupciones desde el login
+- **Multi-perfil**: Funciona para todos los tipos de usuario
+
+## 🚀 Características Principales

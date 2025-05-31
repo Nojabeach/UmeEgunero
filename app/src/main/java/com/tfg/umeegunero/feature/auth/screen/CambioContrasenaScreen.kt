@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -24,10 +25,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.tfg.umeegunero.data.model.TipoUsuario
 import com.tfg.umeegunero.feature.auth.viewmodel.CambioContrasenaViewModel
 import com.tfg.umeegunero.ui.components.AppTopBar
 import com.tfg.umeegunero.ui.components.LoadingDialog
 import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 
 /**
@@ -51,6 +55,10 @@ import androidx.compose.ui.tooling.preview.Preview
  * @param onNavigateBack Callback para volver a la pantalla anterior
  * @param onPasswordChanged Callback que se ejecuta cuando la contraseña se cambia exitosamente
  * @param viewModel ViewModel que gestiona la lógica de cambio de contraseña
+ * @param isFromLogin Indica si la pantalla se está mostrando desde el flujo de login
+ * @param requiereNuevaContrasena Indica si se requiere nueva contraseña para el cambio
+ * @param userType Tipo de usuario asociado al cambio de contraseña
+ * @param onLoginCompleted Callback que se ejecuta cuando el login se completa exitosamente
  * 
  * @see CambioContrasenaViewModel
  * @see LoadingDialog
@@ -61,7 +69,11 @@ fun CambioContrasenaScreen(
     dni: String,
     onNavigateBack: () -> Unit,
     onPasswordChanged: () -> Unit = {},
-    viewModel: CambioContrasenaViewModel = hiltViewModel()
+    viewModel: CambioContrasenaViewModel = hiltViewModel(),
+    isFromLogin: Boolean = false,
+    requiereNuevaContrasena: Boolean = false,
+    userType: TipoUsuario? = null,
+    onLoginCompleted: (() -> Unit)? = null
 ) {
     var contrasenaActual by remember { mutableStateOf("") }
     var nuevaContrasena by remember { mutableStateOf("") }
@@ -74,7 +86,13 @@ fun CambioContrasenaScreen(
 
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
-            onPasswordChanged()
+            if (isFromLogin && onLoginCompleted != null) {
+                // Si viene del login, completar el proceso de login
+                onLoginCompleted()
+            } else {
+                // Flujo normal de cambio de contraseña
+                onPasswordChanged()
+            }
         }
     }
 
@@ -82,9 +100,18 @@ fun CambioContrasenaScreen(
         Scaffold(
             topBar = {
                 AppTopBar(
-                    title = "Cambiar Contraseña",
+                    title = if (isFromLogin) {
+                        if (requiereNuevaContrasena) "Establecer nueva contraseña" else "Cambio requerido"
+                    } else {
+                        "Cambiar Contraseña"
+                    },
                     navigationIcon = Icons.AutoMirrored.Filled.ArrowBack,
-                    onNavigationClick = onNavigateBack
+                    onNavigationClick = if (isFromLogin) {
+                        // Si viene del login, no permitir volver atrás fácilmente
+                        { /* No hacer nada o mostrar diálogo de confirmación */ }
+                    } else {
+                        onNavigateBack
+                    }
                 )
             }
         ) { paddingValues ->
@@ -100,26 +127,74 @@ fun CambioContrasenaScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    OutlinedTextField(
-                        value = contrasenaActual,
-                        onValueChange = { contrasenaActual = it },
-                        label = { Text("Contraseña Actual") },
-                        singleLine = true,
-                        visualTransformation = if (mostrarContrasenaActual) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Password,
-                            imeAction = ImeAction.Next
-                        ),
-                        trailingIcon = {
-                            IconButton(onClick = { mostrarContrasenaActual = !mostrarContrasenaActual }) {
+                    // Mostrar información contextual si viene del login
+                    if (isFromLogin) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
                                 Icon(
-                                    imageVector = if (mostrarContrasenaActual) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = if (mostrarContrasenaActual) "Ocultar contraseña" else "Mostrar contraseña"
+                                    imageVector = Icons.Default.Security,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = if (requiereNuevaContrasena) {
+                                        "Establece una contraseña segura"
+                                    } else {
+                                        "Actualización de seguridad requerida"
+                                    },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    text = if (requiereNuevaContrasena) {
+                                        "Por tu seguridad, establece una contraseña personalizada."
+                                    } else {
+                                        "Tu contraseña ha expirado y debe ser actualizada."
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    
+                    // Campo de contraseña actual - solo si no requiere nueva contraseña
+                    if (!requiereNuevaContrasena) {
+                        OutlinedTextField(
+                            value = contrasenaActual,
+                            onValueChange = { contrasenaActual = it },
+                            label = { Text("Contraseña Actual") },
+                            singleLine = true,
+                            visualTransformation = if (mostrarContrasenaActual) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Password,
+                                imeAction = ImeAction.Next
+                            ),
+                            trailingIcon = {
+                                IconButton(onClick = { mostrarContrasenaActual = !mostrarContrasenaActual }) {
+                                    Icon(
+                                        imageVector = if (mostrarContrasenaActual) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = if (mostrarContrasenaActual) "Ocultar contraseña" else "Mostrar contraseña"
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
 
                     OutlinedTextField(
                         value = nuevaContrasena,
@@ -165,12 +240,26 @@ fun CambioContrasenaScreen(
 
                     Button(
                         onClick = {
-                            viewModel.cambiarContrasena(dni, contrasenaActual, nuevaContrasena, confirmarContrasena)
+                            if (requiereNuevaContrasena) {
+                                // Si requiere nueva contraseña, no validar la actual
+                                viewModel.cambiarContrasena(dni, "", nuevaContrasena, confirmarContrasena)
+                            } else {
+                                // Flujo normal con validación de contraseña actual
+                                viewModel.cambiarContrasena(dni, contrasenaActual, nuevaContrasena, confirmarContrasena)
+                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = contrasenaActual.isNotBlank() && nuevaContrasena.isNotBlank() && confirmarContrasena.isNotBlank()
+                        enabled = if (requiereNuevaContrasena) {
+                            // Si requiere nueva contraseña, solo validar que las nuevas estén completas
+                            nuevaContrasena.isNotBlank() && confirmarContrasena.isNotBlank()
+                        } else {
+                            // Validación normal
+                            contrasenaActual.isNotBlank() && nuevaContrasena.isNotBlank() && confirmarContrasena.isNotBlank()
+                        }
                     ) {
-                        Text("Cambiar Contraseña")
+                        Text(
+                            if (requiereNuevaContrasena) "Establecer contraseña" else "Cambiar Contraseña"
+                        )
                     }
 
                     if (uiState.error != null) {
