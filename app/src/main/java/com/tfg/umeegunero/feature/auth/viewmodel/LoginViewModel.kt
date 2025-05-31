@@ -793,4 +793,23 @@ class LoginViewModel @Inject constructor(
             )
         }
     }
+
+    /**
+     * Busca un usuario por su dirección de email.
+     *
+     * Utilizado para el flujo de recuperación de contraseña.
+     *
+     * @param email Dirección de email del usuario
+     * @param callback Función de callback con el resultado de la búsqueda
+     */
+    fun buscarUsuarioPorEmail(email: String, callback: (Result<Usuario>) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resultado = usuarioRepository.getUsuarioByEmail(email)
+                callback(resultado)
+            } catch (e: Exception) {
+                callback(Result.Error(e))
+            }
+        }
+    }
 }

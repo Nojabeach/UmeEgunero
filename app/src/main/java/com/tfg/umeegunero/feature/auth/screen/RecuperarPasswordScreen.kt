@@ -84,6 +84,7 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
  * 
  * @param viewModel ViewModel que gestiona la lógica de recuperación
  * @param onNavigateBack Callback para volver a la pantalla anterior
+ * @param initialEmail Email inicial para prellenar el formulario
  * 
  * @see RecuperarPasswordViewModel
  * @see RecuperarPasswordForm
@@ -93,11 +94,21 @@ import com.tfg.umeegunero.ui.theme.UmeEguneroTheme
 @Composable
 fun RecuperarPasswordScreen(
     viewModel: RecuperarPasswordViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    initialEmail: String? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // Prellenar email si se proporciona
+    LaunchedEffect(initialEmail) {
+        initialEmail?.let { email ->
+            if (email.isNotBlank()) {
+                viewModel.updateEmail(email)
+            }
+        }
+    }
 
     // Efecto para mostrar errores
     LaunchedEffect(uiState.error) {

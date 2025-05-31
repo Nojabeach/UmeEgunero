@@ -58,6 +58,18 @@ sealed class AppScreens(val route: String) {
         )
     }
     
+    /** 
+     * Pantalla de cambio de contraseña cuando el usuario la olvidó
+     * @param email Email del usuario para identificarlo
+     */
+    object OlvideContrasena : AppScreens("olvide_contrasena/{email}") {
+        fun createRoute(email: String) = "olvide_contrasena/${android.net.Uri.encode(email)}"
+        
+        val arguments = listOf(
+            navArgument("email") { type = NavType.StringType }
+        )
+    }
+    
     /** Pantalla de registro de nuevos usuarios */
     object Registro : AppScreens("registro")
     

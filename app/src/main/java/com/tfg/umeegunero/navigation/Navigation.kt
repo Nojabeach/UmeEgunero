@@ -4,11 +4,18 @@ import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -70,7 +77,12 @@ import android.widget.Toast
 import com.tfg.umeegunero.feature.common.comunicacion.viewmodel.MessageDetailViewModel
 import com.tfg.umeegunero.feature.auth.viewmodel.LoginViewModel
 import com.tfg.umeegunero.feature.auth.screen.CambioContrasenaScreen
-import com.tfg.umeegunero.feature.auth.screen.RecuperarPasswordScreen
+import com.tfg.umeegunero.data.repository.UsuarioRepository
+import com.tfg.umeegunero.util.Result
+import kotlinx.coroutines.delay
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.ui.text.style.TextAlign
 
 /**
  * Sistema de navegación principal de la aplicación UmeEgunero.
@@ -294,10 +306,20 @@ fun Navigation(
                     }
                 },
                 onForgotPassword = { email ->
-                    // 🔐 NUEVA FUNCIONALIDAD: Navegar a recuperación de contraseña
-                    navController.navigate(
-                        AppScreens.RecuperarPassword.createRoute(email)
-                    )
+                    // 🔐 Navegar a cambio de contraseña cuando olvidó la contraseña
+                    if (email.isNotBlank()) {
+                        navController.navigate(
+                            AppScreens.OlvideContrasena.createRoute(email)
+                        )
+                    } else {
+                        // Si no hay email, mostrar un mensaje de error
+                        // No tenemos acceso directo al viewModel aquí, mostramos un Toast
+                        Toast.makeText(
+                            navController.context,
+                            "Por favor, introduce tu email primero",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 },
                 onNecesitaPermisos = {
                     // Navegación a pantalla de configuración de permisos (si existe)
@@ -315,20 +337,114 @@ fun Navigation(
             )
         }
 
-        // 🔐 Pantalla de recuperación de contraseña
+        // 🔐 Pantalla de olvido de contraseña
         composable(
-            route = AppScreens.RecuperarPassword.route,
-            arguments = AppScreens.RecuperarPassword.arguments
+            route = AppScreens.OlvideContrasena.route,
+            arguments = AppScreens.OlvideContrasena.arguments
         ) { backStackEntry ->
             val email = backStackEntry.arguments?.getString("email")?.let { 
                 android.net.Uri.decode(it) 
+            } ?: ""
+            
+            // Estado para manejar la carga
+            var isLoading by remember { mutableStateOf(true) }
+            var errorMessage by remember { mutableStateOf<String?>(null) }
+            var userDni by remember { mutableStateOf<String?>(null) }
+            
+            // Crear una instancia del ViewModel
+            val loginViewModel: LoginViewModel = hiltViewModel()
+            
+            // Buscar el usuario por email
+            LaunchedEffect(email) {
+                if (email.isNotBlank()) {
+                    // Usar una función del LoginViewModel para buscar el usuario
+                    loginViewModel.buscarUsuarioPorEmail(email) { resultado ->
+                        when (resultado) {
+                            is Result.Success -> {
+                                userDni = resultado.data.dni
+                                isLoading = false
+                            }
+                            is Result.Error -> {
+                                errorMessage = "No se encontró un usuario con ese email"
+                                isLoading = false
+                            }
+                            else -> { /* Mantener estado de carga */ }
+                        }
+                    }
+                } else {
+                    errorMessage = "Email no válido"
+                    isLoading = false
+                }
             }
             
-            RecuperarPasswordScreen(
-                viewModel = hiltViewModel(),
-                onNavigateBack = { navController.popBackStack() },
-                initialEmail = email
-            )
+            when {
+                isLoading -> {
+                    // Mostrar pantalla de carga
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CircularProgressIndicator()
+                            Text(
+                                text = "Buscando cuenta...",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+                errorMessage != null -> {
+                    // Mostrar error y volver
+                    LaunchedEffect(errorMessage) {
+                        // Mostrar snackbar con mensaje de error
+                        delay(3000)
+                        navController.popBackStack()
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Text(
+                                text = errorMessage ?: "Error",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "Volviendo a la pantalla anterior...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                userDni != null -> {
+                    // Mostrar pantalla de cambio de contraseña sin pedir la actual
+                    CambioContrasenaScreen(
+                        dni = userDni!!,
+                        onNavigateBack = { navController.popBackStack() },
+                        onPasswordChanged = { 
+                            // Mostrar mensaje de éxito y volver al login
+                            navController.popBackStack()
+                        },
+                        isFromLogin = false,
+                        requiereNuevaContrasena = true // No pedir contraseña actual
+                    )
+                }
+            }
         }
 
         // 🔐 RUTAS DE CAMBIO DE CONTRASEÑA
