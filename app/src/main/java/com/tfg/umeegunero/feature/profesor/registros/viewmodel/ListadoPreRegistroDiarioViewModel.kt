@@ -749,21 +749,17 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
             
             // Procesar los registros de la colección registrosActividad
             if (resultActividad is Result.Success) {
-                // Filtrar los registros no eliminados
-                val registrosActividadNoEliminados = resultActividad.data
-                    .filter { !it.eliminado }
-                
-                registros.addAll(registrosActividadNoEliminados)
+                // Ya no necesitamos filtrar por eliminados porque ahora se eliminan físicamente
+                registros.addAll(resultActividad.data)
                 
                 Timber.d("Registros obtenidos de registrosActividad para clase $claseId en fecha $fecha:")
                 Timber.d("- Total registros: ${resultActividad.data.size}")
-                Timber.d("- Registros no eliminados: ${registrosActividadNoEliminados.size}")
             } else {
                 Timber.e("Error al obtener registros para clase $claseId en fecha $fecha")
             }
             
             registros.forEach { registro ->
-                Timber.d("  - Alumno: ${registro.alumnoId}, ID: ${registro.id}, Eliminado: ${registro.eliminado}")
+                Timber.d("  - Alumno: ${registro.alumnoId}, ID: ${registro.id}")
             }
             
             return registros
@@ -831,7 +827,6 @@ class ListadoPreRegistroDiarioViewModel @Inject constructor(
                 
                 // Actualizar alumnos con registro
                 val alumnosConRegistro = registros
-                    .filter { !it.eliminado } // Filtrar registros no eliminados
                     .map { it.alumnoId }
                     .toSet()
                 

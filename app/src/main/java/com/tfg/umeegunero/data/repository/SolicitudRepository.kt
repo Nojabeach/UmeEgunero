@@ -81,8 +81,10 @@ class SolicitudRepository @Inject constructor(
      */
     suspend fun crearSolicitudVinculacion(solicitud: SolicitudVinculacion): Result<SolicitudVinculacion> {
         return try {
-            val docRef = firestore.collection(COLLECTION_SOLICITUDES).document()
-            val solicitudConId = solicitud.copy(id = docRef.id)
+            // Generar ID basado en familiarId y alumnoId
+            val documentId = "${solicitud.familiarId}_${solicitud.alumnoId}"
+            val docRef = firestore.collection(COLLECTION_SOLICITUDES).document(documentId)
+            val solicitudConId = solicitud.copy(id = documentId)
             
             docRef.set(solicitudConId).await()
             

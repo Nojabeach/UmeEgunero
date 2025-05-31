@@ -290,6 +290,22 @@ class RegistroDiarioRepository @Inject constructor(
                         .set(registroConIdCorrecto)
                         .await()
                     
+                    // Resetear el campo registroDiarioLeido a false cuando se crea un nuevo registro
+                    try {
+                        val alumnoId = registroConIdCorrecto.alumnoId
+                        if (alumnoId.isNotEmpty()) {
+                            Timber.d("Reseteando registroDiarioLeido a false para alumno: $alumnoId")
+                            val alumnosCollection = firestore.collection("alumnos")
+                            alumnosCollection.document(alumnoId)
+                                .update("registroDiarioLeido", false)
+                                .await()
+                            Timber.d("Campo registroDiarioLeido reseteado a false para alumno: $alumnoId")
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error al resetear registroDiarioLeido en alumno: ${registroConIdCorrecto.alumnoId}")
+                        // No interrumpimos el flujo si falla esta actualización
+                    }
+                    
                     // Guardar en local sincronizado
                     localRegistroRepository.saveRegistroActividad(registroConIdCorrecto, true)
                     return@withContext Result.Success(Unit)
@@ -998,10 +1014,10 @@ class RegistroDiarioRepository @Inject constructor(
                             claseId = document.getString("claseId") ?: ""
                             fecha = document.getTimestamp("fecha")
                             
-                            // Eliminación lógica: marcamos como eliminado
-                            documentRef.update("eliminado", true).await()
+                            // Eliminación física: eliminar completamente el documento
+                            documentRef.delete().await()
                             
-                            Timber.d("Registro $registroId eliminado con éxito de la colección registrosActividad")
+                            Timber.d("Registro $registroId eliminado físicamente de la colección registrosActividad")
                             eliminadoRegistrosActividad = true
                         } else {
                             Timber.d("El registro $registroId no existe en la colección registrosActividad")
