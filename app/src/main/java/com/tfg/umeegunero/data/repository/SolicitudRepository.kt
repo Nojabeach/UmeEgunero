@@ -28,6 +28,7 @@ import com.tfg.umeegunero.data.model.MessageType
 import com.tfg.umeegunero.data.model.UnifiedMessage
 import com.tfg.umeegunero.data.repository.UnifiedMessageRepository
 import java.util.UUID
+import com.google.firebase.firestore.FieldValue
 
 /**
  * Repositorio para gestionar solicitudes en la aplicación UmeEgunero.
@@ -245,6 +246,52 @@ class SolicitudRepository @Inject constructor(
                 .document(solicitudId)
                 .update(actualizaciones)
                 .await()
+            
+            // Si la solicitud fue aprobada, crear la vinculación en la colección vinculaciones_familiar_alumno
+            if (nuevoEstado == EstadoSolicitud.APROBADA) {
+                try {
+                    // Obtener los detalles de la solicitud
+                    val solicitudSnapshot = firestore.collection(COLLECTION_SOLICITUDES)
+                        .document(solicitudId)
+                        .get()
+                        .await()
+                    
+                    val solicitud = solicitudSnapshot.toObject(SolicitudVinculacion::class.java)
+                    if (solicitud != null) {
+                        // Crear el documento de vinculación
+                        val vinculacionId = "${solicitud.familiarId}_${solicitud.alumnoDni}"
+                        val vinculacionData = mapOf(
+                            "familiarId" to solicitud.familiarId,
+                            "alumnoId" to solicitud.alumnoDni,
+                            "fechaVinculacion" to Timestamp.now(),
+                            "tipoRelacion" to (solicitud.tipoRelacion ?: "FAMILIAR"),
+                            "estado" to "ACTIVO",
+                            "creadoPor" to adminId,
+                            "solicitudId" to solicitudId
+                        )
+                        
+                        firestore.collection("vinculaciones_familiar_alumno")
+                            .document(vinculacionId)
+                            .set(vinculacionData)
+                            .await()
+                        
+                        Timber.d("✅ Vinculación creada exitosamente en vinculaciones_familiar_alumno: $vinculacionId")
+                        
+                        // También actualizar el campo familiarIds en el documento del alumno
+                        try {
+                            val alumnoRef = firestore.collection("alumnos").document(solicitud.alumnoDni)
+                            alumnoRef.update("familiarIds", FieldValue.arrayUnion(solicitud.familiarId))
+                                .await()
+                            Timber.d("✅ Campo familiarIds actualizado en alumno: ${solicitud.alumnoDni}")
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error al actualizar familiarIds en alumno: ${solicitud.alumnoDni}")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error al crear vinculación en vinculaciones_familiar_alumno")
+                    // No interrumpimos el flujo principal si falla la creación de la vinculación
+                }
+            }
             
             // Obtener los detalles de la solicitud para enviar notificación al familiar
             val solicitudSnapshot = firestore.collection(COLLECTION_SOLICITUDES)
