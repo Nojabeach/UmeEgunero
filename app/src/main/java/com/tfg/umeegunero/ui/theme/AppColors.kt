@@ -50,6 +50,7 @@ object AppColors {
 
     val PurpleGrey80 = Color(0xFFE6E1F9)
     val Pink80 = Color(0xFFFFC4D6)
+    val Blue80 = Color(0xFFD0BCFF)
     val PurpleGrey40 = Color(0xFF938F99)
     val Pink40 = Color(0xFFD14D72)
     

@@ -919,6 +919,17 @@ fun CentroDashboardScreen(
                             }
                             item {
                                 CategoriaCard(
+                                    titulo = "Familias",
+                                    descripcion = "Gestiona los familiares vinculados al centro",
+                                    icono = Icons.Default.People,
+                                    color = CentroColor,
+                                    iconTint = AppColors.Familiar,
+                                    onClick = { navController.navigate(AppScreens.ListaFamiliares.route) },
+                                    modifier = Modifier.padding(4.dp)
+                                )
+                            }
+                            item {
+                                CategoriaCard(
                                     titulo = "Profesores",
                                     descripcion = "Consulta, añade y administra el personal docente",
                                     icono = Icons.Default.SupervisorAccount,
