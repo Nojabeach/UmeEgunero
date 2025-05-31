@@ -62,7 +62,69 @@ class UnifiedMessageRepository @Inject constructor(
     suspend fun sendMessage(message: UnifiedMessage): Result<String> {
         return try {
             val messageId = message.id.ifEmpty { UUID.randomUUID().toString() }
-            val messageWithId = message.copy(id = messageId)
+            var messageWithId = message.copy(id = messageId)
+            
+            // Si es un mensaje de chat sin conversationId, generar uno
+            if (message.type == MessageType.CHAT && message.conversationId.isEmpty()) {
+                Timber.d("⚠️ Mensaje de chat sin conversationId, generando uno...")
+                
+                // Crear lista de participantes (emisor + receptor(es))
+                val participantIds = mutableSetOf<String>()
+                participantIds.add(message.senderId)
+                if (message.receiverId.isNotEmpty()) {
+                    participantIds.add(message.receiverId)
+                }
+                participantIds.addAll(message.receiversIds)
+                
+                // Generar conversationId basado en los participantes (ordenados para consistencia)
+                val sortedParticipants = participantIds.toList().sorted()
+                val generatedConversationId = sortedParticipants.joinToString("_")
+                
+                Timber.d("📝 ConversationId generado: $generatedConversationId")
+                
+                // Actualizar el mensaje con el conversationId generado
+                messageWithId = messageWithId.copy(conversationId = generatedConversationId)
+            }
+            
+            // Si es un mensaje de chat con conversationId, verificar/crear la conversación
+            if (messageWithId.type == MessageType.CHAT && messageWithId.conversationId.isNotEmpty()) {
+                Timber.d("🔍 Verificando conversación para mensaje de chat: ${messageWithId.conversationId}")
+                
+                // Verificar si existe la conversación
+                val conversationDoc = firestore.collection(CONVERSATIONS_COLLECTION)
+                    .document(messageWithId.conversationId)
+                    .get()
+                    .await()
+                
+                if (!conversationDoc.exists()) {
+                    Timber.d("📝 La conversación no existe, creándola...")
+                    
+                    // Crear lista de participantes (emisor + receptor(es))
+                    val participantIds = mutableSetOf<String>()
+                    participantIds.add(messageWithId.senderId)
+                    if (messageWithId.receiverId.isNotEmpty()) {
+                        participantIds.add(messageWithId.receiverId)
+                    }
+                    participantIds.addAll(messageWithId.receiversIds)
+                    
+                    // Crear la conversación
+                    val createResult = createOrUpdateConversation(
+                        conversationId = messageWithId.conversationId,
+                        participantIds = participantIds.toList().sorted(),
+                        title = "",
+                        entityId = messageWithId.metadata["alumnoId"] ?: "",
+                        entityType = if (messageWithId.metadata.containsKey("alumnoId")) "ALUMNO" else ""
+                    )
+                    
+                    if (createResult is Result.Error) {
+                        Timber.e("Error al crear conversación: ${createResult.message}")
+                        // Continuamos con el envío del mensaje aunque falle la creación de la conversación
+                    }
+                }
+                
+                // Actualizar la conversación con el nuevo mensaje
+                updateConversationWithNewMessage(messageWithId)
+            }
             
             // Guardar el mensaje en Firestore
             firestore.collection(MESSAGES_COLLECTION)
@@ -71,10 +133,10 @@ class UnifiedMessageRepository @Inject constructor(
                 .await()
             
             // No es necesario enviar notificaciones push aquí.
-            // La Cloud Function "notifyOnNewUnifiedMessage" se activará automáticamente
+            // La Cloud Function "sendMessageNotification" se activará automáticamente
             // cuando se cree el documento en Firestore y enviará las notificaciones.
             
-            Timber.d("Mensaje unificado guardado en Firestore con ID: $messageId. Tipo: ${message.type}")
+            Timber.d("Mensaje unificado guardado en Firestore con ID: $messageId. Tipo: ${messageWithId.type}")
             
             Result.Success(messageId)
         } catch (e: Exception) {
