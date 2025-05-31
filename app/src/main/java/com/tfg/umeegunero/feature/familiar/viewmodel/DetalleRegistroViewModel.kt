@@ -232,6 +232,10 @@ class DetalleRegistroViewModel @Inject constructor(
      */
     private suspend fun marcarComoVistoPorFamiliar(registro: RegistroActividad) {
         try {
+            Timber.d("=== INICIO marcarComoVistoPorFamiliar ===")
+            Timber.d("Registro ID: ${registro.id}")
+            Timber.d("Alumno ID: ${registro.alumnoId}")
+            
             // Verificar si ya hemos marcado este registro como visto en esta sesión
             if (registrosMarcadosComoVistos.contains(registro.id)) {
                 Timber.d("Registro ${registro.id} ya fue marcado como visto en esta sesión. Omitiendo.")
@@ -239,6 +243,7 @@ class DetalleRegistroViewModel @Inject constructor(
             }
             
             val usuarioActual = authRepository.getFirebaseUser()
+            Timber.d("Usuario actual obtenido: ${usuarioActual?.uid}")
             
             if (usuarioActual != null) {
                 val uid = usuarioActual.uid
@@ -251,21 +256,29 @@ class DetalleRegistroViewModel @Inject constructor(
                     fechaLectura = Timestamp.now()
                 )
                 
+                Timber.d("LecturaFamiliar creada: $lecturaFamiliar")
+                
                 // Guardar la lectura
+                Timber.d("Llamando a registrarLecturaFamiliar...")
                 val resultado = registroDiarioRepository.registrarLecturaFamiliar(lecturaFamiliar)
                 
+                Timber.d("Resultado de registrarLecturaFamiliar: $resultado")
+                
                 if (resultado is Result.Success) {
-                    Timber.d("Registro marcado como visto correctamente")
+                    Timber.d("✓ Registro marcado como visto correctamente")
                     // Añadir al conjunto de registros marcados
                     registrosMarcadosComoVistos.add(registro.id)
                 } else if (resultado is Result.Error) {
-                    Timber.e(resultado.exception, "Error al marcar registro como visto: ${resultado.message}")
+                    Timber.e(resultado.exception, "✗ Error al marcar registro como visto: ${resultado.message}")
                 }
             } else {
                 Timber.w("No se pudo obtener el usuario actual para marcar como visto")
             }
+            
+            Timber.d("=== FIN marcarComoVistoPorFamiliar ===")
         } catch (e: Exception) {
-            Timber.e(e, "Error al marcar registro como visto: ${e.message}")
+            Timber.e(e, "Error en marcarComoVistoPorFamiliar: ${e.message}")
+            e.printStackTrace()
         }
     }
     

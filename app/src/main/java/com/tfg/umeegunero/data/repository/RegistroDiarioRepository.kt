@@ -1394,14 +1394,19 @@ class RegistroDiarioRepository @Inject constructor(
      */
     suspend fun registrarLecturaFamiliar(lecturaFamiliar: LecturaFamiliar): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
-            Timber.d("Registrando lectura familiar - registroId: ${lecturaFamiliar.registroId}, familiarId: ${lecturaFamiliar.familiarId}")
+            Timber.d("=== INICIO registrarLecturaFamiliar ===")
+            Timber.d("Datos recibidos: registroId=${lecturaFamiliar.registroId}, familiarId=${lecturaFamiliar.familiarId}, alumnoId=${lecturaFamiliar.alumnoId}")
             
-            if (isNetworkAvailable()) {
+            val hasNetwork = isNetworkAvailable()
+            Timber.d("¿Hay conexión a internet? $hasNetwork")
+            
+            if (hasNetwork) {
                 try {
                     // Verificar si ya existe una lectura reciente (últimos 5 segundos) para evitar duplicados
                     val lecturasCollection = firestore.collection("lecturas_familiar")
                     val tiempoLimite = Timestamp(Date(System.currentTimeMillis() - 5000)) // 5 segundos atrás
                     
+                    Timber.d("Verificando lecturas duplicadas...")
                     val lecturaExistente = lecturasCollection
                         .whereEqualTo("registroId", lecturaFamiliar.registroId)
                         .whereEqualTo("familiarId", lecturaFamiliar.familiarId)
@@ -1409,20 +1414,23 @@ class RegistroDiarioRepository @Inject constructor(
                         .get()
                         .await()
                     
+                    Timber.d("Lecturas existentes encontradas: ${lecturaExistente.size()}")
+                    
                     if (!lecturaExistente.isEmpty) {
-                        Timber.d("Ya existe una lectura reciente para este registro y familiar. Evitando duplicado.")
+                        Timber.d("Ya existe una lectura reciente. Actualizando solo vistoPorFamiliar...")
                         
                         // Asegurar que el campo vistoPorFamiliar esté actualizado en el registro principal
                         try {
+                            Timber.d("Actualizando vistoPorFamiliar en registrosActividad...")
                             registrosCollection.document(lecturaFamiliar.registroId)
                                 .update(
                                     "vistoPorFamiliar", true,
                                     "fechaUltimaLectura", FieldValue.serverTimestamp()
                                 )
                                 .await()
-                            Timber.d("Campo vistoPorFamiliar actualizado a true en registrosActividad para registro: ${lecturaFamiliar.registroId}")
+                            Timber.d("✓ Campo vistoPorFamiliar actualizado a true en registrosActividad para registro: ${lecturaFamiliar.registroId}")
                         } catch (e: Exception) {
-                            Timber.e(e, "Error al actualizar vistoPorFamiliar en registrosActividad: ${lecturaFamiliar.registroId}")
+                            Timber.e(e, "✗ Error al actualizar vistoPorFamiliar en registrosActividad: ${lecturaFamiliar.registroId}")
                         }
                         
                         // Asegurar que el campo registroDiarioLeido esté actualizado en el alumno
@@ -1434,10 +1442,10 @@ class RegistroDiarioRepository @Inject constructor(
                                 alumnosCollection.document(alumnoId)
                                     .update("registroDiarioLeido", true)
                                     .await()
-                                Timber.d("Campo registroDiarioLeido actualizado para alumno: $alumnoId")
+                                Timber.d("✓ Campo registroDiarioLeido actualizado para alumno: $alumnoId")
                             }
                         } catch (e: Exception) {
-                            Timber.e(e, "Error al actualizar registroDiarioLeido en alumno: ${lecturaFamiliar.alumnoId}")
+                            Timber.e(e, "✗ Error al actualizar registroDiarioLeido en alumno: ${lecturaFamiliar.alumnoId}")
                         }
                         
                         return@withContext Result.Success(true)
@@ -1445,23 +1453,36 @@ class RegistroDiarioRepository @Inject constructor(
                     
                     // Crear un ID único para la lectura
                     val lecturaId = "${lecturaFamiliar.registroId}_${lecturaFamiliar.familiarId}_${System.currentTimeMillis()}"
+                    Timber.d("Creando nueva lectura con ID: $lecturaId")
                     
                     // Guardar la lectura
+                    val lecturaData = mapOf(
+                        "registroId" to lecturaFamiliar.registroId,
+                        "familiarId" to lecturaFamiliar.familiarId,
+                        "alumnoId" to lecturaFamiliar.alumnoId,
+                        "fechaLectura" to lecturaFamiliar.fechaLectura,
+                        "fechaLecturaAsDate" to lecturaFamiliar.fechaLectura,
+                        "dispositivo" to lecturaFamiliar.dispositivo
+                    )
+                    
+                    Timber.d("Guardando lectura con datos: $lecturaData")
                     lecturasCollection.document(lecturaId)
-                        .set(lecturaFamiliar)
+                        .set(lecturaData)
                         .await()
+                    Timber.d("✓ Lectura guardada exitosamente en lecturas_familiar")
                     
                     // Actualizar campo en el registro principal
                     try {
+                        Timber.d("Actualizando vistoPorFamiliar en registrosActividad...")
                         registrosCollection.document(lecturaFamiliar.registroId)
                             .update(
                                 "vistoPorFamiliar", true,
                                 "fechaUltimaLectura", FieldValue.serverTimestamp()
                             )
                             .await()
-                        Timber.d("Campo vistoPorFamiliar actualizado a true en registrosActividad para registro: ${lecturaFamiliar.registroId}")
+                        Timber.d("✓ Campo vistoPorFamiliar actualizado a true en registrosActividad para registro: ${lecturaFamiliar.registroId}")
                     } catch (e: Exception) {
-                        Timber.e(e, "Error al actualizar vistoPorFamiliar en registrosActividad: ${lecturaFamiliar.registroId}")
+                        Timber.e(e, "✗ Error al actualizar vistoPorFamiliar en registrosActividad: ${lecturaFamiliar.registroId}")
                     }
                     
                     // También actualizar el campo registroDiarioLeido en el documento del alumno
@@ -1473,17 +1494,18 @@ class RegistroDiarioRepository @Inject constructor(
                             alumnosCollection.document(alumnoId)
                                 .update("registroDiarioLeido", true)
                                 .await()
-                            Timber.d("Campo registroDiarioLeido actualizado para alumno: $alumnoId")
+                            Timber.d("✓ Campo registroDiarioLeido actualizado para alumno: $alumnoId")
                         }
                     } catch (e: Exception) {
-                        Timber.e(e, "Error al actualizar registroDiarioLeido en alumno: ${lecturaFamiliar.alumnoId}")
+                        Timber.e(e, "✗ Error al actualizar registroDiarioLeido en alumno: ${lecturaFamiliar.alumnoId}")
                         // No interrumpimos el flujo si falla esta actualización
                     }
                     
-                    Timber.d("Lectura familiar registrada correctamente")
+                    Timber.d("✓ Lectura familiar registrada correctamente")
                     return@withContext Result.Success(true)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error al registrar lectura familiar en Firestore")
+                    Timber.e(e, "✗ Error al registrar lectura familiar en Firestore: ${e.message}")
+                    e.printStackTrace()
                     // Intentar guardar localmente
                 }
             }
@@ -1495,8 +1517,11 @@ class RegistroDiarioRepository @Inject constructor(
             Timber.d("Lectura familiar registrada localmente para sincronización posterior")
             return@withContext Result.Success(true)
         } catch (e: Exception) {
-            Timber.e(e, "Error al registrar lectura familiar: ${e.message}")
+            Timber.e(e, "✗ Error al registrar lectura familiar: ${e.message}")
+            e.printStackTrace()
             return@withContext Result.Error(e.message, e)
+        } finally {
+            Timber.d("=== FIN registrarLecturaFamiliar ===")
         }
     }
 
